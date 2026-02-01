@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cuenti-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-homebanking}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cuenti-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cuenti-app
+    environment:
+      # Spring Profile - DEVELOPMENT MODE (with demo users and data)
+      - SPRING_PROFILES_ACTIVE=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-homebanking}
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      # Development settings
+      - HIBERNATE_DDL_AUTO=create
+      - VAADIN_PRODUCTION_MODE=false
+      - LOG_LEVEL=DEBUG
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cuenti-network
+    restart: unless-stopped
+
+networks:
+  cuenti-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

@@ -1,0 +1,48 @@
+# Build artifacts
+target/
+*.jar
+*.war
+*.ear
+
+# IDE files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Node modules (Vaadin)
+node_modules/
+package-lock.json
+
+# Vaadin generated files
+frontend/generated/
+src/main/frontend/generated/
+
+# Logs
+*.log
+logs/
+
+# Documentation
+*.md
+docs/
+
+# Scripts
+scripts/
+
+# Docker files (not needed inside container)
+docker-compose*.yml
+Dockerfile*
+.dockerignore

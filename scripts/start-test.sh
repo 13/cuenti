@@ -1,22 +1,21 @@
 #!/bin/bash
+set -e
 
-# Script to run the Cuenti Homebanking application with H2 in-memory database
-# Useful for testing without PostgreSQL
-set -e  # Exit on error
+# Check for Maven
+command -v mvn >/dev/null 2>&1 || { echo "maven not installed"; exit 1; }
+
+# Check for Java 17 or 21
+JAVA_VERSION=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
+if [[ $JAVA_VERSION != 17* && $JAVA_VERSION != 21* ]]; then
+  echo "java 17 or 21 required, found version $JAVA_VERSION"
+  exit 1
+fi
 
 echo "========================================"
 echo "Starting Cuenti Homebanking Application"
 echo "Test Mode (H2 In-Memory Database)"
 echo "========================================"
 echo
-echo "Database: H2 (in-memory)"
-echo "Profile: test"
-echo
-echo "Note: All data will be lost when the application stops."
-echo "For persistent storage, use ./scripts/start.sh instead."
-echo
-echo "Press Ctrl+C to stop"
-echo "========================================"
-echo
 
 mvn spring-boot:run -Dspring-boot.run.profiles=test
+

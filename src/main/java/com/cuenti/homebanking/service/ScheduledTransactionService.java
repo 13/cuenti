@@ -5,6 +5,7 @@ import com.cuenti.homebanking.model.ScheduledTransaction;
 import com.cuenti.homebanking.model.Transaction;
 import com.cuenti.homebanking.model.User;
 import com.cuenti.homebanking.repository.ScheduledTransactionRepository;
+import com.cuenti.homebanking.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,9 @@ public class ScheduledTransactionService {
     private final ScheduledTransactionRepository repository;
     private final TransactionService transactionService;
     private final AccountService accountService;
+    private final UserService userService;
+
+    private final SecurityUtils securityUtils;
 
     public List<ScheduledTransaction> getByUser(User user) {
         return repository.findByUser(user);
@@ -28,22 +32,52 @@ public class ScheduledTransactionService {
 
     @Transactional
     public ScheduledTransaction save(ScheduledTransaction scheduledTransaction) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        // If it's a new scheduled transaction, set the user
+        if (scheduledTransaction.getId() == null) {
+            scheduledTransaction.setUser(currentUser);
+        } else {
+            // If updating, verify the user owns it
+            ScheduledTransaction existing = repository.findById(scheduledTransaction.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Scheduled transaction not found"));
+            if (!existing.getUser().getId().equals(currentUser.getId())) {
+                throw new SecurityException("Cannot modify scheduled transaction belonging to another user");
+            }
+        }
         return repository.save(scheduledTransaction);
     }
 
     @Transactional
     public void delete(ScheduledTransaction scheduledTransaction) {
-        repository.delete(scheduledTransaction);
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        // Security check: only allow deletion if scheduled transaction belongs to current user
+        if (scheduledTransaction.getUser().getId().equals(currentUser.getId())) {
+            repository.delete(scheduledTransaction);
+        } else {
+            throw new SecurityException("Cannot delete scheduled transaction belonging to another user");
+        }
     }
 
     @Transactional
     public void post(Long scheduledId) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
         ScheduledTransaction scheduled = repository.findById(scheduledId)
                 .orElseThrow(() -> new IllegalArgumentException("Scheduled transaction not found"));
 
-        Account from = scheduled.getFromAccount() != null ? 
+        // Security check: verify the user owns this scheduled transaction
+        if (!scheduled.getUser().getId().equals(currentUser.getId())) {
+            throw new SecurityException("Cannot post scheduled transaction belonging to another user");
+        }
+
+        Account from = scheduled.getFromAccount() != null ?
                 accountService.findById(scheduled.getFromAccount().getId()) : null;
-        Account to = scheduled.getToAccount() != null ? 
+        Account to = scheduled.getToAccount() != null ?
                 accountService.findById(scheduled.getToAccount().getId()) : null;
 
         Transaction transaction = Transaction.builder()
@@ -68,8 +102,17 @@ public class ScheduledTransactionService {
 
     @Transactional
     public void skip(Long scheduledId) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
         ScheduledTransaction scheduled = repository.findById(scheduledId)
                 .orElseThrow(() -> new IllegalArgumentException("Scheduled transaction not found"));
+
+        // Security check: verify the user owns this scheduled transaction
+        if (!scheduled.getUser().getId().equals(currentUser.getId())) {
+            throw new SecurityException("Cannot skip scheduled transaction belonging to another user");
+        }
+
         updateToNextOccurrence(scheduled);
     }
 

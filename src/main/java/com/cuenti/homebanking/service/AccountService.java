@@ -3,6 +3,7 @@ package com.cuenti.homebanking.service;
 import com.cuenti.homebanking.model.Account;
 import com.cuenti.homebanking.model.User;
 import com.cuenti.homebanking.repository.AccountRepository;
+import com.cuenti.homebanking.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,25 +20,62 @@ import java.util.Random;
 public class AccountService {
 
     private final AccountRepository accountRepository;
+    private final UserService userService;
+    private final SecurityUtils securityUtils;
     private final Random random = new Random();
 
     @Transactional
     public Account saveAccount(Account account) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+
         if (account.getAccountNumber() == null || account.getAccountNumber().isEmpty()) {
             account.setAccountNumber(generateAccountNumber());
         }
+
+        // If it's a new account, set the user
+        if (account.getId() == null) {
+            account.setUser(currentUser);
+        } else {
+            // If updating, verify the user owns it
+            Account existing = accountRepository.findById(account.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+            if (!existing.getUser().getId().equals(currentUser.getId())) {
+                throw new SecurityException("Cannot modify account belonging to another user");
+            }
+            account.setUser(currentUser);
+        }
+
         return accountRepository.save(account);
     }
 
     @Transactional
     public void deleteAccount(Account account) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        // Security check: only allow deletion if account belongs to current user
+        if (!account.getUser().getId().equals(currentUser.getId())) {
+            throw new SecurityException("Cannot delete account belonging to another user");
+        }
         accountRepository.delete(account);
     }
 
     @Transactional
     public void updateSortOrders(List<Account> accounts) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+
         for (int i = 0; i < accounts.size(); i++) {
             Account account = accounts.get(i);
+
+            // Security check: verify all accounts belong to current user
+            if (!account.getUser().getId().equals(currentUser.getId())) {
+                throw new SecurityException("Cannot modify account belonging to another user");
+            }
+
             account.setSortOrder(i);
             accountRepository.save(account);
         }
@@ -70,12 +108,31 @@ public class AccountService {
 
     @Transactional(readOnly = true)
     public Account findById(Long accountId) {
-        return accountRepository.findById(accountId)
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new IllegalArgumentException("Account not found: " + accountId));
+
+        // Security check: verify account belongs to current user
+        if (!account.getUser().getId().equals(currentUser.getId())) {
+            throw new SecurityException("Cannot access account belonging to another user");
+        }
+
+        return account;
     }
 
     @Transactional
     public Account updateBalance(Account account, BigDecimal newBalance) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+
+        // Security check: verify account belongs to current user
+        if (!account.getUser().getId().equals(currentUser.getId())) {
+            throw new SecurityException("Cannot modify account belonging to another user");
+        }
+
         account.setBalance(newBalance);
         return accountRepository.save(account);
     }

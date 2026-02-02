@@ -24,14 +24,13 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.data.value.ValueChangeMode;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 
 @Route(value = "payees", layout = MainLayout.class)
-@PageTitle("Manage Payees | Cuenti")
 @PermitAll
-public class PayeeManagementView extends VerticalLayout {
+public class PayeeManagementView extends VerticalLayout implements HasDynamicTitle {
 
     private final PayeeService payeeService;
     private final CategoryService categoryService;
@@ -42,7 +41,7 @@ public class PayeeManagementView extends VerticalLayout {
     private final Grid<Payee> grid = new Grid<>(Payee.class, false);
     private final TextField searchField = new TextField();
 
-    public PayeeManagementView(PayeeService payeeService, CategoryService categoryService, 
+    public PayeeManagementView(PayeeService payeeService, CategoryService categoryService,
                                UserService userService, SecurityUtils securityUtils) {
         this.payeeService = payeeService;
         this.categoryService = categoryService;
@@ -63,10 +62,15 @@ public class PayeeManagementView extends VerticalLayout {
         refreshGrid();
     }
 
+    @Override
+    public String getPageTitle() {
+        return getTranslation("payees.title") + " | Cuenti";
+    }
+
     private void setupUI() {
         H2 title = new H2(getTranslation("payees.title"));
         title.getStyle().set("margin-top", "0").set("color", "var(--lumo-primary-text-color)");
-        
+
         searchField.setPlaceholder(getTranslation("payees.search"));
         searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
         searchField.setClearButtonVisible(true);
@@ -91,7 +95,7 @@ public class PayeeManagementView extends VerticalLayout {
             Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> openPayeeDialog(payee));
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             editBtn.setTooltipText(getTranslation("transactions.edit"));
-            
+
             Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
                 payeeService.deletePayee(payee);
                 refreshGrid();
@@ -99,7 +103,7 @@ public class PayeeManagementView extends VerticalLayout {
             });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
             deleteBtn.setTooltipText(getTranslation("transactions.delete"));
-            
+
             return new HorizontalLayout(editBtn, deleteBtn);
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
 
@@ -126,13 +130,13 @@ public class PayeeManagementView extends VerticalLayout {
         FormLayout formLayout = new FormLayout();
         TextField name = new TextField(getTranslation("payees.name"));
         name.setPrefixComponent(VaadinIcon.USER.create());
-        
+
         TextField notes = new TextField(getTranslation("payees.notes"));
-        
+
         ComboBox<Category> defaultCategory = new ComboBox<>(getTranslation("payees.default_category"));
         defaultCategory.setItems(categoryService.getAllCategories());
         defaultCategory.setItemLabelGenerator(Category::getFullName);
-        
+
         // Add new category button - using prefix since setSuffixComponent isn't available in this Vaadin version
         Button addCategoryBtn = new Button(VaadinIcon.PLUS.create(), e -> {
             Notification.show("Navigate to Categories to add new ones");

@@ -2,6 +2,7 @@ package com.cuenti.homebanking.service;
 
 import com.cuenti.homebanking.model.*;
 import com.cuenti.homebanking.repository.*;
+import com.cuenti.homebanking.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,9 +17,20 @@ public class ProfileCleanupService {
     private final PayeeRepository payeeRepository;
     private final TagRepository tagRepository;
     private final CategoryRepository categoryRepository;
+    private final UserService userService;
+    private final SecurityUtils securityUtils;
 
     @Transactional
     public void cleanupUserData(User user) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+
+        // Security check: users can only cleanup their own data
+        if (!currentUser.getId().equals(user.getId())) {
+            throw new SecurityException("Cannot cleanup data for another user");
+        }
+
         // 1. Delete user-specific transaction data
         transactionRepository.findByUser(user).forEach(transactionRepository::delete);
         scheduledTransactionRepository.findByUser(user).forEach(scheduledTransactionRepository::delete);
@@ -26,11 +38,9 @@ public class ProfileCleanupService {
         // 2. Delete user-specific accounts
         accountRepository.findByUser(user).forEach(accountRepository::delete);
 
-        // 3. Optional: Global entities (Payees, Tags, Categories) 
-        // Note: These are currently shared across users in our model. 
-        // If we want to start with a truly clean profile including custom categories:
-        // (Only delete if they aren't protected system defaults)
-        
-        // Since the requirement is a "clean profile", we remove all history linked to this user.
+        // 3. Delete user-specific payees, tags, and categories
+        payeeRepository.findByUser(user).forEach(payeeRepository::delete);
+        tagRepository.findByUser(user).forEach(tagRepository::delete);
+        categoryRepository.findByUser(user).forEach(categoryRepository::delete);
     }
 }

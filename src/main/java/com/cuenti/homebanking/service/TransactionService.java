@@ -4,6 +4,7 @@ import com.cuenti.homebanking.model.Account;
 import com.cuenti.homebanking.model.Transaction;
 import com.cuenti.homebanking.model.User;
 import com.cuenti.homebanking.repository.TransactionRepository;
+import com.cuenti.homebanking.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,25 +21,56 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final AccountService accountService;
+    private final UserService userService;
+    private final SecurityUtils securityUtils;
 
     /**
      * Create or update a transaction and update account balances.
      */
     @Transactional
     public Transaction saveTransaction(Transaction transaction) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+
         if (transaction.getAmount().compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Amount cannot be negative");
         }
 
-        // If updating, reverse the previous transaction effects
+        // Security check: verify all accounts in the transaction belong to current user
+        if (transaction.getFromAccount() != null &&
+            !transaction.getFromAccount().getUser().getId().equals(currentUser.getId())) {
+            throw new SecurityException("Cannot use account belonging to another user");
+        }
+        if (transaction.getToAccount() != null &&
+            !transaction.getToAccount().getUser().getId().equals(currentUser.getId())) {
+            throw new SecurityException("Cannot use account belonging to another user");
+        }
+
+        // If updating, verify user owns the existing transaction
         if (transaction.getId() != null) {
-            transactionRepository.findById(transaction.getId()).ifPresent(this::reverseBalanceEffect);
+            Transaction existing = transactionRepository.findById(transaction.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+            User existingUser = getTransactionUser(existing);
+            if (!existingUser.getId().equals(currentUser.getId())) {
+                throw new SecurityException("Cannot modify transaction belonging to another user");
+            }
+            reverseBalanceEffect(existing);
         }
 
         applyBalanceEffect(transaction);
         
         transaction.setStatus(Transaction.TransactionStatus.COMPLETED);
         return transactionRepository.save(transaction);
+    }
+
+    private User getTransactionUser(Transaction transaction) {
+        if (transaction.getFromAccount() != null) {
+            return transaction.getFromAccount().getUser();
+        } else if (transaction.getToAccount() != null) {
+            return transaction.getToAccount().getUser();
+        }
+        throw new IllegalStateException("Transaction has no associated account");
     }
 
     private void applyBalanceEffect(Transaction t) {
@@ -127,7 +159,17 @@ public class TransactionService {
 
     @Transactional
     public void deleteTransaction(Transaction transaction) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+
         transactionRepository.findById(transaction.getId()).ifPresent(t -> {
+            // Security check: verify user owns the transaction
+            User transactionUser = getTransactionUser(t);
+            if (!transactionUser.getId().equals(currentUser.getId())) {
+                throw new SecurityException("Cannot delete transaction belonging to another user");
+            }
+
             reverseBalanceEffect(t);
             transactionRepository.delete(t);
         });

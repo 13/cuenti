@@ -2,6 +2,7 @@ package com.cuenti.homebanking.service;
 
 import com.cuenti.homebanking.model.*;
 import com.cuenti.homebanking.repository.*;
+import com.cuenti.homebanking.security.SecurityUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -27,8 +28,10 @@ public class JsonExportImportService {
     private final TagService tagService;
     private final AssetService assetService;
     private final ScheduledTransactionService scheduledTransactionService;
+    private final UserService userService;
     private final CurrencyRepository currencyRepository;
     private final TransactionRepository transactionRepository;
+    private final SecurityUtils securityUtils;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
@@ -271,8 +274,11 @@ public class JsonExportImportService {
     }
 
     private int getMaxSortOrder() {
-        List<Transaction> allTransactions = transactionRepository.findAll();
-        return allTransactions.stream()
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        List<Transaction> userTransactions = transactionRepository.findByUser(currentUser);
+        return userTransactions.stream()
                 .mapToInt(Transaction::getSortOrder)
                 .max()
                 .orElse(0);

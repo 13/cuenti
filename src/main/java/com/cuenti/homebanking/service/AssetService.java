@@ -3,6 +3,8 @@ package com.cuenti.homebanking.service;
 import com.cuenti.homebanking.model.Asset;
 import com.cuenti.homebanking.model.User;
 import com.cuenti.homebanking.repository.AssetRepository;
+import com.cuenti.homebanking.repository.TransactionRepository;
+import com.cuenti.homebanking.repository.ScheduledTransactionRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -27,23 +29,36 @@ import java.util.List;
 public class AssetService {
 
     private final AssetRepository assetRepository;
+    private final TransactionRepository transactionRepository;
+    private final ScheduledTransactionRepository scheduledTransactionRepository;
+    private final UserService userService;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public List<Asset> getAllAssets() {
-        return assetRepository.findAll();
+        String username = SecurityUtil.getAuthenticatedUsername()
+            .orElseThrow(() -> new RuntimeException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        return assetRepository.findByUser(currentUser);
     }
 
-
     public List<Asset> searchAssets(String searchTerm) {
+        String username = SecurityUtil.getAuthenticatedUsername()
+            .orElseThrow(() -> new RuntimeException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
         if (searchTerm == null || searchTerm.isEmpty()) {
-            return getAllAssets();
+            return assetRepository.findByUser(currentUser);
         }
-        return assetRepository.findBySymbolContainingIgnoreCaseOrNameContainingIgnoreCase(searchTerm, searchTerm);
+        return assetRepository.findByUserAndSymbolContainingIgnoreCaseOrUserAndNameContainingIgnoreCase(
+            currentUser, searchTerm, currentUser, searchTerm);
     }
 
     @Transactional
     public Asset saveAsset(Asset asset) {
+        String username = SecurityUtil.getAuthenticatedUsername()
+            .orElseThrow(() -> new RuntimeException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        asset.setUser(currentUser);
         Asset saved = assetRepository.save(asset);
         updatePrice(saved);
         return saved;
@@ -51,7 +66,26 @@ public class AssetService {
 
     @Transactional
     public void deleteAsset(Asset asset) {
-        assetRepository.delete(asset);
+        String username = SecurityUtil.getAuthenticatedUsername()
+            .orElseThrow(() -> new RuntimeException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        // Verify ownership
+        Asset toDelete = assetRepository.findByIdAndUser(asset.getId(), currentUser)
+            .orElseThrow(() -> new RuntimeException("Asset not found or access denied"));
+
+        // Check if the asset is being used in any transactions
+        long transactionCount = transactionRepository.countByAsset(toDelete);
+        long scheduledTransactionCount = scheduledTransactionRepository.countByAsset(toDelete);
+
+        if (transactionCount > 0 || scheduledTransactionCount > 0) {
+            throw new IllegalStateException(
+                "Cannot delete asset '" + toDelete.getName() +
+                "' because it is referenced by " + transactionCount +
+                " transaction(s) and " + scheduledTransactionCount +
+                " scheduled transaction(s). Please remove those references first.");
+        }
+
+        assetRepository.delete(toDelete);
     }
 
     @Transactional
@@ -91,12 +125,47 @@ public class AssetService {
     }
 
     /**
+     * Update all assets for a specific user.
+     * This is called when a user logs in.
+     */
+    @Transactional
+    public void updateUserAssetPrices(User user) {
+        log.info("Updating asset prices for user: {}", user.getUsername());
+        List<Asset> assets = assetRepository.findByUser(user);
+        for (Asset asset : assets) {
+            updatePrice(asset);
+            try {
+                // Add a small delay between requests to be nice to the API
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Asset price update interrupted for user: {}", user.getUsername());
+                break;
+            }
+        }
+        log.info("Completed asset price update for user: {}", user.getUsername());
+    }
+
+    /**
+     * Update asset prices for the currently authenticated user.
+     */
+    @Transactional
+    public void updateCurrentUserAssetPrices() {
+        String username = SecurityUtil.getAuthenticatedUsername()
+            .orElseThrow(() -> new RuntimeException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        updateUserAssetPrices(currentUser);
+    }
+
+    /**
      * Automatically update all asset prices every hour with a small delay between requests.
+     * Updates assets for all users.
      */
     @Scheduled(fixedRate = 3600000)
     @Transactional
     public void updateAllPrices() {
         log.info("Starting scheduled asset price update...");
+        // Get all assets across all users for scheduled updates
         List<Asset> assets = assetRepository.findAll();
         for (Asset asset : assets) {
             updatePrice(asset);

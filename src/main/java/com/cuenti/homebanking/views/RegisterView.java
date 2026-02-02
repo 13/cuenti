@@ -150,17 +150,8 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver 
                 lastNameField.getValue().trim()
             );
 
-            Account defaultAccount = Account.builder()
-                    .user(user)
-                    .accountName("Main Account")
-                    .accountType(Account.AccountType.CURRENT)
-                    .startBalance(new BigDecimal("1000.00"))
-                    .currency("EUR")
-                    .build();
-            accountService.saveAccount(defaultAccount);
-
             if (isFirstUser) {
-                showSuccess("🎉 Registration successful! You are the first user and have been granted administrator privileges. Please login.");
+                showSuccess("Registration successful! You are the first user and have been granted administrator privileges. Please login.");
             } else {
                 showSuccess("Registration successful! Please login.");
             }

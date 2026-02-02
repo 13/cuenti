@@ -48,4 +48,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByFromAccountOrderByTransactionDateDesc(Account fromAccount);
     
     List<Transaction> findByToAccountOrderByTransactionDateDesc(Account toAccount);
+
+    /**
+     * Count transactions that reference a specific asset.
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t WHERE t.asset = :asset")
+    long countByAsset(@Param("asset") com.cuenti.homebanking.model.Asset asset);
 }

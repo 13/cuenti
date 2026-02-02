@@ -1,7 +1,6 @@
 # <img src="src/main/resources/static/images/CuentiLogo.png" width="30" height="30" /> Cuenti Homebanking
 
-A personal homebanking application with stocks and crypto support
-
+A comprehensive personal finance management application that helps you track your income, expenses, assets, and investments all in one place.
 
 <p align="center">
   <img src="assets/screenshot.png" width="640" />

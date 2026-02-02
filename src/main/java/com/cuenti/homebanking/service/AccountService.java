@@ -30,21 +30,29 @@ public class AccountService {
                 .orElseThrow(() -> new SecurityException("User not authenticated"));
         User currentUser = userService.findByUsername(username);
 
+        return saveAccountForUser(account, currentUser);
+    }
+
+    /**
+     * Save account for a specific user (used during initialization or admin operations)
+     */
+    @Transactional
+    public Account saveAccountForUser(Account account, User user) {
         if (account.getAccountNumber() == null || account.getAccountNumber().isEmpty()) {
             account.setAccountNumber(generateAccountNumber());
         }
 
         // If it's a new account, set the user
         if (account.getId() == null) {
-            account.setUser(currentUser);
+            account.setUser(user);
         } else {
             // If updating, verify the user owns it
             Account existing = accountRepository.findById(account.getId())
                     .orElseThrow(() -> new IllegalArgumentException("Account not found"));
-            if (!existing.getUser().getId().equals(currentUser.getId())) {
+            if (!existing.getUser().getId().equals(user.getId())) {
                 throw new SecurityException("Cannot modify account belonging to another user");
             }
-            account.setUser(currentUser);
+            account.setUser(user);
         }
 
         return accountRepository.save(account);
@@ -55,6 +63,7 @@ public class AccountService {
         String username = securityUtils.getAuthenticatedUsername()
                 .orElseThrow(() -> new SecurityException("User not authenticated"));
         User currentUser = userService.findByUsername(username);
+
         // Security check: only allow deletion if account belongs to current user
         if (!account.getUser().getId().equals(currentUser.getId())) {
             throw new SecurityException("Cannot delete account belonging to another user");

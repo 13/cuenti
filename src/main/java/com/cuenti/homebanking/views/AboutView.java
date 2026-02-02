@@ -36,8 +36,8 @@ public class AboutView extends VerticalLayout {
         getStyle().set("margin", "0 auto");
 
         // Logo
-        Image logo = new Image("images/CuentiText.png", "Cuenti");
-        logo.setMaxWidth("300px");
+        Image logo = new Image("images/Cuenti.png", "Cuenti");
+        logo.setMaxWidth("200px");
         logo.getStyle().set("margin-bottom", "var(--lumo-space-l)");
         add(logo);
 

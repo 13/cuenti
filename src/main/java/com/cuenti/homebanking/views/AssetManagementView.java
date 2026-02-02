@@ -18,6 +18,7 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
@@ -80,7 +81,7 @@ public class AssetManagementView extends VerticalLayout {
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         Button updatePricesButton = new Button(VaadinIcon.REFRESH.create(), e -> {
-            assetService.updateAllPrices();
+            assetService.updateCurrentUserAssetPrices();
             refreshGrid();
             Notification.show(getTranslation("settings.saved"));
         });
@@ -126,9 +127,18 @@ public class AssetManagementView extends VerticalLayout {
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             
             Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
-                assetService.deleteAsset(asset);
-                refreshGrid();
-                Notification.show(getTranslation("assets.deleted"));
+                try {
+                    assetService.deleteAsset(asset);
+                    refreshGrid();
+                    Notification.show(getTranslation("assets.deleted"), 3000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                } catch (IllegalStateException ex) {
+                    Notification.show(ex.getMessage(), 5000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                } catch (Exception ex) {
+                    Notification.show(getTranslation("error.generic"), 3000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                }
             });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
             

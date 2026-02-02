@@ -1,6 +1,10 @@
 package com.cuenti.homebanking.service;
 
+import com.cuenti.homebanking.model.Asset;
+import com.cuenti.homebanking.model.Currency;
 import com.cuenti.homebanking.model.User;
+import com.cuenti.homebanking.repository.AssetRepository;
+import com.cuenti.homebanking.repository.CurrencyRepository;
 import com.cuenti.homebanking.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +31,8 @@ public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CurrencyRepository currencyRepository;
+    private final AssetRepository assetRepository;
 
     /**
      * Load user by username for Spring Security authentication.
@@ -92,7 +98,111 @@ public class UserService implements UserDetailsService {
         User savedUser = userRepository.save(user);
         log.info("User successfully registered: {} (Roles: {})", savedUser.getUsername(), savedUser.getRoles());
 
+        // Create default currencies for the new user
+        createDefaultCurrencies(savedUser);
+
+        // Create default assets for the new user
+        createDefaultAssets(savedUser);
+
         return savedUser;
+    }
+
+    /**
+     * Create default currencies for a new user.
+     */
+    private void createDefaultCurrencies(User user) {
+        log.info("Creating default currencies for user: {}", user.getUsername());
+
+        // EUR
+        currencyRepository.save(Currency.builder()
+                .user(user)
+                .code("EUR")
+                .name("Euro")
+                .symbol("€")
+                .decimalChar(",")
+                .fracDigits(2)
+                .groupingChar(".")
+                .build());
+
+        // USD
+        currencyRepository.save(Currency.builder()
+                .user(user)
+                .code("USD")
+                .name("US Dollar")
+                .symbol("$")
+                .decimalChar(".")
+                .fracDigits(2)
+                .groupingChar(",")
+                .build());
+
+        // GBP
+        currencyRepository.save(Currency.builder()
+                .user(user)
+                .code("GBP")
+                .name("British Pound")
+                .symbol("£")
+                .decimalChar(".")
+                .fracDigits(2)
+                .groupingChar(",")
+                .build());
+
+        // CHF
+        currencyRepository.save(Currency.builder()
+                .user(user)
+                .code("CHF")
+                .name("Swiss Franc")
+                .symbol("CHF")
+                .decimalChar(".")
+                .fracDigits(2)
+                .groupingChar(",")
+                .build());
+
+        log.info("Default currencies created for user: {}", user.getUsername());
+    }
+
+    /**
+     * Create default assets for a new user.
+     */
+    private void createDefaultAssets(User user) {
+        log.info("Creating default assets for user: {}", user.getUsername());
+
+        // VWCE.DE - Vanguard FTSE All-World ETF
+        assetRepository.save(Asset.builder()
+                .user(user)
+                .symbol("VWCE.DE")
+                .name("Vanguard FTSE All-World")
+                .type(Asset.AssetType.ETF)
+                .currency("EUR")
+                .build());
+
+        // AMZN - Amazon
+        assetRepository.save(Asset.builder()
+                .user(user)
+                .symbol("AMZN")
+                .name("Amazon.com Inc.")
+                .type(Asset.AssetType.STOCK)
+                .currency("USD")
+                .build());
+
+        // AMD - Advanced Micro Devices
+        assetRepository.save(Asset.builder()
+                .user(user)
+                .symbol("AMD")
+                .name("Advanced Micro Devices Inc.")
+                .type(Asset.AssetType.STOCK)
+                .currency("USD")
+                .build());
+
+        // BTC-EUR - Bitcoin
+        assetRepository.save(Asset.builder()
+                .user(user)
+                .symbol("BTC-EUR")
+                .name("Bitcoin")
+                .type(Asset.AssetType.CRYPTO)
+                .currency("EUR")
+                .build());
+
+        log.info("Default assets created for user: {}", user.getUsername());
     }
 
     /**

@@ -33,6 +33,7 @@ public class XhbImportService {
     private final TagService tagService;
     private final CurrencyRepository currencyRepository;
     private final ScheduledTransactionService scheduledService;
+    private final UserService userService;
 
     @Transactional
     public void importXhb(InputStream inputStream, User user) throws Exception {
@@ -56,8 +57,9 @@ public class XhbImportService {
             currencyMap.put(key, iso);
             
             if (iso != null && !iso.isEmpty() && !iso.equals("BTC")) {
-                if (currencyRepository.findByCode(iso) == null) {
+                if (!currencyRepository.findByUserAndCode(user, iso).isPresent()) {
                     Currency c = new Currency();
+                    c.setUser(user);
                     c.setCode(iso);
                     c.setName(el.getAttribute("name"));
                     c.setSymbol(el.getAttribute("symb"));

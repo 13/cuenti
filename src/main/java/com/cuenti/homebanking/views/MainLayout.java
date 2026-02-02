@@ -3,6 +3,7 @@ package com.cuenti.homebanking.views;
 import com.cuenti.homebanking.model.User;
 import com.cuenti.homebanking.security.SecurityUtils;
 import com.cuenti.homebanking.service.UserService;
+import com.cuenti.homebanking.service.AssetService;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
@@ -22,21 +23,25 @@ import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.theme.lumo.Lumo;
 import jakarta.annotation.security.PermitAll;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collections;
 import java.util.Locale;
 import java.util.Map;
 
 @PermitAll
+@Slf4j
 public class MainLayout extends AppLayout {
 
     private final SecurityUtils securityUtils;
     private final UserService userService;
+    private final AssetService assetService;
     private User currentUser;
 
-    public MainLayout(SecurityUtils securityUtils, UserService userService) {
+    public MainLayout(SecurityUtils securityUtils, UserService userService, AssetService assetService) {
         this.securityUtils = securityUtils;
         this.userService = userService;
+        this.assetService = assetService;
 
         String username = securityUtils.getAuthenticatedUsername().orElse(null);
         if (username != null) {
@@ -45,6 +50,9 @@ public class MainLayout extends AppLayout {
                 Locale locale = Locale.forLanguageTag(currentUser.getLocale());
                 UI.getCurrent().setLocale(locale);
                 VaadinSession.getCurrent().setLocale(locale);
+
+                // Update asset prices for the logged-in user asynchronously
+                updateAssetPricesAsync();
             } catch (Exception e) {
                 securityUtils.logout();
                 return;
@@ -56,6 +64,22 @@ public class MainLayout extends AppLayout {
 
         createHeader();
         createDrawer();
+    }
+
+    /**
+     * Update asset prices asynchronously to avoid blocking the UI on login.
+     */
+    private void updateAssetPricesAsync() {
+        if (currentUser != null) {
+            // Run in a separate thread to avoid blocking the UI
+            new Thread(() -> {
+                try {
+                    assetService.updateUserAssetPrices(currentUser);
+                } catch (Exception e) {
+                    log.error("Error updating asset prices for user: {}", currentUser.getUsername(), e);
+                }
+            }).start();
+        }
     }
 
     private void applyTheme() {

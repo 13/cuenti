@@ -1,5 +1,6 @@
 package com.cuenti.homebanking.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@ToString
+@ToString(exclude = "user")
 public class Asset {
 
     @Id
@@ -25,7 +26,12 @@ public class Asset {
     @EqualsAndHashCode.Include
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
+    private User user;
+
+    @Column(nullable = false)
     private String symbol; // e.g., VWCE.DE, AMZN, BTC-USD
 
     @Column(nullable = false)

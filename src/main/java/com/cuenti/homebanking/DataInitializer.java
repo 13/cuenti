@@ -85,67 +85,10 @@ public class DataInitializer implements CommandLineRunner {
 
         log.info("Initializing comprehensive German demo data...");
 
-        // 1. Currencies
-        Currency eur = new Currency();
-        eur.setCode("EUR");
-        eur.setName("Euro");
-        eur.setSymbol("€");
-        eur.setDecimalChar(",");
-        eur.setGroupingChar(".");
-        eur.setFracDigits(2);
-        eur = currencyRepository.save(eur);
-
-        Currency usd = new Currency();
-        usd.setCode("USD");
-        usd.setName("US Dollar");
-        usd.setSymbol("$");
-        usd.setDecimalChar(".");
-        usd.setGroupingChar(",");
-        usd.setFracDigits(2);
-        usd = currencyRepository.save(usd);
-
-        // 2. Global Settings
+        // 1. Global Settings
         globalSettingService.setRegistrationEnabled(true);
 
-        // 3. Categories
-        Category housing = createCategory("Wohnen", Category.CategoryType.EXPENSE, null);
-        Category rent = createCategory("Miete", Category.CategoryType.EXPENSE, housing);
-        Category electricity = createCategory("Strom", Category.CategoryType.EXPENSE, housing);
-        Category internet = createCategory("Internet", Category.CategoryType.EXPENSE, housing);
-
-        Category food = createCategory("Verpflegung", Category.CategoryType.EXPENSE, null);
-        Category groceries = createCategory("Supermarkt", Category.CategoryType.EXPENSE, food);
-        Category restaurant = createCategory("Restaurant", Category.CategoryType.EXPENSE, food);
-
-        Category transport = createCategory("Transport", Category.CategoryType.EXPENSE, null);
-        Category car = createCategory("Auto", Category.CategoryType.EXPENSE, transport);
-        Category fuel = createCategory("Tanken", Category.CategoryType.EXPENSE, car);
-        Category insurance = createCategory("Versicherung", Category.CategoryType.EXPENSE, car);
-        Category publicTransport = createCategory("ÖPNV", Category.CategoryType.EXPENSE, transport);
-
-        Category leisure = createCategory("Freizeit", Category.CategoryType.EXPENSE, null);
-        Category kino = createCategory("Kino", Category.CategoryType.EXPENSE, leisure);
-        Category streaming = createCategory("Streaming", Category.CategoryType.EXPENSE, leisure);
-
-        Category incomeCat = createCategory("Einkommen", Category.CategoryType.INCOME, null);
-        Category salary = createCategory("Gehalt", Category.CategoryType.INCOME, incomeCat);
-        createCategory("Dividenden", Category.CategoryType.INCOME, incomeCat);
-        createCategory("Zinsen", Category.CategoryType.INCOME, incomeCat);
-
-        // 4. Tags
-        createTag("Monatlich");
-        createTag("Arbeit");
-        createTag("Hobby");
-
-        // 5. Payees
-        createPayee("REWE Markt", groceries);
-        createPayee("Lidl", groceries);
-        createPayee("Deutsche Telekom", internet);
-        createPayee("Global Tech GmbH", salary);
-        createPayee("Shell", fuel);
-        createPayee("BVG", publicTransport);
-
-        // 6. Users
+        // 2. Users (create first so we can reference them)
         User demoUser = new User();
         demoUser.setUsername("demo");
         demoUser.setEmail("demo@cuenti.de");
@@ -173,11 +116,72 @@ public class DataInitializer implements CommandLineRunner {
         demo1User.setDefaultCurrency("EUR");
         demo1User = userRepository.save(demo1User);
 
-        // 7. Assets
-        Asset vwce = createAsset("VWCE.DE", "Vanguard FTSE All-World", Asset.AssetType.ETF);
-        Asset amzn = createAsset("AMZN", "Amazon.com, Inc.", Asset.AssetType.STOCK);
-        Asset amd = createAsset("AMD", "Advanced Micro Devices, Inc.", Asset.AssetType.STOCK);
-        Asset btc = createAsset("BTC-EUR", "Bitcoin EUR", Asset.AssetType.CRYPTO);
+        // 3. Currencies (for demo user)
+        Currency eur = Currency.builder()
+                .user(demoUser)
+                .code("EUR")
+                .name("Euro")
+                .symbol("€")
+                .decimalChar(",")
+                .groupingChar(".")
+                .fracDigits(2)
+                .build();
+        eur = currencyRepository.save(eur);
+
+        Currency usd = Currency.builder()
+                .user(demoUser)
+                .code("USD")
+                .name("US Dollar")
+                .symbol("$")
+                .decimalChar(".")
+                .groupingChar(",")
+                .fracDigits(2)
+                .build();
+        usd = currencyRepository.save(usd);
+
+        // 4. Categories (for demo user)
+        Category housing = createCategory(demoUser, "Wohnen", Category.CategoryType.EXPENSE, null);
+        Category rent = createCategory(demoUser, "Miete", Category.CategoryType.EXPENSE, housing);
+        Category electricity = createCategory(demoUser, "Strom", Category.CategoryType.EXPENSE, housing);
+        Category internet = createCategory(demoUser, "Internet", Category.CategoryType.EXPENSE, housing);
+
+        Category food = createCategory(demoUser, "Verpflegung", Category.CategoryType.EXPENSE, null);
+        Category groceries = createCategory(demoUser, "Supermarkt", Category.CategoryType.EXPENSE, food);
+        Category restaurant = createCategory(demoUser, "Restaurant", Category.CategoryType.EXPENSE, food);
+
+        Category transport = createCategory(demoUser, "Transport", Category.CategoryType.EXPENSE, null);
+        Category car = createCategory(demoUser, "Auto", Category.CategoryType.EXPENSE, transport);
+        Category fuel = createCategory(demoUser, "Tanken", Category.CategoryType.EXPENSE, car);
+        Category insurance = createCategory(demoUser, "Versicherung", Category.CategoryType.EXPENSE, car);
+        Category publicTransport = createCategory(demoUser, "ÖPNV", Category.CategoryType.EXPENSE, transport);
+
+        Category leisure = createCategory(demoUser, "Freizeit", Category.CategoryType.EXPENSE, null);
+        Category kino = createCategory(demoUser, "Kino", Category.CategoryType.EXPENSE, leisure);
+        Category streaming = createCategory(demoUser, "Streaming", Category.CategoryType.EXPENSE, leisure);
+
+        Category incomeCat = createCategory(demoUser, "Einkommen", Category.CategoryType.INCOME, null);
+        Category salary = createCategory(demoUser, "Gehalt", Category.CategoryType.INCOME, incomeCat);
+        createCategory(demoUser, "Dividenden", Category.CategoryType.INCOME, incomeCat);
+        createCategory(demoUser, "Zinsen", Category.CategoryType.INCOME, incomeCat);
+
+        // 5. Tags (for demo user)
+        createTag(demoUser, "Monatlich");
+        createTag(demoUser, "Arbeit");
+        createTag(demoUser, "Hobby");
+
+        // 6. Payees (for demo user)
+        createPayee(demoUser, "REWE Markt", groceries);
+        createPayee(demoUser, "Lidl", groceries);
+        createPayee(demoUser, "Deutsche Telekom", internet);
+        createPayee(demoUser, "Global Tech GmbH", salary);
+        createPayee(demoUser, "Shell", fuel);
+        createPayee(demoUser, "BVG", publicTransport);
+
+        // 7. Assets (for demo user)
+        Asset vwce = createAsset(demoUser, "VWCE.DE", "Vanguard FTSE All-World", Asset.AssetType.ETF);
+        Asset amzn = createAsset(demoUser, "AMZN", "Amazon.com, Inc.", Asset.AssetType.STOCK);
+        Asset amd = createAsset(demoUser, "AMD", "Advanced Micro Devices, Inc.", Asset.AssetType.STOCK);
+        Asset btc = createAsset(demoUser, "BTC-EUR", "Bitcoin EUR", Asset.AssetType.CRYPTO);
 
         // 8. Accounts (for demo user)
         BigDecimal n26Start = new BigDecimal("5000.00");
@@ -191,7 +195,7 @@ public class DataInitializer implements CommandLineRunner {
         n26.setCurrency("EUR");
         n26.setStartBalance(n26Start);
         n26.setBalance(n26Start); // Will be updated by transactions
-        n26 = accountService.saveAccount(n26);
+        n26 = accountService.saveAccountForUser(n26, demoUser);
 
         BigDecimal ingStart = new BigDecimal("20000.00");
         Account ing = new Account();
@@ -204,7 +208,7 @@ public class DataInitializer implements CommandLineRunner {
         ing.setCurrency("EUR");
         ing.setStartBalance(ingStart);
         ing.setBalance(ingStart); // Will be updated by transactions
-        ing = accountService.saveAccount(ing);
+        ing = accountService.saveAccountForUser(ing, demoUser);
 
         Account invest = new Account();
         invest.setUser(demoUser);
@@ -215,7 +219,7 @@ public class DataInitializer implements CommandLineRunner {
         invest.setAccountType(Account.AccountType.ASSET);
         invest.setCurrency("EUR");
         invest.setBalance(BigDecimal.ZERO);
-        invest = accountService.saveAccount(invest);
+        invest = accountService.saveAccountForUser(invest, demoUser);
 
         // 9. Asset Acquisition Transactions (for demo user) - creates TRANSFER transactions to asset account
         createAssetTransaction(demoUser, vwce, new BigDecimal("668.24008"), new BigDecimal("105.50"), n26, invest);
@@ -245,64 +249,20 @@ public class DataInitializer implements CommandLineRunner {
      * Initialize only essential reference data for production (no demo users or transactions)
      */
     private void initializeEssentialData() {
-        if (currencyRepository.count() > 0) {
-            log.info("Essential data already exists, skipping...");
-            return;
-        }
-
-        log.info("Initializing essential reference data for production...");
-
-        // 1. Currencies - Essential for all operations
-        Currency eur = new Currency();
-        eur.setCode("EUR");
-        eur.setName("Euro");
-        eur.setSymbol("€");
-        eur.setDecimalChar(",");
-        eur.setGroupingChar(".");
-        eur.setFracDigits(2);
-        currencyRepository.save(eur);
-
-        Currency usd = new Currency();
-        usd.setCode("USD");
-        usd.setName("US Dollar");
-        usd.setSymbol("$");
-        usd.setDecimalChar(".");
-        usd.setGroupingChar(",");
-        usd.setFracDigits(2);
-        currencyRepository.save(usd);
-
-        Currency gbp = new Currency();
-        gbp.setCode("GBP");
-        gbp.setName("British Pound");
-        gbp.setSymbol("£");
-        gbp.setDecimalChar(".");
-        gbp.setGroupingChar(",");
-        gbp.setFracDigits(2);
-        currencyRepository.save(gbp);
-
-        Currency chf = new Currency();
-        chf.setCode("CHF");
-        chf.setName("Swiss Franc");
-        chf.setSymbol("CHF");
-        chf.setDecimalChar(".");
-        chf.setGroupingChar("'");
-        chf.setFracDigits(2);
-        currencyRepository.save(chf);
-
-        // 2. Global Settings
-        globalSettingService.setRegistrationEnabled(true);
-
-        log.info("Essential reference data initialized successfully");
-        log.info("Users can now register via the registration page");
+        log.info("Essential data for production mode:");
+        log.info("- Each user will create their own currencies, categories, tags, and payees");
+        log.info("- Users can register via the registration page");
+        log.info("Production mode initialization complete");
     }
 
-    private Asset createAsset(String symbol, String name, Asset.AssetType type) {
+    private Asset createAsset(User user, String symbol, String name, Asset.AssetType type) {
         Asset asset = Asset.builder()
+                .user(user)
                 .symbol(symbol)
                 .name(name)
                 .type(type)
                 .build();
-        return assetService.saveAsset(asset);
+        return assetRepository.save(asset);
     }
 
     private void createAssetTransaction(User user, Asset asset, BigDecimal quantity, BigDecimal avgPrice, Account fromAccount, Account toAccount) {
@@ -357,22 +317,25 @@ public class DataInitializer implements CommandLineRunner {
         transactionRepository.save(t);
     }
 
-    private Category createCategory(String name, Category.CategoryType type, Category parent) {
+    private Category createCategory(User user, String name, Category.CategoryType type, Category parent) {
         Category cat = new Category();
+        cat.setUser(user);
         cat.setName(name);
         cat.setType(type);
         cat.setParent(parent);
         return categoryRepository.save(cat);
     }
 
-    private Tag createTag(String name) {
+    private Tag createTag(User user, String name) {
         Tag tag = new Tag();
+        tag.setUser(user);
         tag.setName(name);
         return tagRepository.save(tag);
     }
 
-    private Payee createPayee(String name, Category defaultCategory) {
+    private Payee createPayee(User user, String name, Category defaultCategory) {
         Payee payee = new Payee();
+        payee.setUser(user);
         payee.setName(name);
         payee.setDefaultCategory(defaultCategory);
         return payeeRepository.save(payee);

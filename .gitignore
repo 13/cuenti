@@ -37,7 +37,7 @@ webpack.generated.js
 # Vaadin
 frontend/generated/
 src/main/frontend/generated/
-frontend/
+#frontend/
 
 # Build artifacts
 dist/

@@ -61,20 +61,30 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
     loginForm.setI18n(i18n);
     loginForm.setAction("login"); // Spring Security endpoint
     loginForm.setForgotPasswordButtonVisible(false);
+
+    // Disable auto-focus on username field
+    loginForm.getElement().setAttribute("no-autofocus", true);
+
   }
 
   private void configureRegisterLink() {
     registerLink.setRoute(RegisterView.class);
     registerLink.setText(getTranslation("login.register_link"));
-    registerLink.getStyle().set("color", "var(--lumo-primary-color)");
     registerLink.getElement().setAttribute("aria-label", "Register new account");
   }
 
   private Image createLogo() {
     Image logo = new Image("images/Cuenti.png", "Cuenti");
-    logo.setMaxWidth("200px");
-    logo.setWidth("60%");
+    logo.getElement().setAttribute("srcset",
+            "images/CuentiText.png 120w, images/Cuenti.png 800w");
+    // When viewport is <=480px use ~120px image, otherwise use up to 200px.
+    logo.getElement().setAttribute("sizes",
+            "(max-width: 480px) 120px, 200px");
+    // Keep responsive CSS as well
+    logo.getStyle().set("width", "clamp(56px, 40%, 200px)");
+    logo.getStyle().set("max-width", "200px");
     logo.getStyle().set("margin", "40px 0 30px 0");
+    logo.getElement().setAttribute("alt", "Cuenti");
     return logo;
   }
 

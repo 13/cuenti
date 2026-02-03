@@ -27,6 +27,7 @@ public class SecurityConfig extends VaadinWebSecurity {
     public HttpFirewall allowDoubleSlashFirewall() {
         StrictHttpFirewall firewall = new StrictHttpFirewall();
         firewall.setAllowUrlEncodedDoubleSlash(true); // Allow "//" in URLs
+        firewall.setAllowSemicolon(true);
         return firewall;
     }
 

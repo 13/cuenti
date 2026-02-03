@@ -131,6 +131,16 @@ public class AccountService {
         return account;
     }
 
+    /**
+     * Get account by ID without security checks (for internal service use only).
+     * Caller is responsible for security validation.
+     */
+    @Transactional(readOnly = true)
+    public Account getAccountById(Long accountId) {
+        return accountRepository.findById(accountId)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + accountId));
+    }
+
     @Transactional
     public Account updateBalance(Account account, BigDecimal newBalance) {
         String username = securityUtils.getAuthenticatedUsername()

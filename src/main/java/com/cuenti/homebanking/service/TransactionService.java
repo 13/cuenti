@@ -58,6 +58,15 @@ public class TransactionService {
             reverseBalanceEffect(existing);
         }
 
+        // Reload accounts from repository to ensure we work with managed entities
+        // This prevents double balance updates when the same account is referenced by different instances
+        if (transaction.getFromAccount() != null && transaction.getFromAccount().getId() != null) {
+            transaction.setFromAccount(accountService.getAccountById(transaction.getFromAccount().getId()));
+        }
+        if (transaction.getToAccount() != null && transaction.getToAccount().getId() != null) {
+            transaction.setToAccount(accountService.getAccountById(transaction.getToAccount().getId()));
+        }
+
         applyBalanceEffect(transaction);
         
         transaction.setStatus(Transaction.TransactionStatus.COMPLETED);

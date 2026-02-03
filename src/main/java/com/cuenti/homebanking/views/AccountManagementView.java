@@ -34,6 +34,7 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -237,6 +238,31 @@ public class AccountManagementView extends VerticalLayout {
                 c -> c.getCode() + " (" + c.getSymbol() + ")"
         );
 
+        // Update startBalanceField format when currency changes
+        currencyCombo.addValueChangeListener(e -> {
+            Currency selectedCurrency = e.getValue();
+            if (selectedCurrency != null) {
+                int fracDigits = selectedCurrency.getFracDigits();
+
+                // Create pattern based on fractional digits
+                String pattern = "#,##0";
+                if (fracDigits > 0) {
+                    pattern += "." + "0".repeat(fracDigits);
+                }
+
+                DecimalFormat decimalFormat = new DecimalFormat(pattern);
+                decimalFormat.setDecimalSeparatorAlwaysShown(fracDigits > 0);
+
+                // Update the current value to match the new precision
+                BigDecimal currentValue = startBalanceField.getValue();
+                if (currentValue != null) {
+                    startBalanceField.setValue(
+                        currentValue.setScale(fracDigits, java.math.RoundingMode.HALF_UP)
+                    );
+                }
+            }
+        });
+
         Checkbox excludeFromSummaryCheckbox =
                 new Checkbox(getTranslation("accounts.exclude_from_summary"));
 
@@ -290,6 +316,22 @@ public class AccountManagementView extends VerticalLayout {
 
         account.setUser(currentUser);
         binder.setBean(account);
+
+        // Set initial format for startBalanceField based on account's currency
+        if (account.getCurrency() != null) {
+            currencyService.getAllCurrencies().stream()
+                    .filter(c -> c.getCode().equals(account.getCurrency()))
+                    .findFirst()
+                    .ifPresent(currency -> {
+                        int fracDigits = currency.getFracDigits();
+
+                        if (account.getStartBalance() != null) {
+                            startBalanceField.setValue(
+                                account.getStartBalance().setScale(fracDigits, java.math.RoundingMode.HALF_UP)
+                            );
+                        }
+                    });
+        }
 
         Button saveButton = new Button(getTranslation("dialog.save"), e -> {
             if (binder.validate().isOk()) {

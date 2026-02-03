@@ -40,53 +40,59 @@ import java.util.Locale;
 public class RegisterView extends VerticalLayout implements BeforeEnterObserver {
 
     private final UserService userService;
-    private final AccountService accountService;
     private final GlobalSettingService globalSettingService;
 
-    private final TextField usernameField = new TextField("Username");
-    private final EmailField emailField = new EmailField("Email");
-    private final PasswordField passwordField = new PasswordField("Password");
-    private final PasswordField confirmPasswordField = new PasswordField("Confirm Password");
-    private final TextField firstNameField = new TextField("First Name");
-    private final TextField lastNameField = new TextField("Last Name");
-    private final Button registerButton = new Button("Register", event -> register());
+    private final TextField usernameField = new TextField();
+    private final EmailField emailField = new EmailField();
+    private final PasswordField passwordField = new PasswordField();
+    private final PasswordField confirmPasswordField = new PasswordField();
+    private final TextField firstNameField = new TextField();
+    private final TextField lastNameField = new TextField();
 
-    public RegisterView(UserService userService, AccountService accountService, GlobalSettingService globalSettingService) {
+    public RegisterView(UserService userService,
+                        GlobalSettingService globalSettingService) {
         this.userService = userService;
-        this.accountService = accountService;
         this.globalSettingService = globalSettingService;
 
-        // Force English for unauthenticated views
-        UI.getCurrent().setLocale(Locale.ENGLISH);
-        VaadinSession.getCurrent().setLocale(Locale.ENGLISH);
+        configureLayout();
+        add(buildContent());
+    }
 
+    private void configureLayout() {
         setSizeFull();
         setAlignItems(Alignment.CENTER);
-        setJustifyContentMode(JustifyContentMode.CENTER);
+        setJustifyContentMode(JustifyContentMode.START);
+        setPadding(true);
+        setSpacing(true);
 
-        setupUI();
+        getStyle().set("overflow-y", "auto");
     }
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
+        UI ui = event.getUI();
+
+        ui.setLocale(Locale.ENGLISH);
+        ui.getElement().setAttribute("theme", Lumo.DARK);
+
         if (!globalSettingService.isRegistrationEnabled()) {
+            Notification n = Notification.show(
+                "Registration is currently disabled by the administrator.",
+                4000,
+                Notification.Position.TOP_CENTER
+            );
+            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+
             event.rerouteTo(LoginView.class);
-            UI_Notification_Fix();
         }
     }
 
-    private void UI_Notification_Fix() {
-        getUI().ifPresent(ui -> ui.access(() -> {
-            Notification n = Notification.show("Registration is currently disabled by the administrator.", 5000, Notification.Position.TOP_CENTER);
-            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
-        }));
-    }
-
-    private void setupUI() {
+    private VerticalLayout buildContent() {
         H2 title = new H2("Register for Cuenti");
 
-        FormLayout formLayout = new FormLayout();
-        formLayout.add(
+        configureFields();
+
+        FormLayout form = new FormLayout(
             usernameField,
             emailField,
             firstNameField,
@@ -94,55 +100,50 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver 
             passwordField,
             confirmPasswordField
         );
-        formLayout.setResponsiveSteps(
+
+        form.setResponsiveSteps(
             new FormLayout.ResponsiveStep("0", 1),
             new FormLayout.ResponsiveStep("500px", 2)
         );
 
+        Button registerButton = new Button("Register", e -> register());
         registerButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        registerButton.setWidthFull();
 
-        RouterLink loginLink = new RouterLink("Already have an account? Login here", LoginView.class);
+        RouterLink loginLink =
+            new RouterLink("Already have an account? Login here", LoginView.class);
 
         VerticalLayout content = new VerticalLayout(
             title,
-            formLayout,
+            form,
             registerButton,
             loginLink
         );
-        content.setWidth("600px");
+
+        content.setMaxWidth("420px");
+        content.setWidthFull();
+        content.setAlignItems(Alignment.STRETCH);
         content.setPadding(true);
 
-        add(content);
+        return content;
+    }
+
+    private void configureFields() {
+        usernameField.setLabel("Username");
+        emailField.setLabel("Email");
+        passwordField.setLabel("Password");
+        confirmPasswordField.setLabel("Confirm Password");
+        firstNameField.setLabel("First Name");
+        lastNameField.setLabel("Last Name");
+
+        emailField.setClearButtonVisible(true);
     }
 
     private void register() {
-        if (!globalSettingService.isRegistrationEnabled()) {
-            showError("Registration is disabled.");
-            return;
-        }
-
         try {
-            if (usernameField.isEmpty() || emailField.isEmpty() || 
-                passwordField.isEmpty() || firstNameField.isEmpty() || 
-                lastNameField.isEmpty()) {
-                showError("All fields are required");
-                return;
-            }
+            validateForm();
 
-            if (!passwordField.getValue().equals(confirmPasswordField.getValue())) {
-                showError("Passwords do not match");
-                return;
-            }
-
-            if (passwordField.getValue().length() < 6) {
-                showError("Password must be at least 6 characters");
-                return;
-            }
-
-            // Check if this will be the first user (admin)
-            boolean isFirstUser = userService.findAll().isEmpty();
-
-            var user = userService.registerUser(
+            userService.registerUser(
                 usernameField.getValue().trim(),
                 emailField.getValue().trim(),
                 passwordField.getValue(),
@@ -150,11 +151,12 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver 
                 lastNameField.getValue().trim()
             );
 
-            if (isFirstUser) {
-                showSuccess("Registration successful! You are the first user and have been granted administrator privileges. Please login.");
-            } else {
-                showSuccess("Registration successful! Please login.");
-            }
+            Notification success = Notification.show(
+                "Registration successful! Please login.",
+                3000,
+                Notification.Position.TOP_CENTER
+            );
+            success.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
 
             getUI().ifPresent(ui -> ui.navigate(LoginView.class));
 
@@ -166,13 +168,28 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver 
         }
     }
 
-    private void showError(String message) {
-        Notification notification = Notification.show(message, 3000, Notification.Position.TOP_CENTER);
-        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+    private void validateForm() {
+        if (usernameField.isEmpty() || emailField.isEmpty()
+            || passwordField.isEmpty() || confirmPasswordField.isEmpty()
+            || firstNameField.isEmpty() || lastNameField.isEmpty()) {
+            throw new IllegalArgumentException("All fields are required");
+        }
+
+        if (!passwordField.getValue().equals(confirmPasswordField.getValue())) {
+            throw new IllegalArgumentException("Passwords do not match");
+        }
+
+        if (passwordField.getValue().length() < 6) {
+            throw new IllegalArgumentException("Password must be at least 6 characters");
+        }
     }
 
-    private void showSuccess(String message) {
-        Notification notification = Notification.show(message, 3000, Notification.Position.TOP_CENTER);
-        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+    private void showError(String message) {
+        Notification n = Notification.show(
+            message,
+            3000,
+            Notification.Position.TOP_CENTER
+        );
+        n.addThemeVariants(NotificationVariant.LUMO_ERROR);
     }
 }

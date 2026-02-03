@@ -26,6 +26,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.BigDecimalField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.data.provider.ListDataProvider;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
@@ -40,7 +41,7 @@ import java.util.stream.Collectors;
 @Route(value = "manage-accounts", layout = MainLayout.class)
 @PageTitle("Manage Accounts | Cuenti Homebanking")
 @PermitAll
-public class ManageAccountsView extends VerticalLayout {
+public class AccountManagementView extends VerticalLayout {
 
     private final AccountService accountService;
     private final UserService userService;
@@ -53,8 +54,8 @@ public class ManageAccountsView extends VerticalLayout {
     private List<Account> accounts;
     private Account draggedItem;
 
-    public ManageAccountsView(AccountService accountService, UserService userService, 
-                              CurrencyService currencyService, SecurityUtils securityUtils) {
+    public AccountManagementView(AccountService accountService, UserService userService,
+                                 CurrencyService currencyService, SecurityUtils securityUtils) {
         this.accountService = accountService;
         this.userService = userService;
         this.currencyService = currencyService;
@@ -184,21 +185,31 @@ public class ManageAccountsView extends VerticalLayout {
 
     private void openAccountDialog(Account account) {
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle(account.getId() == null ? getTranslation("accounts.add") : getTranslation("accounts.edit"));
+
+        dialog.setWidth("480px");
+        dialog.setMaxWidth("95vw");
+
+        dialog.setHeaderTitle(
+                account.getId() == null
+                        ? getTranslation("accounts.add")
+                        : getTranslation("accounts.edit")
+        );
 
         FormLayout formLayout = new FormLayout();
-        
+
         TextField nameField = new TextField(getTranslation("accounts.name"));
-        nameField.setValue(account.getAccountName() != null ? account.getAccountName() : "");
+        nameField.setPrefixComponent(VaadinIcon.USER.create());
         nameField.setRequired(true);
 
         ComboBox<Account.AccountType> typeCombo = new ComboBox<>(getTranslation("accounts.type"));
+        typeCombo.setPrefixComponent(VaadinIcon.LIST.create());
         typeCombo.setItems(Account.AccountType.values());
-        typeCombo.setItemLabelGenerator(type -> getTranslation("account.type." + type.name().toLowerCase()));
-        typeCombo.setValue(account.getAccountType() != null ? account.getAccountType() : Account.AccountType.CURRENT);
+        typeCombo.setItemLabelGenerator(
+                type -> getTranslation("account.type." + type.name().toLowerCase())
+        );
 
-        // Group selection with custom input allowed
         ComboBox<String> groupCombo = new ComboBox<>(getTranslation("accounts.group"));
+        groupCombo.setPrefixComponent(VaadinIcon.FOLDER.create());
         List<String> existingGroups = accounts.stream()
                 .map(Account::getAccountGroup)
                 .filter(g -> g != null && !g.isEmpty())
@@ -206,67 +217,95 @@ public class ManageAccountsView extends VerticalLayout {
                 .collect(Collectors.toList());
         groupCombo.setItems(existingGroups);
         groupCombo.setAllowCustomValue(true);
-        groupCombo.setValue(account.getAccountGroup());
         groupCombo.addCustomValueSetListener(e -> groupCombo.setValue(e.getDetail()));
 
         TextField institutionField = new TextField(getTranslation("accounts.institution"));
-        institutionField.setValue(account.getInstitution() != null ? account.getInstitution() : "");
+        institutionField.setPrefixComponent(VaadinIcon.BUILDING.create());
 
         TextField numberField = new TextField(getTranslation("accounts.number"));
-        numberField.setValue(account.getAccountNumber() != null ? account.getAccountNumber() : "");
+        numberField.setPrefixComponent(VaadinIcon.BARCODE.create());
 
-        BigDecimalField startBalanceField = new BigDecimalField(getTranslation("accounts.start_balance"));
-        startBalanceField.setValue(account.getStartBalance() != null ? account.getStartBalance() : BigDecimal.ZERO);
+        BigDecimalField startBalanceField =
+                new BigDecimalField(getTranslation("accounts.start_balance"));
+        startBalanceField.setPrefixComponent(VaadinIcon.EURO.create());
+        startBalanceField.setValue(BigDecimal.ZERO);
 
-        // Selectable currency from defined currencies
         ComboBox<Currency> currencyCombo = new ComboBox<>(getTranslation("accounts.currency"));
+        currencyCombo.setPrefixComponent(VaadinIcon.MONEY.create());
         currencyCombo.setItems(currencyService.getAllCurrencies());
-        currencyCombo.setItemLabelGenerator(c -> c.getCode() + " (" + c.getSymbol() + ")");
-        
-        // Find existing or set default
-        currencyService.getAllCurrencies().stream()
-                .filter(c -> c.getCode().equals(account.getCurrency() != null ? account.getCurrency() : currentUser.getDefaultCurrency()))
-                .findFirst()
-                .ifPresent(currencyCombo::setValue);
+        currencyCombo.setItemLabelGenerator(
+                c -> c.getCode() + " (" + c.getSymbol() + ")"
+        );
 
-        // Exclusion checkboxes
-        Checkbox excludeFromSummaryCheckbox = new Checkbox(getTranslation("accounts.exclude_from_summary"));
-        excludeFromSummaryCheckbox.setValue(account.isExcludeFromSummary());
-        excludeFromSummaryCheckbox.getStyle().set("margin-top", "var(--lumo-space-m)");
+        Checkbox excludeFromSummaryCheckbox =
+                new Checkbox(getTranslation("accounts.exclude_from_summary"));
 
-        Checkbox excludeFromReportsCheckbox = new Checkbox(getTranslation("accounts.exclude_from_reports"));
-        excludeFromReportsCheckbox.setValue(account.isExcludeFromReports());
+        Checkbox excludeFromReportsCheckbox =
+                new Checkbox(getTranslation("accounts.exclude_from_reports"));
 
-        formLayout.add(nameField, typeCombo, groupCombo, institutionField, numberField, startBalanceField, currencyCombo,
-                       excludeFromSummaryCheckbox, excludeFromReportsCheckbox);
-        formLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
+        formLayout.add(
+                nameField,
+                typeCombo,
+                groupCombo,
+                institutionField,
+                numberField,
+                startBalanceField,
+                currencyCombo,
+                excludeFromSummaryCheckbox,
+                excludeFromReportsCheckbox
+        );
+        formLayout.setResponsiveSteps(
+                new FormLayout.ResponsiveStep("0", 1)
+        );
+
+        Binder<Account> binder = new Binder<>(Account.class);
+
+        binder.forField(nameField)
+                .asRequired(getTranslation("accounts.name_required"))
+                .bind(Account::getAccountName, Account::setAccountName);
+
+        binder.bind(typeCombo, Account::getAccountType, Account::setAccountType);
+        binder.bind(groupCombo, Account::getAccountGroup, Account::setAccountGroup);
+        binder.bind(institutionField, Account::getInstitution, Account::setInstitution);
+        binder.bind(numberField, Account::getAccountNumber, Account::setAccountNumber);
+        binder.bind(startBalanceField, Account::getStartBalance, Account::setStartBalance);
+
+        binder.bind(
+                currencyCombo,
+                acc -> currencyService.getAllCurrencies().stream()
+                        .filter(c -> c.getCode().equals(acc.getCurrency()))
+                        .findFirst()
+                        .orElse(null),
+                (acc, currency) ->
+                        acc.setCurrency(currency != null ? currency.getCode() : "EUR")
+        );
+
+        binder.bind(excludeFromSummaryCheckbox,
+                Account::isExcludeFromSummary,
+                Account::setExcludeFromSummary);
+
+        binder.bind(excludeFromReportsCheckbox,
+                Account::isExcludeFromReports,
+                Account::setExcludeFromReports);
+
+        account.setUser(currentUser);
+        binder.setBean(account);
 
         Button saveButton = new Button(getTranslation("dialog.save"), e -> {
-            if (nameField.isEmpty()) {
-                Notification.show(getTranslation("accounts.name_required"));
-                return;
+            if (binder.validate().isOk()) {
+                accountService.saveAccount(account);
+                updateList();
+                dialog.close();
+                Notification.show(getTranslation("accounts.saved"));
             }
-            account.setAccountName(nameField.getValue());
-            account.setAccountType(typeCombo.getValue());
-            account.setAccountGroup(groupCombo.getValue());
-            account.setInstitution(institutionField.getValue());
-            account.setAccountNumber(numberField.getValue());
-            account.setStartBalance(startBalanceField.getValue());
-            account.setCurrency(currencyCombo.getValue() != null ? currencyCombo.getValue().getCode() : "EUR");
-            account.setExcludeFromSummary(excludeFromSummaryCheckbox.getValue());
-            account.setExcludeFromReports(excludeFromReportsCheckbox.getValue());
-            account.setUser(currentUser);
-            
-            accountService.saveAccount(account);
-            updateList();
-            dialog.close();
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        Button cancelButton = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
-        
-        dialog.getFooter().add(cancelButton, saveButton);
+        Button cancelButton =
+                new Button(getTranslation("dialog.cancel"), e -> dialog.close());
+
         dialog.add(formLayout);
+        dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }
 

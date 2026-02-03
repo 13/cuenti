@@ -150,7 +150,7 @@ public class MainLayout extends AppLayout {
                 createTab(VaadinIcon.CAR, getTranslation("nav.vehicles"), VehiclesView.class),
 
                 createSectionTitle(getTranslation("nav.management")),
-                createTab(VaadinIcon.WALLET, getTranslation("nav.manage_accounts"), ManageAccountsView.class),
+                createTab(VaadinIcon.WALLET, getTranslation("nav.manage_accounts"), AccountManagementView.class),
                 createTab(VaadinIcon.USERS, getTranslation("nav.payees"), PayeeManagementView.class),
                 createTab(VaadinIcon.SITEMAP, getTranslation("nav.categories"), CategoryManagementView.class),
                 createTab(VaadinIcon.TAGS, getTranslation("nav.tags"), TagManagementView.class),

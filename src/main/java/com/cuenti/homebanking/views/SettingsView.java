@@ -166,6 +166,15 @@ public class SettingsView extends VerticalLayout implements BeforeEnterObserver 
             return resetBtn;
         }).setHeader(getTranslation("settings.pass"));
 
+        userGrid.addComponentColumn(u -> {
+            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> openDeleteUserDialog(u));
+            deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR);
+            deleteBtn.setTooltipText(getTranslation("settings.delete_user"));
+            // Don't allow deleting the current user or the demo user
+            deleteBtn.setEnabled(!u.getUsername().equals(currentUser.getUsername()) && !u.getUsername().equals("demo"));
+            return deleteBtn;
+        }).setHeader(getTranslation("settings.delete"));
+
         userGrid.setItems(userService.findAll());
         userGrid.setAllRowsVisible(true);
         
@@ -449,6 +458,64 @@ public class SettingsView extends VerticalLayout implements BeforeEnterObserver 
         });
         d.add(new VerticalLayout(p1, p2, save));
         d.open();
+    }
+
+    private void openDeleteUserDialog(User user) {
+        Dialog confirmDialog = new Dialog();
+        confirmDialog.setHeaderTitle(getTranslation("settings.delete_user_confirm_title"));
+
+        VerticalLayout content = new VerticalLayout();
+        content.setPadding(false);
+        content.setSpacing(true);
+
+        Paragraph warningText = new Paragraph(String.format(
+            getTranslation("settings.delete_user_warning",
+                "Are you sure you want to delete user '%s'? This will permanently delete:"),
+            user.getUsername()
+        ));
+
+        UnorderedList itemList = new UnorderedList(
+            new ListItem(getTranslation("settings.delete_user_item1", "All accounts")),
+            new ListItem(getTranslation("settings.delete_user_item2", "All transactions")),
+            new ListItem(getTranslation("settings.delete_user_item3", "All holdings and assets")),
+            new ListItem(getTranslation("settings.delete_user_item4", "All scheduled transactions")),
+            new ListItem(getTranslation("settings.delete_user_item5", "All user settings and data"))
+        );
+
+        Paragraph dangerText = new Paragraph(getTranslation("settings.delete_user_danger", "This action cannot be undone!"));
+        dangerText.getStyle()
+                .set("color", "var(--lumo-error-text-color)")
+                .set("font-weight", "bold");
+
+        content.add(warningText, itemList, dangerText);
+        confirmDialog.add(content);
+
+        Button deleteBtn = new Button(getTranslation("settings.delete_user_confirm", "Yes, Delete User"), event -> {
+            try {
+                userService.deleteUser(user);
+                userGrid.setItems(userService.findAll());
+                Notification success = Notification.show(
+                    getTranslation("settings.user_deleted", "User deleted successfully"),
+                    3000,
+                    Notification.Position.TOP_CENTER
+                );
+                success.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                confirmDialog.close();
+            } catch (Exception ex) {
+                Notification error = Notification.show(
+                    getTranslation("settings.user_delete_failed", "Failed to delete user: ") + ex.getMessage(),
+                    5000,
+                    Notification.Position.TOP_CENTER
+                );
+                error.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        deleteBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+
+        Button cancelBtn = new Button(getTranslation("dialog.cancel", "Cancel"), event -> confirmDialog.close());
+
+        confirmDialog.getFooter().add(cancelBtn, deleteBtn);
+        confirmDialog.open();
     }
 
     private Div createCard() {

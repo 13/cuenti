@@ -157,6 +157,17 @@ public class UserService implements UserDetailsService {
                 .groupingChar(",")
                 .build());
 
+        // BTC
+        currencyRepository.save(Currency.builder()
+                .user(user)
+                .code("BTC")
+                .name("Bitcoin")
+                .symbol("₿")
+                .decimalChar(".")
+                .fracDigits(8)
+                .groupingChar(",")
+                .build());
+
         log.info("Default currencies created for user: {}", user.getUsername());
     }
 
@@ -308,5 +319,30 @@ public class UserService implements UserDetailsService {
 
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
+    }
+
+    /**
+     * Delete a user by ID (Admin action).
+     * This will cascade delete all associated data (accounts, transactions, etc.)
+     */
+    @Transactional
+    public void deleteUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
+        log.info("Deleting user: {} (ID: {})", user.getUsername(), userId);
+        userRepository.delete(user);
+        log.info("User deleted successfully: {}", user.getUsername());
+    }
+
+    /**
+     * Delete a user (Admin action).
+     * This will cascade delete all associated data (accounts, transactions, etc.)
+     */
+    @Transactional
+    public void deleteUser(User user) {
+        log.info("Deleting user: {} (ID: {})", user.getUsername(), user.getId());
+        userRepository.delete(user);
+        log.info("User deleted successfully: {}", user.getUsername());
     }
 }

@@ -210,14 +210,15 @@ public class TransactionHistoryView extends VerticalLayout {
         
         // 1. Icon Column
         grid.addColumn(new ComponentRenderer<>(t -> {
-            if (t.getPaymentMethod() != null && t.getPaymentMethod() != Transaction.PaymentMethod.NONE) {
-                Icon icon = getPaymentIcon(t.getPaymentMethod());
+            Transaction.PaymentMethod pm = t.getPaymentMethod();
+            boolean showIcon = (pm != null && pm != Transaction.PaymentMethod.NONE) || t.getType() == Transaction.TransactionType.TRANSFER;
+            if (showIcon) {
+                Icon icon = getPaymentIcon(t);
                 icon.getStyle().set("font-size", "var(--lumo-font-size-s)");
                 return icon;
             }
             return new Span();
         })).setHeader("").setAutoWidth(true).setFlexGrow(0);
-
         // 2. Date Column
         Grid.Column<Transaction> dateColumn = grid.addColumn(t -> 
                 t.getTransactionDate().format(getDateTimeFormatter()))
@@ -496,7 +497,15 @@ public class TransactionHistoryView extends VerticalLayout {
         return colors[Math.abs(hash) % colors.length];
     }
 
-    private Icon getPaymentIcon(Transaction.PaymentMethod method) {
+    private Icon getPaymentIcon(Transaction t) {
+        // Prefer showing an icon for transfer transactions regardless of payment method
+        if (t.getType() == Transaction.TransactionType.TRANSFER) {
+            return VaadinIcon.EXCHANGE.create();
+        }
+
+        Transaction.PaymentMethod method = t.getPaymentMethod();
+        if (method == null) return VaadinIcon.QUESTION.create();
+
         switch (method) {
             case DEBIT_CARD: return VaadinIcon.CREDIT_CARD.create();
             case CASH: return VaadinIcon.MONEY.create();

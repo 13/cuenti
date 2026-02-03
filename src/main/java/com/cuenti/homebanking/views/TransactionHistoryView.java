@@ -319,23 +319,39 @@ public class TransactionHistoryView extends VerticalLayout {
             Account selected = accountSelector.getValue();
             if (selected != null) {
                 LocalDate date = t.getTransactionDate().toLocalDate();
+                // Get transactions for the same day in display order (descending - latest on top)
                 List<Transaction> sameDay = allAccountTransactions.stream()
                         .filter(tr -> tr.getTransactionDate().toLocalDate().equals(date))
-                        .sorted(Comparator.comparing(Transaction::getSortOrder).reversed())
-                        .toList();
+                        .sorted(Comparator.comparing(Transaction::getSortOrder).reversed()
+                                .thenComparing(Transaction::getId))
+                        .collect(Collectors.toList());
 
                 if (sameDay.size() > 1) {
-                    int index = sameDay.indexOf(t);
-                    
-                    Button upBtn = new Button(VaadinIcon.ARROW_UP.create(), e -> moveTransaction(t, -1));
-                    upBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-                    upBtn.setVisible(index > 0);
-                    
-                    Button downBtn = new Button(VaadinIcon.ARROW_DOWN.create(), e -> moveTransaction(t, 1));
-                    downBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-                    downBtn.setVisible(index < sameDay.size() - 1);
-                    
-                    hl.add(upBtn, downBtn);
+                    // Find index by ID, not by object reference
+                    int index = -1;
+                    for (int i = 0; i < sameDay.size(); i++) {
+                        if (sameDay.get(i).getId().equals(t.getId())) {
+                            index = i;
+                            break;
+                        }
+                    }
+
+                    if (index >= 0) {
+                        final int currentIdx = index;
+                        // Up arrow moves transaction earlier in the day (higher sortOrder)
+                        Button upBtn = new Button(VaadinIcon.ARROW_UP.create(), e -> moveTransaction(t, -1));
+                        upBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                        upBtn.setEnabled(currentIdx > 0);
+                        upBtn.setTooltipText(getTranslation("transactions.move_up"));
+
+                        // Down arrow moves transaction later in the day (lower sortOrder)
+                        Button downBtn = new Button(VaadinIcon.ARROW_DOWN.create(), e -> moveTransaction(t, 1));
+                        downBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                        downBtn.setEnabled(currentIdx < sameDay.size() - 1);
+                        downBtn.setTooltipText(getTranslation("transactions.move_down"));
+
+                        hl.add(upBtn, downBtn);
+                    }
                 }
             }
 
@@ -343,11 +359,7 @@ public class TransactionHistoryView extends VerticalLayout {
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             editBtn.setTooltipText(getTranslation("transactions.edit"));
             
-            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
-                transactionService.deleteTransaction(t);
-                refreshGrid();
-                Notification.show(getTranslation("transactions.deleted"));
-            });
+            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> confirmDelete(t));
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
             deleteBtn.setTooltipText(getTranslation("transactions.delete"));
             
@@ -356,7 +368,32 @@ public class TransactionHistoryView extends VerticalLayout {
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
 
         grid.setHeightFull();
-        grid.sort(Collections.singletonList(new GridSortOrder<>(dateColumn, SortDirection.DESCENDING)));
+        // Grid items are pre-sorted in refreshGrid() with latest entries on top
+    }
+
+    private void confirmDelete(Transaction t) {
+        Dialog confirmDialog = new Dialog();
+        confirmDialog.setHeaderTitle(getTranslation("dialog.confirm_delete"));
+
+        String message = t.getPayee() != null && !t.getPayee().isEmpty()
+            ? t.getPayee() + " - " + formatCurrency(t.getAmount())
+            : formatCurrency(t.getAmount());
+        Span content = new Span(getTranslation("dialog.confirm_delete_message") + " \"" + message + "\"?");
+        confirmDialog.add(content);
+
+        Button cancelBtn = new Button(getTranslation("dialog.cancel"), e -> confirmDialog.close());
+        cancelBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+        Button deleteBtn = new Button(getTranslation("transactions.delete"), e -> {
+            transactionService.deleteTransaction(t);
+            confirmDialog.close();
+            refreshGrid();
+            Notification.show(getTranslation("transactions.deleted"));
+        });
+        deleteBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+
+        confirmDialog.getFooter().add(cancelBtn, deleteBtn);
+        confirmDialog.open();
     }
 
     private void moveTransaction(Transaction t, int visualDirection) {
@@ -364,25 +401,53 @@ public class TransactionHistoryView extends VerticalLayout {
         if (selected == null) return;
 
         LocalDate date = t.getTransactionDate().toLocalDate();
-        List<Transaction> sameDay = allAccountTransactions.stream()
+
+        // Fetch fresh transactions from database for this account and date
+        List<Transaction> sameDayTransactions = transactionService.getTransactionsByAccount(selected).stream()
                 .filter(tr -> tr.getTransactionDate().toLocalDate().equals(date))
-                .sorted(Comparator.comparing(Transaction::getSortOrder).reversed())
                 .collect(Collectors.toList());
 
-        int currentIndex = sameDay.indexOf(t);
-        int targetIndex = currentIndex + visualDirection;
+        if (sameDayTransactions.size() < 2) return;
 
-        if (targetIndex >= 0 && targetIndex < sameDay.size()) {
-            Transaction target = sameDay.get(targetIndex);
-            
-            int temp = t.getSortOrder();
-            t.setSortOrder(target.getSortOrder());
-            target.setSortOrder(temp);
+        // First, normalize sortOrder values to ensure they are unique and sequential
+        // Sort by current sortOrder (descending - highest first, which appears at top)
+        sameDayTransactions.sort(Comparator.comparing(Transaction::getSortOrder).reversed()
+                .thenComparing(Transaction::getId)); // Secondary sort by ID for consistency
 
-            transactionService.saveTransaction(t);
-            transactionService.saveTransaction(target);
-            refreshGrid();
+        // Assign unique sequential sortOrder values (highest = top of list)
+        for (int i = 0; i < sameDayTransactions.size(); i++) {
+            sameDayTransactions.get(i).setSortOrder((sameDayTransactions.size() - i) * 10);
         }
+
+        // Find current transaction by ID
+        int currentIndex = -1;
+        for (int i = 0; i < sameDayTransactions.size(); i++) {
+            if (sameDayTransactions.get(i).getId().equals(t.getId())) {
+                currentIndex = i;
+                break;
+            }
+        }
+
+        if (currentIndex == -1) return;
+
+        int targetIndex = currentIndex + visualDirection;
+        if (targetIndex < 0 || targetIndex >= sameDayTransactions.size()) return;
+
+        // Swap the sortOrder values between current and target
+        Transaction current = sameDayTransactions.get(currentIndex);
+        Transaction target = sameDayTransactions.get(targetIndex);
+
+        int tempOrder = current.getSortOrder();
+        current.setSortOrder(target.getSortOrder());
+        target.setSortOrder(tempOrder);
+
+        // Save all transactions to persist the new order
+        for (Transaction tr : sameDayTransactions) {
+            transactionService.saveTransaction(tr);
+        }
+
+        // Refresh to show new order and recalculate balances
+        refreshGrid();
     }
 
     private void refreshGrid() {
@@ -392,16 +457,16 @@ public class TransactionHistoryView extends VerticalLayout {
             allAccountTransactions = Collections.emptyList();
             balanceCache.clear();
         } else {
-            allAccountTransactions = transactionService.getTransactionsByAccount(selected);
-            
-            // Calculate running balance cache
-            List<Transaction> sorted = new ArrayList<>(allAccountTransactions);
-            sorted.sort(Comparator.comparing(Transaction::getTransactionDate)
+            List<Transaction> rawTransactions = transactionService.getTransactionsByAccount(selected);
+
+            // Calculate running balance cache (in chronological order)
+            List<Transaction> sortedForBalance = new ArrayList<>(rawTransactions);
+            sortedForBalance.sort(Comparator.comparing(Transaction::getTransactionDate)
                               .thenComparing(Transaction::getSortOrder));
 
             balanceCache.clear();
             BigDecimal currentBalance = selected.getStartBalance();
-            for (Transaction t : sorted) {
+            for (Transaction t : sortedForBalance) {
                 BigDecimal amount = t.getAmount();
                 if (t.getType() == Transaction.TransactionType.INCOME && t.getToAccount() != null && t.getToAccount().getId().equals(selected.getId())) {
                     currentBalance = currentBalance.add(amount);
@@ -413,6 +478,13 @@ public class TransactionHistoryView extends VerticalLayout {
                 }
                 balanceCache.put(t.getId(), currentBalance);
             }
+
+            // Store sorted transactions for display (descending order - latest on top)
+            allAccountTransactions = new ArrayList<>(rawTransactions);
+            allAccountTransactions.sort(Comparator.comparing(Transaction::getTransactionDate)
+                              .thenComparing(Transaction::getSortOrder)
+                              .reversed());
+
             grid.setItems(allAccountTransactions);
         }
         updateFilters();
@@ -700,11 +772,23 @@ public class TransactionHistoryView extends VerticalLayout {
         transaction.setTags(tags);
 
         if (transaction.getId() == null) {
-            int maxOrder = allAccountTransactions.stream()
-                    .filter(tr -> tr.getTransactionDate().toLocalDate().equals(transaction.getTransactionDate().toLocalDate()))
-                    .mapToInt(Transaction::getSortOrder)
-                    .max().orElse(0);
-            transaction.setSortOrder(maxOrder + 1);
+            // Get all transactions for the same date to calculate proper sortOrder
+            LocalDate txDate = transaction.getTransactionDate().toLocalDate();
+            Account relevantAccount = null;
+            if (type == Transaction.TransactionType.INCOME) {
+                relevantAccount = transaction.getToAccount();
+            } else {
+                relevantAccount = transaction.getFromAccount();
+            }
+
+            int maxOrder = 0;
+            if (relevantAccount != null) {
+                maxOrder = transactionService.getTransactionsByAccount(relevantAccount).stream()
+                        .filter(tr -> tr.getTransactionDate().toLocalDate().equals(txDate))
+                        .mapToInt(Transaction::getSortOrder)
+                        .max().orElse(0);
+            }
+            transaction.setSortOrder(maxOrder + 10); // Use steps of 10 for easier insertion later
         }
 
         transactionService.saveTransaction(transaction);

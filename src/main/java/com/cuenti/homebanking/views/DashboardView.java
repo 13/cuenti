@@ -113,7 +113,6 @@ public class DashboardView extends VerticalLayout {
 
         // Group transactions by asset - sum units and total cost
         Map<Asset, List<Transaction>> assetTransactions = transactions.stream()
-                .filter(t -> t.getType() == Transaction.TransactionType.TRANSFER)
                 .filter(t -> t.getAsset() != null && t.getUnits() != null)
                 .filter(t -> t.getToAccount() != null && t.getToAccount().getAccountType() == Account.AccountType.ASSET)
                 .collect(Collectors.groupingBy(Transaction::getAsset));

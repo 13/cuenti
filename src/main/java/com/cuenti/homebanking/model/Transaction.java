@@ -68,7 +68,7 @@ public class Transaction {
     @JoinColumn(name = "asset_id")
     private Asset asset;
 
-    @Column(precision = 15, scale = 6)
+    @Column(precision = 19, scale = 8)
     private BigDecimal units;
 
     @Column(nullable = false)

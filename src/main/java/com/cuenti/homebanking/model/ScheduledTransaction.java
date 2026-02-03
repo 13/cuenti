@@ -55,7 +55,7 @@ public class ScheduledTransaction {
     @JoinColumn(name = "asset_id")
     private Asset asset;
 
-    @Column(precision = 20, scale = 8)
+    @Column(precision = 19, scale = 8)
     private BigDecimal units;
 
     @Enumerated(EnumType.STRING)

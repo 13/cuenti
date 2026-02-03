@@ -41,7 +41,7 @@ public class Asset {
     @Column(nullable = false)
     private AssetType type;
 
-    @Column(precision = 15, scale = 4)
+    @Column(precision = 19, scale = 8)
     private BigDecimal currentPrice;
 
     private String currency; // Currency of the price (e.g., EUR, USD)

@@ -334,13 +334,21 @@ public class AccountManagementView extends VerticalLayout {
         }
 
         Button saveButton = new Button(getTranslation("dialog.save"), e -> {
-            if (binder.validate().isOk()) {
-                accountService.saveAccount(account);
-                updateList();
-                dialog.close();
-                Notification.show(getTranslation("accounts.saved"));
+            if (!binder.validate().isOk()) {
+                return;
             }
+
+            // 🔑 just pass the new value to the service
+            accountService.adjustStartBalance(account, startBalanceField.getValue());
+
+            // save normal account fields (name, group, flags, etc.)
+            accountService.saveAccount(account);
+
+            updateList();
+            dialog.close();
+            Notification.show(getTranslation("accounts.saved"));
         });
+
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         Button cancelButton =

@@ -156,6 +156,27 @@ public class AccountService {
         return accountRepository.save(account);
     }
 
+    @Transactional
+    public void adjustStartBalance(Account account, BigDecimal newStartBalance) {
+        if (account.getId() == null) {
+            // New account: just set startBalance and balance
+            account.setStartBalance(newStartBalance != null ? newStartBalance : BigDecimal.ZERO);
+            account.setBalance(account.getBalance().add(account.getStartBalance()));
+            return;
+        }
+
+        // Existing account: load persisted account to compute delta
+        Account persisted = accountRepository.findById(account.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + account.getId()));
+
+        BigDecimal oldStart = persisted.getStartBalance() != null ? persisted.getStartBalance() : BigDecimal.ZERO;
+        BigDecimal delta = newStartBalance.subtract(oldStart);
+
+        account.setStartBalance(newStartBalance);
+        account.setBalance(account.getBalance().add(delta));
+    }
+
+
     private String generateAccountNumber() {
         String accountNumber;
         do {

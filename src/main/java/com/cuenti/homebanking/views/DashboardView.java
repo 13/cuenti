@@ -251,7 +251,8 @@ public class DashboardView extends VerticalLayout {
             assetInfo.add(assetName, assetSymbol);
 
             // Units
-            Span unitsSpan = new Span(data.totalUnits().setScale(8, RoundingMode.HALF_UP).toPlainString());
+            Span unitsSpan = new Span(data.totalUnits().stripTrailingZeros().toPlainString());
+
             unitsSpan.getStyle().set("flex", "1").set("text-align", "right").set("font-size", "14px");
 
             // Cost basis

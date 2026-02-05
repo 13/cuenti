@@ -138,7 +138,7 @@ public class ScheduledTransactionsView extends VerticalLayout {
         templateGrid.addThemeVariants(GridVariant.LUMO_NO_BORDER, GridVariant.LUMO_ROW_STRIPES);
         templateGrid.setAllRowsVisible(true);
         
-        templateGrid.addColumn(st -> st.getFromAccount() != null ? st.getFromAccount().getName() : "")
+        templateGrid.addColumn(st -> st.getFromAccount() != null ? st.getFromAccount().getAccountName() : "")
                 .setHeader(getTranslation("dialog.account")).setAutoWidth(true).setSortable(true);
 
         templateGrid.addColumn(ScheduledTransaction::getPayee).setHeader(getTranslation("transactions.payee")).setAutoWidth(true).setSortable(true);
@@ -204,7 +204,7 @@ public class ScheduledTransactionsView extends VerticalLayout {
             return date;
         }).setHeader(getTranslation("scheduled.due_date")).setAutoWidth(true).setSortable(true);
 
-        pendingGrid.addColumn(st -> st.getFromAccount() != null ? st.getFromAccount().getName() : "")
+        pendingGrid.addColumn(st -> st.getFromAccount() != null ? st.getFromAccount().getAccountName() : "")
                 .setHeader(getTranslation("dialog.account")).setAutoWidth(true);
 
         pendingGrid.addColumn(ScheduledTransaction::getPayee).setHeader(getTranslation("transactions.payee")).setAutoWidth(true);
@@ -279,9 +279,23 @@ public class ScheduledTransactionsView extends VerticalLayout {
         recValue.setStepButtonsVisible(true);
 
         ComboBox<Category> category = new ComboBox<>(getTranslation("transactions.category"));
-        category.setItems(categoryService.getAllCategories());
         category.setItemLabelGenerator(Category::getFullName);
         category.setAllowCustomValue(true);
+
+        // Helper to update category items based on transaction type
+        Runnable updateCategoryItems = () -> {
+            Transaction.TransactionType transactionType = type.getValue();
+            if (transactionType == Transaction.TransactionType.INCOME) {
+                category.setItems(categoryService.getCategoriesByType(Category.CategoryType.INCOME));
+            } else if (transactionType == Transaction.TransactionType.EXPENSE) {
+                category.setItems(categoryService.getCategoriesByType(Category.CategoryType.EXPENSE));
+            } else {
+                // For transfers, clear categories as they don't apply
+                category.setItems(List.of());
+                category.clear();
+            }
+        };
+
         category.addCustomValueSetListener(e -> {
             String newCatName = e.getDetail();
             // Determine category type based on transaction type
@@ -342,25 +356,11 @@ public class ScheduledTransactionsView extends VerticalLayout {
                 saved = categoryService.saveCategory(newCat);
             }
 
-            category.setItems(categoryService.getAllCategories());
+            updateCategoryItems.run();
             category.setValue(saved);
         });
 
         TextArea memo = new TextArea(getTranslation("dialog.memo"));
-
-        // Helper to update category items based on transaction type
-        Runnable updateCategoryItems = () -> {
-            Transaction.TransactionType transactionType = type.getValue();
-            if (transactionType == Transaction.TransactionType.INCOME) {
-                category.setItems(categoryService.getCategoriesByType(Category.CategoryType.INCOME));
-            } else if (transactionType == Transaction.TransactionType.EXPENSE) {
-                category.setItems(categoryService.getCategoriesByType(Category.CategoryType.EXPENSE));
-            } else {
-                // For transfers, clear categories as they don't apply
-                category.setItems(List.of());
-                category.clear();
-            }
-        };
 
         type.addValueChangeListener(e -> {
             toAccount.setVisible(e.getValue() == Transaction.TransactionType.TRANSFER);
@@ -387,6 +387,9 @@ public class ScheduledTransactionsView extends VerticalLayout {
             st.setNextOccurrence(LocalDateTime.now());
             binder.setBean(st);
         }
+
+        // Initialize category items based on current transaction type
+        updateCategoryItems.run();
 
         form.add(type, nextDate, amount, fromAccount, toAccount, payee, category, pattern, recValue, memo);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("400px", 2));

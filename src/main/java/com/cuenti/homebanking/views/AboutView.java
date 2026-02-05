@@ -145,7 +145,7 @@ public class AboutView extends VerticalLayout {
         } catch (IOException e) {
             // Ignore
         }
-        return "1.0.1"; // Fallback version
+        return "0.0.1"; // Fallback version
     }
 
     private String getBuildDate() {

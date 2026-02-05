@@ -600,11 +600,61 @@ public class TransactionHistoryView extends VerticalLayout {
         categoryCombo.setAllowCustomValue(true);
         categoryCombo.addCustomValueSetListener(e -> {
             String newCatName = e.getDetail();
-            Category newCat = Category.builder()
-                    .name(newCatName)
-                    .type(dialogTabs.getSelectedTab() == incomeTab ? Category.CategoryType.INCOME : Category.CategoryType.EXPENSE)
-                    .build();
-            Category saved = categoryService.saveCategory(newCat);
+            Category.CategoryType categoryType = dialogTabs.getSelectedTab() == incomeTab ? Category.CategoryType.INCOME : Category.CategoryType.EXPENSE;
+
+            Category saved;
+            // Check if the name contains ":" for Parent:Child format
+            if (newCatName != null && newCatName.contains(":")) {
+                String[] parts = newCatName.split(":", 2);
+                if (parts.length == 2) {
+                    String parentName = parts[0].trim();
+                    String childName = parts[1].trim();
+
+                    // Find or create parent category
+                    Category parentCategory = categoryService.getAllCategories().stream()
+                            .filter(c -> c.getName().equals(parentName) && c.getParent() == null && c.getType() == categoryType)
+                            .findFirst()
+                            .orElse(null);
+
+                    if (parentCategory == null) {
+                        // Create new parent category
+                        parentCategory = Category.builder()
+                                .name(parentName)
+                                .type(categoryType)
+                                .user(currentUser)
+                                .parent(null)
+                                .build();
+                        parentCategory = categoryService.saveCategory(parentCategory);
+                        Notification.show(getTranslation("categories.parent_created") + ": " + parentName, 3000, Notification.Position.MIDDLE);
+                    }
+
+                    // Create child category with parent
+                    Category newCat = Category.builder()
+                            .name(childName)
+                            .type(categoryType)
+                            .parent(parentCategory)
+                            .user(currentUser)
+                            .build();
+                    saved = categoryService.saveCategory(newCat);
+                } else {
+                    // Fallback to simple category creation
+                    Category newCat = Category.builder()
+                            .name(newCatName)
+                            .type(categoryType)
+                            .user(currentUser)
+                            .build();
+                    saved = categoryService.saveCategory(newCat);
+                }
+            } else {
+                // Simple category creation
+                Category newCat = Category.builder()
+                        .name(newCatName)
+                        .type(categoryType)
+                        .user(currentUser)
+                        .build();
+                saved = categoryService.saveCategory(newCat);
+            }
+
             categoryCombo.setItems(getFilteredCategoriesFromTabs(dialogTabs, expenseTab, incomeTab));
             categoryCombo.setValue(saved);
         });

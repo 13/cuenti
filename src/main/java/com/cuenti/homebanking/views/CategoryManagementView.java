@@ -135,9 +135,6 @@ public class CategoryManagementView extends VerticalLayout {
         typeGroup.addThemeVariants(RadioGroupVariant.LUMO_HELPER_ABOVE_FIELD);
         
         ComboBox<Category> parentCombo = new ComboBox<>(getTranslation("categories.parent"));
-        parentCombo.setItems(categoryService.getAllCategories().stream()
-                .filter(c -> !c.equals(category))
-                .collect(Collectors.toList()));
         parentCombo.setItemLabelGenerator(Category::getFullName);
         parentCombo.setClearButtonVisible(true);
 
@@ -146,6 +143,86 @@ public class CategoryManagementView extends VerticalLayout {
         binder.forField(typeGroup).asRequired().bind(Category::getType, Category::setType);
         binder.bind(parentCombo, Category::getParent, Category::setParent);
         binder.setBean(category);
+
+        // Update parent combo items based on selected type
+        Runnable updateParentItems = () -> {
+            Category.CategoryType selectedType = typeGroup.getValue();
+            if (selectedType != null) {
+                parentCombo.setItems(categoryService.getAllCategories().stream()
+                        .filter(c -> !c.equals(category) && c.getType() == selectedType && c.getParent() == null)
+                        .collect(Collectors.toList()));
+            } else {
+                parentCombo.setItems(List.of());
+            }
+        };
+
+        // Initialize parent items
+        updateParentItems.run();
+
+        // Update parent items when type changes
+        typeGroup.addValueChangeListener(e -> {
+            updateParentItems.run();
+            // Clear parent if type changed
+            if (!e.isFromClient() && parentCombo.getValue() != null &&
+                parentCombo.getValue().getType() != e.getValue()) {
+                parentCombo.clear();
+            }
+        });
+
+        // When parent is selected, set the type to match parent's type
+        parentCombo.addValueChangeListener(e -> {
+            if (e.getValue() != null) {
+                typeGroup.setValue(e.getValue().getType());
+                typeGroup.setReadOnly(true);
+            } else {
+                typeGroup.setReadOnly(false);
+            }
+        });
+
+        // Add listener to parse "Parent:Child" format
+        nameField.addValueChangeListener(e -> {
+            String value = e.getValue();
+            if (value != null && value.contains(":")) {
+                String[] parts = value.split(":", 2);
+                if (parts.length == 2) {
+                    String parentName = parts[0].trim();
+                    String childName = parts[1].trim();
+
+                    // Get current type or default to EXPENSE
+                    Category.CategoryType categoryType = typeGroup.getValue();
+                    if (categoryType == null) {
+                        categoryType = Category.CategoryType.EXPENSE;
+                        typeGroup.setValue(categoryType);
+                    }
+
+                    // Find or create parent category
+                    Category.CategoryType finalCategoryType = categoryType;
+                    Category parentCategory = categoryService.getAllCategories().stream()
+                            .filter(c -> c.getName().equals(parentName) && c.getParent() == null && c.getType() == finalCategoryType)
+                            .findFirst()
+                            .orElse(null);
+
+                    if (parentCategory == null) {
+                        // Create new parent category with the same type
+                        parentCategory = new Category();
+                        parentCategory.setName(parentName);
+                        parentCategory.setType(finalCategoryType);
+                        parentCategory.setUser(currentUser);
+                        parentCategory.setParent(null);
+                        parentCategory = categoryService.saveCategory(parentCategory);
+
+                        // Refresh the parent combo box items to include the new parent
+                        updateParentItems.run();
+
+                        Notification.show(getTranslation("categories.parent_created") + ": " + parentName, 3000, Notification.Position.MIDDLE);
+                    }
+
+                    // Set the child name and parent
+                    nameField.setValue(childName);
+                    parentCombo.setValue(parentCategory);
+                }
+            }
+        });
 
         formLayout.add(nameField, typeGroup, parentCombo);
         formLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));

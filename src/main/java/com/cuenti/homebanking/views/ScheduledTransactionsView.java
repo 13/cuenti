@@ -49,6 +49,7 @@ public class ScheduledTransactionsView extends VerticalLayout {
     private final ScheduledTransactionService scheduledService;
     private final AccountService accountService;
     private final CategoryService categoryService;
+    private final PayeeService payeeService;
     private final UserService userService;
     private final SecurityUtils securityUtils;
     private final User currentUser;
@@ -58,10 +59,12 @@ public class ScheduledTransactionsView extends VerticalLayout {
     private final Select<String> horizonSelect = new Select<>();
 
     public ScheduledTransactionsView(ScheduledTransactionService scheduledService, AccountService accountService,
-                                     CategoryService categoryService, UserService userService, SecurityUtils securityUtils) {
+                                     CategoryService categoryService, PayeeService payeeService,
+                                     UserService userService, SecurityUtils securityUtils) {
         this.scheduledService = scheduledService;
         this.accountService = accountService;
         this.categoryService = categoryService;
+        this.payeeService = payeeService;
         this.userService = userService;
         this.securityUtils = securityUtils;
 
@@ -135,6 +138,9 @@ public class ScheduledTransactionsView extends VerticalLayout {
         templateGrid.addThemeVariants(GridVariant.LUMO_NO_BORDER, GridVariant.LUMO_ROW_STRIPES);
         templateGrid.setAllRowsVisible(true);
         
+        templateGrid.addColumn(st -> st.getFromAccount() != null ? st.getFromAccount().getName() : "")
+                .setHeader(getTranslation("dialog.account")).setAutoWidth(true).setSortable(true);
+
         templateGrid.addColumn(ScheduledTransaction::getPayee).setHeader(getTranslation("transactions.payee")).setAutoWidth(true).setSortable(true);
         
         templateGrid.addComponentColumn(st -> {
@@ -198,6 +204,9 @@ public class ScheduledTransactionsView extends VerticalLayout {
             return date;
         }).setHeader(getTranslation("scheduled.due_date")).setAutoWidth(true).setSortable(true);
 
+        pendingGrid.addColumn(st -> st.getFromAccount() != null ? st.getFromAccount().getName() : "")
+                .setHeader(getTranslation("dialog.account")).setAutoWidth(true);
+
         pendingGrid.addColumn(ScheduledTransaction::getPayee).setHeader(getTranslation("transactions.payee")).setAutoWidth(true);
         
         pendingGrid.addComponentColumn(st -> {
@@ -246,8 +255,13 @@ public class ScheduledTransactionsView extends VerticalLayout {
         
         DatePicker nextDate = new DatePicker(getTranslation("scheduled.next_date"));
         BigDecimalField amount = new BigDecimalField(getTranslation("dialog.amount"));
-        TextField payee = new TextField(getTranslation("transactions.payee"));
-        
+
+        ComboBox<String> payee = new ComboBox<>(getTranslation("transactions.payee"));
+        List<String> existingPayees = payeeService.getAllPayees().stream().map(Payee::getName).distinct().toList();
+        payee.setItems(existingPayees);
+        payee.setAllowCustomValue(true);
+        payee.addCustomValueSetListener(e -> payee.setValue(e.getDetail()));
+
         ComboBox<Account> fromAccount = new ComboBox<>(getTranslation("dialog.from"));
         fromAccount.setItems(accountService.getAccountsByUser(currentUser));
         fromAccount.setItemLabelGenerator(Account::getAccountName);
@@ -267,11 +281,90 @@ public class ScheduledTransactionsView extends VerticalLayout {
         ComboBox<Category> category = new ComboBox<>(getTranslation("transactions.category"));
         category.setItems(categoryService.getAllCategories());
         category.setItemLabelGenerator(Category::getFullName);
+        category.setAllowCustomValue(true);
+        category.addCustomValueSetListener(e -> {
+            String newCatName = e.getDetail();
+            // Determine category type based on transaction type
+            Category.CategoryType categoryType = type.getValue() == Transaction.TransactionType.INCOME
+                    ? Category.CategoryType.INCOME
+                    : Category.CategoryType.EXPENSE;
+
+            Category saved;
+            // Check if the name contains ":" for Parent:Child format
+            if (newCatName != null && newCatName.contains(":")) {
+                String[] parts = newCatName.split(":", 2);
+                if (parts.length == 2) {
+                    String parentName = parts[0].trim();
+                    String childName = parts[1].trim();
+
+                    // Find or create parent category
+                    Category parentCategory = categoryService.getAllCategories().stream()
+                            .filter(c -> c.getName().equals(parentName) && c.getParent() == null && c.getType() == categoryType)
+                            .findFirst()
+                            .orElse(null);
+
+                    if (parentCategory == null) {
+                        // Create new parent category
+                        parentCategory = Category.builder()
+                                .name(parentName)
+                                .type(categoryType)
+                                .user(currentUser)
+                                .parent(null)
+                                .build();
+                        parentCategory = categoryService.saveCategory(parentCategory);
+                        Notification.show(getTranslation("categories.parent_created") + ": " + parentName, 3000, Notification.Position.MIDDLE);
+                    }
+
+                    // Create child category with parent
+                    Category newCat = Category.builder()
+                            .name(childName)
+                            .type(categoryType)
+                            .parent(parentCategory)
+                            .user(currentUser)
+                            .build();
+                    saved = categoryService.saveCategory(newCat);
+                } else {
+                    // Fallback to simple category creation
+                    Category newCat = Category.builder()
+                            .name(newCatName)
+                            .type(categoryType)
+                            .user(currentUser)
+                            .build();
+                    saved = categoryService.saveCategory(newCat);
+                }
+            } else {
+                // Simple category creation
+                Category newCat = Category.builder()
+                        .name(newCatName)
+                        .type(categoryType)
+                        .user(currentUser)
+                        .build();
+                saved = categoryService.saveCategory(newCat);
+            }
+
+            category.setItems(categoryService.getAllCategories());
+            category.setValue(saved);
+        });
 
         TextArea memo = new TextArea(getTranslation("dialog.memo"));
 
+        // Helper to update category items based on transaction type
+        Runnable updateCategoryItems = () -> {
+            Transaction.TransactionType transactionType = type.getValue();
+            if (transactionType == Transaction.TransactionType.INCOME) {
+                category.setItems(categoryService.getCategoriesByType(Category.CategoryType.INCOME));
+            } else if (transactionType == Transaction.TransactionType.EXPENSE) {
+                category.setItems(categoryService.getCategoriesByType(Category.CategoryType.EXPENSE));
+            } else {
+                // For transfers, clear categories as they don't apply
+                category.setItems(List.of());
+                category.clear();
+            }
+        };
+
         type.addValueChangeListener(e -> {
             toAccount.setVisible(e.getValue() == Transaction.TransactionType.TRANSFER);
+            updateCategoryItems.run();
         });
 
         Binder<ScheduledTransaction> binder = new Binder<>(ScheduledTransaction.class);

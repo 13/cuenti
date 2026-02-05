@@ -100,7 +100,21 @@ public class CategoryManagementView extends VerticalLayout {
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
             Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
-                Notification.show("Safe delete check needed");
+                ConfirmDialog dialog = new ConfirmDialog();
+                dialog.setHeader(getTranslation("categories.confirm_delete"));
+                dialog.setText(getTranslation("categories.confirm_delete_text", category.getFullName()));
+                dialog.setConfirmText(getTranslation("dialog.delete"));
+                dialog.setCancelText(getTranslation("dialog.cancel"));
+                dialog.addConfirmListener(event -> {
+                    try {
+                        categoryService.deleteCategory(category);
+                        refreshGrid();
+                        Notification.show(getTranslation("categories.deleted"));
+                    } catch (Exception ex) {
+                        Notification.show(getTranslation("categories.delete_error"), 5000, Notification.Position.MIDDLE);
+                    }
+                });
+                dialog.open();
             });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
 

@@ -4,6 +4,7 @@ import com.cuenti.homebanking.model.Account;
 import com.cuenti.homebanking.model.Transaction;
 import com.cuenti.homebanking.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -54,4 +55,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      */
     @Query("SELECT COUNT(t) FROM Transaction t WHERE t.asset = :asset")
     long countByAsset(@Param("asset") com.cuenti.homebanking.model.Asset asset);
+
+    /**
+     * Update all transactions using a specific category to set category to null.
+     */
+    @Modifying
+    @Query("UPDATE Transaction t SET t.category = null WHERE t.category.id = :categoryId")
+    int clearCategoryReferences(@Param("categoryId") Long categoryId);
 }

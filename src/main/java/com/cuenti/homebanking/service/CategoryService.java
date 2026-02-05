@@ -3,6 +3,9 @@ package com.cuenti.homebanking.service;
 import com.cuenti.homebanking.model.Category;
 import com.cuenti.homebanking.model.User;
 import com.cuenti.homebanking.repository.CategoryRepository;
+import com.cuenti.homebanking.repository.TransactionRepository;
+import com.cuenti.homebanking.repository.ScheduledTransactionRepository;
+import com.cuenti.homebanking.repository.PayeeRepository;
 import com.cuenti.homebanking.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,6 +17,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CategoryService {
     private final CategoryRepository categoryRepository;
+    private final TransactionRepository transactionRepository;
+    private final ScheduledTransactionRepository scheduledTransactionRepository;
+    private final PayeeRepository payeeRepository;
     private final UserService userService;
     private final SecurityUtils securityUtils;
 
@@ -53,11 +59,18 @@ public class CategoryService {
     public void deleteCategory(Category category) {
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         User currentUser = userService.findByUsername(username);
+
         // Security check: only allow deletion if category belongs to current user
-        if (category.getUser().getId().equals(currentUser.getId())) {
-            categoryRepository.delete(category);
-        } else {
+        if (!category.getUser().getId().equals(currentUser.getId())) {
             throw new SecurityException("Cannot delete category belonging to another user");
         }
+
+        // Use bulk updates to set category to null in all related entities
+        transactionRepository.clearCategoryReferences(category.getId());
+        scheduledTransactionRepository.clearCategoryReferences(category.getId());
+        payeeRepository.clearCategoryReferences(category.getId());
+
+        // Now safe to delete the category
+        categoryRepository.delete(category);
     }
 }

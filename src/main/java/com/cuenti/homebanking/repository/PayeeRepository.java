@@ -3,6 +3,7 @@ package com.cuenti.homebanking.repository;
 import com.cuenti.homebanking.model.Payee;
 import com.cuenti.homebanking.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -21,4 +22,11 @@ public interface PayeeRepository extends JpaRepository<Payee, Long> {
 
     @Query("SELECT DISTINCT p FROM Payee p LEFT JOIN FETCH p.defaultCategory c LEFT JOIN FETCH c.parent WHERE p.user = :user AND LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
     List<Payee> findByUserAndNameContainingIgnoreCaseWithDetails(@Param("user") User user, @Param("name") String name);
+
+    /**
+     * Update all payees using a specific default category to set defaultCategory to null.
+     */
+    @Modifying
+    @Query("UPDATE Payee p SET p.defaultCategory = null WHERE p.defaultCategory.id = :categoryId")
+    int clearCategoryReferences(@Param("categoryId") Long categoryId);
 }

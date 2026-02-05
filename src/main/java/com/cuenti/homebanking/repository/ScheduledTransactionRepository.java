@@ -3,6 +3,7 @@ package com.cuenti.homebanking.repository;
 import com.cuenti.homebanking.model.ScheduledTransaction;
 import com.cuenti.homebanking.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -18,4 +19,11 @@ public interface ScheduledTransactionRepository extends JpaRepository<ScheduledT
      */
     @Query("SELECT COUNT(st) FROM ScheduledTransaction st WHERE st.asset = :asset")
     long countByAsset(@Param("asset") com.cuenti.homebanking.model.Asset asset);
+
+    /**
+     * Update all scheduled transactions using a specific category to set category to null.
+     */
+    @Modifying
+    @Query("UPDATE ScheduledTransaction st SET st.category = null WHERE st.category.id = :categoryId")
+    int clearCategoryReferences(@Param("categoryId") Long categoryId);
 }

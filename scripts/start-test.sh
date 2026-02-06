@@ -6,8 +6,8 @@ command -v mvn >/dev/null 2>&1 || { echo "maven not installed"; exit 1; }
 
 # Check for Java 17 or 21
 JAVA_VERSION=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
-if [[ $JAVA_VERSION != 17* && $JAVA_VERSION != 21* ]]; then
-  echo "java 17 or 21 required, found version $JAVA_VERSION"
+if [[ $JAVA_VERSION != 17* && $JAVA_VERSION != 21* && $JAVA_VERSION != 25* ]]; then
+  echo "java 17,21,25 required, found version $JAVA_VERSION"
   exit 1
 fi
 

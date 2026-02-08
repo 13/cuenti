@@ -1,75 +1,94 @@
 package com.cuenti.homebanking.views;
 
-import com.cuenti.homebanking.data.User;
-import com.cuenti.homebanking.security.AuthenticatedUser;
-import com.cuenti.homebanking.services.UserService;
+import com.cuenti.homebanking.model.User;
+import com.cuenti.homebanking.security.SecurityUtils;
+import com.cuenti.homebanking.service.UserService;
+import com.cuenti.homebanking.service.AssetService;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.contextmenu.MenuItem;
-import com.vaadin.flow.component.html.Anchor;
-import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.Footer;
-import com.vaadin.flow.component.html.H4;
-import com.vaadin.flow.component.html.Header;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
-import com.vaadin.flow.component.icon.SvgIcon;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.orderedlayout.Scroller;
-import com.vaadin.flow.component.sidenav.SideNav;
-import com.vaadin.flow.component.sidenav.SideNavItem;
-import com.vaadin.flow.router.AfterNavigationEvent;
-import com.vaadin.flow.router.AfterNavigationObserver;
-import com.vaadin.flow.router.Layout;
-import com.vaadin.flow.server.auth.AccessAnnotationChecker;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
-import com.vaadin.flow.server.menu.MenuConfiguration;
-import com.vaadin.flow.server.menu.MenuEntry;
+import com.vaadin.flow.component.tabs.Tab;
+import com.vaadin.flow.component.tabs.Tabs;
+import com.vaadin.flow.router.QueryParameters;
+import com.vaadin.flow.router.RouterLink;
+import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.theme.lumo.Lumo;
-import com.vaadin.flow.theme.lumo.LumoUtility;
-import java.util.List;
-import java.util.Optional;
+import jakarta.annotation.security.PermitAll;
+import lombok.extern.slf4j.Slf4j;
 
-/**
- * The main view is a top-level placeholder for other views.
- */
-@Layout
-@AnonymousAllowed
-public class MainLayout extends AppLayout implements AfterNavigationObserver {
+import java.util.Collections;
+import java.util.Locale;
+import java.util.Map;
 
-    private H4 viewTitle;
-    private Button themeToggle;
+@PermitAll
+@Slf4j
+public class MainLayout extends AppLayout {
 
-    private final AuthenticatedUser authenticatedUser;
-    private final AccessAnnotationChecker accessChecker;
+    private final SecurityUtils securityUtils;
     private final UserService userService;
+    private final AssetService assetService;
     private User currentUser;
 
-    public MainLayout(AuthenticatedUser authenticatedUser, AccessAnnotationChecker accessChecker, UserService userService) {
-        this.authenticatedUser = authenticatedUser;
-        this.accessChecker = accessChecker;
+    public MainLayout(SecurityUtils securityUtils, UserService userService, AssetService assetService) {
+        this.securityUtils = securityUtils;
         this.userService = userService;
-        this.currentUser = authenticatedUser.get().orElse(null);
+        this.assetService = assetService;
 
-        setPrimarySection(Section.DRAWER);
-        addDrawerContent();
-        addHeaderContent();
+        String username = securityUtils.getAuthenticatedUsername().orElse(null);
+        if (username != null) {
+            try {
+                this.currentUser = userService.findByUsername(username);
+                Locale locale = Locale.forLanguageTag(currentUser.getLocale());
+                UI.getCurrent().setLocale(locale);
+                VaadinSession.getCurrent().setLocale(locale);
+
+                // Update asset prices for the logged-in user asynchronously
+                updateAssetPricesAsync();
+            } catch (Exception e) {
+                securityUtils.logout();
+                return;
+            }
+        }
+
         applyTheme();
+        setPrimarySection(Section.DRAWER);
+
+        createHeader();
+        createDrawer();
+    }
+
+    /**
+     * Update asset prices asynchronously to avoid blocking the UI on login.
+     */
+    private void updateAssetPricesAsync() {
+        if (currentUser != null) {
+            // Run in a separate thread to avoid blocking the UI
+            new Thread(() -> {
+                try {
+                    assetService.updateUserAssetPrices(currentUser);
+                } catch (Exception e) {
+                    log.error("Error updating asset prices for user: {}", currentUser.getUsername(), e);
+                }
+            }).start();
+        }
     }
 
     private void applyTheme() {
         boolean isDark = currentUser == null || currentUser.isDarkMode();
         String theme = isDark ? Lumo.DARK : Lumo.LIGHT;
+        
         UI.getCurrent().getElement().executeJs(
             "document.documentElement.setAttribute('theme', $0)", theme
         );
-        updateThemeToggleIcon();
     }
 
     private void toggleTheme() {
@@ -78,124 +97,117 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
             currentUser.setDarkMode(newDarkMode);
             userService.updateDarkMode(currentUser, newDarkMode);
             applyTheme();
-        } else {
-            // For anonymous users, just toggle without persisting
-            UI ui = UI.getCurrent();
-            ui.getElement().executeJs(
-                "return document.documentElement.getAttribute('theme')"
-            ).then(String.class, currentTheme -> {
-                String newTheme = Lumo.DARK.equals(currentTheme) ? Lumo.LIGHT : Lumo.DARK;
-                ui.getElement().executeJs(
-                    "document.documentElement.setAttribute('theme', $0)", newTheme
-                );
-                updateThemeToggleIcon();
-            });
         }
     }
 
-    private void addHeaderContent() {
-        DrawerToggle toggle = new DrawerToggle();
-        toggle.setAriaLabel("Menu toggle");
+    private void createHeader() {
+        Image logo = new Image("images/CuentiText.png", "Cuenti");
+        logo.setHeight("32px");
+        logo.setWidth("auto");
+        logo.getStyle().set("flex-shrink", "0");
 
-        viewTitle = new H4();
-        viewTitle.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
-
-        // Create right-side controls
-        HorizontalLayout rightControls = new HorizontalLayout();
-        rightControls.setAlignItems(FlexComponent.Alignment.CENTER);
-        rightControls.setSpacing(true);
-
-        // Dark/Light mode toggle button
-        themeToggle = new Button(VaadinIcon.ADJUST.create());
+        Button themeToggle = new Button(new Icon(VaadinIcon.ADJUST));
         themeToggle.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        themeToggle.setTooltipText("Toggle dark/light mode");
+        themeToggle.getElement().setProperty("title", "Toggle Dark/Light Mode");
         themeToggle.addClickListener(e -> toggleTheme());
 
-        rightControls.add(themeToggle);
+        String username = currentUser != null ? currentUser.getUsername() : "Guest";
+        Span userInfo = new Span(getTranslation("welcome.user", username));
+        userInfo.getStyle().set("font-size", "var(--lumo-font-size-s)");
 
-        // Logout button (only if authenticated)
-        Optional<User> maybeUser = authenticatedUser.get();
-        if (maybeUser.isPresent()) {
-            Button logoutButton = new Button("", VaadinIcon.SIGN_OUT.create(), e -> {
-                authenticatedUser.logout();
-            });
-            logoutButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-            rightControls.add(logoutButton);
+        Button logoutButton = new Button(new Icon(VaadinIcon.SIGN_OUT));
+        logoutButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        logoutButton.getElement().setProperty("title", getTranslation("nav.logout"));
+        logoutButton.addClickListener(e -> securityUtils.logout());
+
+        HorizontalLayout left = new HorizontalLayout(new DrawerToggle(), logo);
+        left.setAlignItems(FlexComponent.Alignment.CENTER);
+        left.setSpacing(true);
+
+        HorizontalLayout right = new HorizontalLayout(themeToggle, userInfo, logoutButton);
+        right.setAlignItems(FlexComponent.Alignment.CENTER);
+        right.setSpacing(true);
+
+        HorizontalLayout header = new HorizontalLayout(left, right);
+        header.setWidthFull();
+        header.setPadding(true);
+        header.setAlignItems(FlexComponent.Alignment.CENTER);
+        header.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+
+        addToNavbar(header);
+    }
+
+    private void createDrawer() {
+        Tabs tabs = new Tabs();
+        tabs.setOrientation(Tabs.Orientation.VERTICAL);
+
+        tabs.add(
+                createSectionTitle(getTranslation("nav.general")),
+                createTab(VaadinIcon.DASHBOARD, getTranslation("nav.dashboard"), DashboardView.class),
+                createTab(VaadinIcon.LIST, getTranslation("nav.transactions"), TransactionHistoryView.class),
+                createTab(VaadinIcon.CALENDAR_CLOCK, "Scheduled", ScheduledTransactionsView.class),
+                createTab(VaadinIcon.CHART, getTranslation("nav.statistics"), StatisticsView.class),
+                createTab(VaadinIcon.TRENDING_UP, getTranslation("nav.forecasts"), ForecastsView.class),
+                createTab(VaadinIcon.CAR, getTranslation("nav.vehicles"), VehiclesView.class),
+
+                createSectionTitle(getTranslation("nav.management")),
+                createTab(VaadinIcon.WALLET, getTranslation("nav.manage_accounts"), AccountManagementView.class),
+                createTab(VaadinIcon.USERS, getTranslation("nav.payees"), PayeeManagementView.class),
+                createTab(VaadinIcon.SITEMAP, getTranslation("nav.categories"), CategoryManagementView.class),
+                createTab(VaadinIcon.TAGS, getTranslation("nav.tags"), TagManagementView.class),
+                createTab(VaadinIcon.MONEY, getTranslation("nav.currencies"), CurrencyManagementView.class),
+                createTab(VaadinIcon.CHART_3D, getTranslation("nav.assets"), AssetManagementView.class),
+
+                createSectionTitle(getTranslation("nav.settings"))
+        );
+
+        if (currentUser != null && currentUser.getRoles().contains("ROLE_ADMIN")) {
+            tabs.add(createTab(VaadinIcon.KEY, getTranslation("settings.administration"), SettingsView.class, Map.of("section", "admin")));
         }
 
-        // Spacer to push controls to the right
-        Div spacer = new Div();
-        spacer.getStyle().set("flex-grow", "1");
+        tabs.add(
+                createTab(VaadinIcon.USER, getTranslation("settings.user_title"), SettingsView.class, Map.of("section", "user")),
+                createTab(VaadinIcon.EXCHANGE, getTranslation("settings.import_export_title"), SettingsView.class, Map.of("section", "import-export")),
 
-        addToNavbar(true, toggle, viewTitle, spacer, rightControls);
+                createSectionTitle(getTranslation("nav.info", "Information")),
+                createTab(VaadinIcon.QUESTION_CIRCLE, getTranslation("nav.help", "Help"), HelpView.class),
+                createTab(VaadinIcon.INFO_CIRCLE, getTranslation("nav.about", "About"), AboutView.class)
+        );
+
+        addToDrawer(tabs);
     }
 
-    private void updateThemeToggleIcon() {
-        if (themeToggle == null) return;
-        boolean isDark = currentUser == null || currentUser.isDarkMode();
-        themeToggle.setIcon(isDark ? VaadinIcon.SUN_O.create() : VaadinIcon.MOON_O.create());
+    private Tab createSectionTitle(String title) {
+        Span span = new Span(title);
+        span.getStyle()
+                .set("font-weight", "bold")
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("margin-top", "var(--lumo-space-m)")
+                .set("margin-left", "var(--lumo-space-m)");
+
+        Tab tab = new Tab(span);
+        tab.setEnabled(false);
+        tab.getElement().setAttribute("aria-hidden", "true");
+        return tab;
     }
 
-    private void addDrawerContent() {
-        Span appName = new Span("Cuenti");
-        appName.addClassNames(LumoUtility.FontWeight.SEMIBOLD, LumoUtility.FontSize.LARGE);
-        Header header = new Header(appName);
-
-        Scroller scroller = new Scroller(createNavigation());
-
-        addToDrawer(header, scroller, createFooter());
+    private Tab createTab(VaadinIcon icon, String title, Class<? extends Component> navigationTarget) {
+        return createTab(icon, title, navigationTarget, Collections.emptyMap());
     }
 
-    private SideNav createNavigation() {
-        SideNav nav = new SideNav();
+    private Tab createTab(VaadinIcon icon, String title, Class<? extends Component> navigationTarget, Map<String, String> queryParams) {
+        Icon tabIcon = icon.create();
+        tabIcon.getStyle().set("margin-right", "8px");
 
-        List<MenuEntry> menuEntries = MenuConfiguration.getMenuEntries();
-        menuEntries.forEach(entry -> {
-            if (entry.icon() != null) {
-                nav.addItem(new SideNavItem(entry.title(), entry.path(), new SvgIcon(entry.icon())));
-            } else {
-                nav.addItem(new SideNavItem(entry.title(), entry.path()));
-            }
-        });
-
-        return nav;
-    }
-
-    private Footer createFooter() {
-        Footer layout = new Footer();
-
-        Optional<User> maybeUser = authenticatedUser.get();
-        if (maybeUser.isPresent()) {
-            User user = maybeUser.get();
-
-            MenuBar userMenu = new MenuBar();
-            userMenu.setThemeName("tertiary-inline contrast");
-
-            MenuItem userName = userMenu.addItem("");
-            Div div = new Div();
-            div.add(user.getName());
-            div.add(new Icon("lumo", "dropdown"));
-            div.addClassNames(LumoUtility.Display.FLEX, LumoUtility.AlignItems.CENTER, LumoUtility.Gap.SMALL);
-            userName.add(div);
-            userName.getSubMenu().addItem("Sign out", e -> {
-                authenticatedUser.logout();
-            });
-
-            layout.add(userMenu);
-        } else {
-            Anchor loginLink = new Anchor("login", "Sign in");
-            layout.add(loginLink);
+        RouterLink link = new RouterLink();
+        link.add(tabIcon, new Span(title));
+        link.setRoute(navigationTarget);
+        if (!queryParams.isEmpty()) {
+            link.setQueryParameters(QueryParameters.simple(queryParams));
         }
+        link.setTabIndex(-1);
 
-        return layout;
-    }
-
-    @Override
-    public void afterNavigation(AfterNavigationEvent event) {
-        viewTitle.setText(getCurrentPageTitle());
-    }
-
-    private String getCurrentPageTitle() {
-        return MenuConfiguration.getPageHeader(getContent()).orElse("");
+        return new Tab(link);
     }
 }

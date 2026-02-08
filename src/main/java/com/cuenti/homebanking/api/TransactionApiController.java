@@ -1,10 +1,10 @@
 package com.cuenti.homebanking.api;
 
-import com.cuenti.homebanking.model.Transaction;
-import com.cuenti.homebanking.model.User;
+import com.cuenti.homebanking.data.Transaction;
+import com.cuenti.homebanking.data.User;
 import com.cuenti.homebanking.security.SecurityUtils;
-import com.cuenti.homebanking.service.TransactionService;
-import com.cuenti.homebanking.service.UserService;
+import com.cuenti.homebanking.services.TransactionService;
+import com.cuenti.homebanking.services.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,10 +32,7 @@ public class TransactionApiController {
     public ResponseEntity<Transaction> createTransaction(@RequestBody Transaction transaction) {
         return securityUtils.getAuthenticatedUsername()
                 .map(userService::findByUsername)
-                .map(user -> {
-                    // Basic validation could go here
-                    return ResponseEntity.ok(transactionService.saveTransaction(transaction));
-                })
+                .map(user -> ResponseEntity.ok(transactionService.saveTransaction(transaction)))
                 .orElse(ResponseEntity.status(401).build());
     }
 }

@@ -1,9 +1,9 @@
 package com.cuenti.homebanking.api;
 
-import com.cuenti.homebanking.model.User;
+import com.cuenti.homebanking.data.User;
 import com.cuenti.homebanking.security.SecurityUtils;
-import com.cuenti.homebanking.service.JsonExportImportService;
-import com.cuenti.homebanking.service.UserService;
+import com.cuenti.homebanking.services.JsonExportImportService;
+import com.cuenti.homebanking.services.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;

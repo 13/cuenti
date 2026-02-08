@@ -37,7 +37,7 @@ public class TranslationProvider implements I18NProvider {
         // Use the simplified locale (e.g., 'de' instead of 'de-DE' if specific not found)
         Locale baseLocale = new Locale(locale.getLanguage());
         ResourceBundle bundle = bundles.get(baseLocale);
-        
+
         if (bundle == null) {
             bundle = bundles.get(Locale.ENGLISH); // Default fallback
         }

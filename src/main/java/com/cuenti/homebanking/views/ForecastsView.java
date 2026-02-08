@@ -137,18 +137,20 @@ public class ForecastsView extends VerticalLayout {
                 
                 BigDecimal convertedAmount = st.getAmount();
                 
-                if (st.getType() == Transaction.TransactionType.INCOME && toAccount != null) {
+                if (st.getType() == Transaction.TransactionType.INCOME) {
+                    String currency = toAccount != null ? toAccount.getCurrency() : currentUser.getDefaultCurrency();
                     convertedAmount = exchangeRateService.convert(
                         st.getAmount(), 
-                        toAccount.getCurrency(), 
+                        currency, 
                         currentUser.getDefaultCurrency()
                     );
                     monthlyIncomes.merge(monthKey, convertedAmount, BigDecimal::add);
                     totalIncome = totalIncome.add(convertedAmount);
-                } else if (st.getType() == Transaction.TransactionType.EXPENSE && fromAccount != null) {
+                } else if (st.getType() == Transaction.TransactionType.EXPENSE) {
+                    String currency = fromAccount != null ? fromAccount.getCurrency() : currentUser.getDefaultCurrency();
                     convertedAmount = exchangeRateService.convert(
                         st.getAmount(), 
-                        fromAccount.getCurrency(), 
+                        currency,
                         currentUser.getDefaultCurrency()
                     );
                     monthlyExpenses.merge(monthKey, convertedAmount, BigDecimal::add);

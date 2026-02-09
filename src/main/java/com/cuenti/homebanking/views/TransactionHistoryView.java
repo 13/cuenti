@@ -115,12 +115,40 @@ public class TransactionHistoryView extends VerticalLayout {
         dateFrom.setClearButtonVisible(true);
         dateFrom.addValueChangeListener(e -> updateFilters());
         dateFrom.setWidth("150px");
+        dateFrom.setLocale(getLocale());
+
+        if (currentUser.getLocale().equals("de-DE")) {
+            DatePicker.DatePickerI18n i18nFrom = new DatePicker.DatePickerI18n();
+            i18nFrom.setDateFormat("dd.MM.yyyy");
+            i18nFrom.setMonthNames(List.of("Januar", "Februar", "März", "April", "Mai", "Juni",
+                                     "Juli", "August", "September", "Oktober", "November", "Dezember"));
+            i18nFrom.setWeekdays(List.of("Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"));
+            i18nFrom.setWeekdaysShort(List.of("So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"));
+            i18nFrom.setToday("Heute");
+            i18nFrom.setCancel("Abbrechen");
+            i18nFrom.setFirstDayOfWeek(1);
+            dateFrom.setI18n(i18nFrom);
+        }
         dateFrom.setValue(now.with(TemporalAdjusters.firstDayOfMonth()));
 
         dateTo.setPlaceholder(getTranslation("dialog.to"));
         dateTo.setClearButtonVisible(true);
         dateTo.addValueChangeListener(e -> updateFilters());
         dateTo.setWidth("150px");
+        dateTo.setLocale(getLocale());
+
+        if (currentUser.getLocale().equals("de-DE")) {
+            DatePicker.DatePickerI18n i18nTo = new DatePicker.DatePickerI18n();
+            i18nTo.setDateFormat("dd.MM.yyyy");
+            i18nTo.setMonthNames(List.of("Januar", "Februar", "März", "April", "Mai", "Juni",
+                                     "Juli", "August", "September", "Oktober", "November", "Dezember"));
+            i18nTo.setWeekdays(List.of("Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"));
+            i18nTo.setWeekdaysShort(List.of("So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"));
+            i18nTo.setToday("Heute");
+            i18nTo.setCancel("Abbrechen");
+            i18nTo.setFirstDayOfWeek(1);
+            dateTo.setI18n(i18nTo);
+        }
         dateTo.setValue(now.with(TemporalAdjusters.lastDayOfMonth()));
 
         searchField.setPlaceholder(getTranslation("transactions.search"));
@@ -699,7 +727,12 @@ public class TransactionHistoryView extends VerticalLayout {
             paymentCombo.setVisible(!isTransfer);
             accountCombo.setLabel(isTransfer ? getTranslation("dialog.from") : getTranslation("dialog.account"));
             
+            // Preserve current category selection when updating items
+            Category currentCategory = categoryCombo.getValue();
             categoryCombo.setItems(getFilteredCategoriesFromTabs(dialogTabs, expenseTab, incomeTab));
+            if (currentCategory != null) {
+                categoryCombo.setValue(currentCategory);
+            }
 
             boolean assetVisible = false;
             Account acc = accountCombo.getValue();
@@ -717,6 +750,9 @@ public class TransactionHistoryView extends VerticalLayout {
         toAccountCombo.addValueChangeListener(e -> updateVisibility.run());
 
         if (currentFormTransaction[0].getId() != null) {
+            // First, set the category combo items based on the transaction type
+            categoryCombo.setItems(getFilteredCategoriesFromTabs(dialogTabs, expenseTab, incomeTab));
+
             if (currentFormTransaction[0].getType() == Transaction.TransactionType.INCOME) {
                 accountCombo.setValue(currentFormTransaction[0].getToAccount());
             } else {
@@ -725,7 +761,8 @@ public class TransactionHistoryView extends VerticalLayout {
                     toAccountCombo.setValue(currentFormTransaction[0].getToAccount());
                 }
             }
-            categoryCombo.setItems(getFilteredCategoriesFromTabs(dialogTabs, expenseTab, incomeTab));
+
+            // Now set the category value after items are populated
             categoryCombo.setValue(currentFormTransaction[0].getCategory());
             
             // Set unit price if units exist

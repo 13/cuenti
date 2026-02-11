@@ -19,6 +19,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+
 import jakarta.annotation.security.PermitAll;
 
 import java.math.BigDecimal;
@@ -55,8 +56,8 @@ public class DashboardView extends VerticalLayout {
     private Map<Asset, AssetPerformanceData> assetPerformanceMap;
 
     public DashboardView(AccountService accountService, UserService userService,
-                        TransactionService transactionService, AssetService assetService, 
-                        ExchangeRateService exchangeRateService, SecurityUtils securityUtils) {
+                         TransactionService transactionService, AssetService assetService,
+                         ExchangeRateService exchangeRateService, SecurityUtils securityUtils) {
         this.accountService = accountService;
         this.transactionService = transactionService;
         this.assetService = assetService;
@@ -350,11 +351,11 @@ public class DashboardView extends VerticalLayout {
         timeChartCard.getStyle().set("flex", "1 1 450px").set("min-width", "0");
         Div timeChartContent = new Div();
         timeChartContent.getStyle().set("padding", "var(--lumo-space-m)");
-        
+
         HorizontalLayout timeHeader = new HorizontalLayout(new H4(getTranslation("dashboard.cash_flow", currentUser.getDefaultCurrency())));
         timeHeader.setWidthFull();
         timeHeader.setAlignItems(Alignment.CENTER);
-        
+
         Select<String> timeRange = new Select<>();
         timeRange.setItems("Daily", "Weekly", "Monthly", "Yearly");
         timeRange.setValue("Monthly");
@@ -364,10 +365,10 @@ public class DashboardView extends VerticalLayout {
 
         HorizontalLayout legend = new HorizontalLayout();
         legend.setSpacing(true);
-        legend.add(createLegendItem(getTranslation("dashboard.revenue"), "var(--lumo-success-color)"), 
-                   createLegendItem(getTranslation("dashboard.spending"), "var(--lumo-error-color)"));
+        legend.add(createLegendItem(getTranslation("dashboard.revenue"), "var(--lumo-success-color)"),
+                createLegendItem(getTranslation("dashboard.spending"), "var(--lumo-error-color)"));
         timeChartContent.add(legend);
-        
+
         timeChartContainer.setWidthFull();
         timeChartContainer.setHeight("250px");
         timeChartContainer.getStyle()
@@ -375,7 +376,7 @@ public class DashboardView extends VerticalLayout {
                 .set("display", "flex")
                 .set("align-items", "flex-end")
                 .set("padding-bottom", "var(--lumo-space-s)");
-        
+
         renderTimeChart(timeChartContainer, transactions, timeRange.getValue());
         timeRange.addValueChangeListener(e -> {
             renderTimeChart(timeChartContainer, transactions, e.getValue());
@@ -391,10 +392,10 @@ public class DashboardView extends VerticalLayout {
         Div totalChartContent = new Div();
         totalChartContent.getStyle().set("padding", "var(--lumo-space-m)");
         totalChartContent.add(new H4(getTranslation("dashboard.top_spending", currentUser.getDefaultCurrency())));
-        
+
         distributionContainer.setWidthFull();
         distributionContainer.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "12px").set("margin-top", "20px");
-        
+
         renderDistributionChart(distributionContainer, transactions, timeRange.getValue());
 
         totalChartContent.add(distributionContainer);
@@ -432,12 +433,12 @@ public class DashboardView extends VerticalLayout {
         for (Transaction t : transactions) {
             String label = null;
             LocalDate td = t.getTransactionDate().toLocalDate();
-            
+
             if ("Daily".equals(range) && td.isEqual(today)) {
                 label = td.format(DateTimeFormatter.ofPattern("dd.MM"));
-            } else if ("Weekly".equals(range) && 
-                       td.getYear() == today.getYear() && 
-                       td.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR) == today.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR)) {
+            } else if ("Weekly".equals(range) &&
+                    td.getYear() == today.getYear() &&
+                    td.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR) == today.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR)) {
                 label = "W" + td.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR);
             } else if ("Monthly".equals(range) && td.getYear() == today.getYear() && td.getMonth() == today.getMonth()) {
                 label = td.getMonth().getDisplayName(TextStyle.SHORT, userLocale);
@@ -450,8 +451,10 @@ public class DashboardView extends VerticalLayout {
                 Account acc = t.getType() == Transaction.TransactionType.INCOME ? t.getToAccount() : t.getFromAccount();
                 if (acc != null) {
                     BigDecimal converted = exchangeRateService.convert(t.getAmount(), acc.getCurrency(), currentUser.getDefaultCurrency());
-                    if (t.getType() == Transaction.TransactionType.INCOME) values[0] = values[0].add(converted);
-                    else if (t.getType() == Transaction.TransactionType.EXPENSE) values[1] = values[1].add(converted);
+                    if (t.getType() == Transaction.TransactionType.INCOME)
+                        values[0] = values[0].add(converted);
+                    else if (t.getType() == Transaction.TransactionType.EXPENSE)
+                        values[1] = values[1].add(converted);
                 }
             }
         }
@@ -488,23 +491,25 @@ public class DashboardView extends VerticalLayout {
     private void renderDistributionChart(Div container, List<Transaction> transactions, String range) {
         container.removeAll();
         LocalDate today = LocalDate.now();
-        
+
         Map<String, BigDecimal> data = transactions.stream()
                 .filter(t -> t.getCategory() != null && t.getType() == Transaction.TransactionType.EXPENSE && t.getFromAccount() != null)
                 .filter(t -> {
                     LocalDate td = t.getTransactionDate().toLocalDate();
                     if ("Daily".equals(range)) return td.isEqual(today);
-                    if ("Weekly".equals(range)) return td.getYear() == today.getYear() && td.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR) == today.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-                    if ("Monthly".equals(range)) return td.getYear() == today.getYear() && td.getMonth() == today.getMonth();
+                    if ("Weekly".equals(range))
+                        return td.getYear() == today.getYear() && td.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR) == today.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+                    if ("Monthly".equals(range))
+                        return td.getYear() == today.getYear() && td.getMonth() == today.getMonth();
                     return td.getYear() == today.getYear(); // Yearly
                 })
                 .collect(Collectors.groupingBy(t -> t.getCategory().getName(),
-                        Collectors.reducing(BigDecimal.ZERO, 
-                                t -> exchangeRateService.convert(t.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency()), 
+                        Collectors.reducing(BigDecimal.ZERO,
+                                t -> exchangeRateService.convert(t.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency()),
                                 BigDecimal::add)));
 
         BigDecimal total = data.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
-        
+
         data.entrySet().stream()
                 .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
                 .limit(5)
@@ -535,7 +540,7 @@ public class DashboardView extends VerticalLayout {
         Div content = new Div();
         content.getStyle().set("padding", "var(--lumo-space-m)");
         content.add(new H4(getTranslation("dashboard.accounts_overview", currentUser.getDefaultCurrency())));
-        
+
         Map<String, List<Account>> grouped = accounts.stream()
                 .collect(Collectors.groupingBy(a -> a.getAccountGroup() != null ? a.getAccountGroup() : "Other"));
 
@@ -556,7 +561,7 @@ public class DashboardView extends VerticalLayout {
                 content.add(row);
                 groupSum = groupSum.add(converted);
             }
-            
+
             HorizontalLayout groupTotalRow = new HorizontalLayout(new Span("Total " + entry.getKey()), new Span(formatCurrency(groupSum, currentUser.getDefaultCurrency())));
             groupTotalRow.setWidthFull();
             groupTotalRow.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
@@ -578,19 +583,24 @@ public class DashboardView extends VerticalLayout {
     private Div createMetricCard(String title, BigDecimal amount, String background) {
         Div card = new Div();
         card.getStyle()
-            .set("flex", "1 1 280px")
-            .set("min-width", "250px")
-            .set("background", background)
-            .set("color", "white")
-            .set("border-radius", "16px")
-            .set("padding", "20px")
-            .set("box-shadow", "var(--lumo-box-shadow-s)");
+                .set("flex", "1 1 280px")
+                .set("min-width", "250px")
+                .set("background", background)
+                .set("color", "white")
+                .set("border-radius", "16px")
+                .set("padding", "20px")
+                .set("box-shadow", "var(--lumo-box-shadow-s)");
 
         Span t = new Span(title);
-        t.getStyle().set("font-size", "13px").set("opacity", "0.9").set("display", "block");
-        
+        t.getStyle()
+                .set("font-size", "13px")
+                .set("opacity", "0.9")
+                .set("display", "block")
+                .set("color", "white");
+
         H4 val = new H4(formatCurrency(amount, currentUser.getDefaultCurrency()));
-        val.getStyle().set("margin", "5px 0 0 0").set("font-size", "20px");
+        val.getStyle()
+                .set("margin", "5px 0 0 0").set("font-size", "20px").set("color", "white");
 
         card.add(t, val);
         return card;
@@ -600,9 +610,9 @@ public class DashboardView extends VerticalLayout {
         Div card = new Div();
         card.setWidthFull();
         card.getStyle().set("background-color", "var(--lumo-base-color)")
-                      .set("border-radius", "16px")
-                      .set("box-shadow", "var(--lumo-box-shadow-s)")
-                      .set("overflow", "hidden");
+                .set("border-radius", "16px")
+                .set("box-shadow", "var(--lumo-box-shadow-s)")
+                .set("overflow", "hidden");
         return card;
     }
 
@@ -611,7 +621,8 @@ public class DashboardView extends VerticalLayout {
         item.setAlignItems(Alignment.CENTER);
         item.setSpacing(true);
         Div dot = new Div();
-        dot.setWidth("8px"); dot.setHeight("8px");
+        dot.setWidth("8px");
+        dot.setHeight("8px");
         dot.getStyle().set("background", color).set("border-radius", "50%");
         Span s = new Span(label);
         s.getStyle().set("font-size", "11px").set("color", "var(--lumo-secondary-text-color)");
@@ -630,7 +641,8 @@ public class DashboardView extends VerticalLayout {
         try {
             java.util.Currency currency = java.util.Currency.getInstance(currencyCode);
             formatter.setCurrency(currency);
-        } catch (Exception e) {}
+        } catch (Exception e) {
+        }
         return formatter.format(amount);
     }
 
@@ -644,5 +656,6 @@ public class DashboardView extends VerticalLayout {
             BigDecimal currentPrice,
             BigDecimal gainLoss,
             BigDecimal gainLossPercent
-    ) {}
+    ) {
+    }
 }

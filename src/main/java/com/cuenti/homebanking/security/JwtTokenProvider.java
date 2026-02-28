@@ -2,6 +2,8 @@ package com.cuenti.homebanking.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,15 +16,20 @@ import java.util.Date;
 @Component
 public class JwtTokenProvider {
 
+    private static final Logger logger = LoggerFactory.getLogger(JwtTokenProvider.class);
+
     private final SecretKey key;
     private final long jwtExpiration;
 
     public JwtTokenProvider(
             @Value("${jwt.secret}") String jwtSecret,
             @Value("${jwt.expiration}") long jwtExpiration) {
-
-        if (jwtSecret == null || jwtSecret.isBlank() || jwtSecret.contains("change-this-in-production")) {
-            // Generate a secure key automatically if not properly configured
+        
+        if (jwtSecret == null || jwtSecret.isBlank() || 
+            jwtSecret.equals("generate-secure-key-at-runtime") || 
+            jwtSecret.contains("change-this-in-production")) {
+            
+            logger.warn("JWT secret key is not properly configured. Generating a secure random key for this session.");
             this.key = Jwts.SIG.HS256.key().build();
         } else {
             this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));

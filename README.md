@@ -20,6 +20,14 @@ Java 17 · Spring Boot · Spring Security · PostgreSQL · Vaadin · Maven
 
 ## Production Ready (Docker)
 
+Before running in production, generate a secure JWT secret key:
+
+```bash
+echo "JWT_SECRET=$(openssl rand -base64 48)" >> .env
+```
+
+Then start the application:
+
 ```bash
 ./scripts/start.sh
 ```

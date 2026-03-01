@@ -160,6 +160,13 @@ public class SettingsView extends VerticalLayout implements BeforeEnterObserver 
         }).setHeader(getTranslation("settings.enabled"));
 
         userGrid.addComponentColumn(u -> {
+            Checkbox apiEnabled = new Checkbox();
+            apiEnabled.setValue(u.isApiEnabled());
+            apiEnabled.addValueChangeListener(e -> userService.updateApiEnabled(u, e.getValue()));
+            return apiEnabled;
+        }).setHeader(getTranslation("settings.api_enabled"));
+        
+        userGrid.addComponentColumn(u -> {
             Button resetBtn = new Button(VaadinIcon.KEY.create(), e -> openAdminPasswordDialog(u));
             resetBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
             resetBtn.setTooltipText(getTranslation("settings.force_password_change"));

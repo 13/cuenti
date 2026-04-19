@@ -75,6 +75,20 @@ public class Transaction {
     @Builder.Default
     private Integer sortOrder = 0;
 
+    @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @Builder.Default
+    private java.util.List<TransactionSplit> splits = new java.util.ArrayList<>();
+
+    public void addSplit(TransactionSplit split) {
+        splits.add(split);
+        split.setTransaction(this);
+    }
+
+    public void removeSplit(TransactionSplit split) {
+        splits.remove(split);
+        split.setTransaction(null);
+    }
+
     public enum TransactionType {
         EXPENSE,
         INCOME,

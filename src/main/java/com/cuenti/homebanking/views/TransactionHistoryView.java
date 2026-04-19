@@ -263,7 +263,13 @@ public class TransactionHistoryView extends VerticalLayout {
                 .setAutoWidth(true);
 
         // 4. Category Column
-        grid.addColumn(t -> t.getCategory() != null ? t.getCategory().getFullName() : "")
+        grid.addColumn(t -> {
+            if (t.getSplits() != null && !t.getSplits().isEmpty()) {
+                String translated = getTranslation("transactions.split");
+                return translated.equals("!transactions.split!") ? "Multiple" : translated;
+            }
+            return t.getCategory() != null ? t.getCategory().getFullName() : "";
+        })
                 .setHeader(getTranslation("transactions.category"))
                 .setSortable(true)
                 .setAutoWidth(true);
@@ -591,6 +597,104 @@ public class TransactionHistoryView extends VerticalLayout {
         amountField.setValue(currentFormTransaction[0].getAmount() != null ? currentFormTransaction[0].getAmount() : BigDecimal.ZERO);
         amountField.setRequiredIndicatorVisible(true);
 
+        ComboBox<Category> categoryCombo = new ComboBox<>(getTranslation("transactions.category"));
+
+        List<TransactionSplit> currentSplits = new ArrayList<>(currentFormTransaction[0].getSplits() != null ? currentFormTransaction[0].getSplits() : new ArrayList<>());
+
+        VerticalLayout splitLayout = new VerticalLayout();
+        splitLayout.setPadding(false);
+        splitLayout.setMargin(false);
+        splitLayout.getStyle().set("border", "1px solid var(--lumo-contrast-20pct)")
+                              .set("border-radius", "var(--lumo-border-radius-m)")
+                              .set("padding", "var(--lumo-space-s)");
+        splitLayout.setVisible(!currentSplits.isEmpty());
+
+        com.vaadin.flow.component.grid.Grid<TransactionSplit> splitGrid = new com.vaadin.flow.component.grid.Grid<>(TransactionSplit.class, false);
+        splitGrid.addThemeVariants(GridVariant.LUMO_NO_BORDER, GridVariant.LUMO_COMPACT);
+        splitGrid.addColumn(TransactionSplit::getAmount).setHeader(getTranslation("dialog.amount")).setAutoWidth(true);
+        splitGrid.addColumn(s -> s.getCategory() != null ? s.getCategory().getFullName() : "").setHeader(getTranslation("transactions.category")).setAutoWidth(true);
+        splitGrid.addColumn(TransactionSplit::getMemo).setHeader(getTranslation("dialog.memo")).setAutoWidth(true);
+
+        BigDecimalField splitAmountField = new BigDecimalField(getTranslation("dialog.amount"));
+        ComboBox<Category> splitCategoryCombo = new ComboBox<>(getTranslation("transactions.category"));
+        splitCategoryCombo.setItemLabelGenerator(Category::getFullName);
+        splitCategoryCombo.setItems(getFilteredCategoriesFromTabs(dialogTabs, expenseTab, incomeTab));
+        TextField splitMemoField = new TextField(getTranslation("dialog.memo"));
+
+        splitGrid.addComponentColumn(s -> {
+            Button editBtn = new Button(VaadinIcon.EDIT.create(), ev -> {
+                currentSplits.remove(s);
+                splitGrid.setItems(currentSplits);
+                splitAmountField.setValue(s.getAmount());
+                splitCategoryCombo.setValue(s.getCategory());
+                splitMemoField.setValue(s.getMemo() != null ? s.getMemo() : "");
+                updateTotalAmount(currentSplits, amountField, categoryCombo);
+                if (currentSplits.isEmpty()) {
+                    splitGrid.setVisible(false);
+                }
+            });
+            editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
+            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), ev -> {
+                currentSplits.remove(s);
+                splitGrid.setItems(currentSplits);
+                updateTotalAmount(currentSplits, amountField, categoryCombo);
+                if (currentSplits.isEmpty()) {
+                    splitGrid.setVisible(false);
+                }
+            });
+            deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
+            HorizontalLayout hl = new HorizontalLayout(editBtn, deleteBtn);
+            hl.setSpacing(false);
+            return hl;
+        }).setAutoWidth(true);
+        splitGrid.setItems(currentSplits);
+        splitGrid.setAllRowsVisible(true);
+        splitGrid.setVisible(!currentSplits.isEmpty());
+
+        Button addSplitBtn = new Button(getTranslation("dialog.add"), ev -> {
+            if (splitAmountField.getValue() != null && splitCategoryCombo.getValue() != null) {
+                TransactionSplit s = TransactionSplit.builder()
+                        .amount(splitAmountField.getValue())
+                        .category(splitCategoryCombo.getValue())
+                        .memo(splitMemoField.getValue())
+                        .build();
+                currentSplits.add(s);
+                splitGrid.setItems(currentSplits);
+                splitGrid.setVisible(true);
+                updateTotalAmount(currentSplits, amountField, categoryCombo);
+                splitAmountField.clear();
+                splitCategoryCombo.clear();
+                splitMemoField.clear();
+            }
+        });
+        addSplitBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+        HorizontalLayout addLayoutInputs = new HorizontalLayout(splitAmountField, splitCategoryCombo, splitMemoField);
+        addLayoutInputs.setWidthFull();
+        addLayoutInputs.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.BASELINE);
+        splitAmountField.setWidth("25%");
+        splitCategoryCombo.setWidth("35%");
+        splitMemoField.setWidth("40%");
+
+        HorizontalLayout addBtnLayout = new HorizontalLayout(addSplitBtn);
+        addBtnLayout.setWidthFull();
+        addBtnLayout.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.END);
+
+        splitLayout.add(splitGrid, addLayoutInputs, addBtnLayout);
+
+        Button splitToggleBtn = new Button(VaadinIcon.PIE_CHART.create(), e -> {
+            splitLayout.setVisible(!splitLayout.isVisible());
+        });
+        splitToggleBtn.setTooltipText(getTranslation("transactions.split_transaction"));
+        splitToggleBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+        HorizontalLayout amountLayout = new HorizontalLayout(amountField, splitToggleBtn);
+        amountLayout.setWidthFull();
+        amountLayout.expand(amountField);
+        amountLayout.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.BASELINE);
+
         List<Account> userAccounts = accountService.getAccountsByUser(currentUser);
         ComboBox<Account> accountCombo = new ComboBox<>(getTranslation("dialog.account"));
         accountCombo.setItems(userAccounts);
@@ -623,7 +727,6 @@ public class TransactionHistoryView extends VerticalLayout {
         payeeCombo.setValue(currentFormTransaction[0].getPayee());
         payeeCombo.addCustomValueSetListener(e -> payeeCombo.setValue(e.getDetail()));
 
-        ComboBox<Category> categoryCombo = new ComboBox<>(getTranslation("transactions.category"));
         categoryCombo.setItemLabelGenerator(Category::getFullName);
         categoryCombo.setAllowCustomValue(true);
         categoryCombo.addCustomValueSetListener(e -> {
@@ -730,6 +833,7 @@ public class TransactionHistoryView extends VerticalLayout {
             // Preserve current category selection when updating items
             Category currentCategory = categoryCombo.getValue();
             categoryCombo.setItems(getFilteredCategoriesFromTabs(dialogTabs, expenseTab, incomeTab));
+            splitCategoryCombo.setItems(getFilteredCategoriesFromTabs(dialogTabs, expenseTab, incomeTab));
             if (currentCategory != null) {
                 categoryCombo.setValue(currentCategory);
             }
@@ -773,9 +877,12 @@ public class TransactionHistoryView extends VerticalLayout {
         
         updateVisibility.run();
 
-        FormLayout formLayout = new FormLayout(dialogTabs, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, unitPriceField, memoField, tagsCombo);
+        updateTotalAmount(currentSplits, amountField, categoryCombo);
+
+        FormLayout formLayout = new FormLayout(dialogTabs, datePicker, amountLayout, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, splitLayout, assetCombo, unitsField, unitPriceField, memoField, tagsCombo);
         formLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("400px", 2));
         formLayout.setColspan(dialogTabs, 2);
+        formLayout.setColspan(splitLayout, 2);
         formLayout.setColspan(memoField, 2);
         formLayout.setColspan(tagsCombo, 2);
 
@@ -788,7 +895,12 @@ public class TransactionHistoryView extends VerticalLayout {
                 Notification.show(getTranslation("dialog.amount_positive"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
                 return;
             }
-            saveFromTabs(currentFormTransaction[0], dialogTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsCombo);
+
+            Transaction saveTx = currentFormTransaction[0];
+            saveTx.getSplits().clear();
+            for (TransactionSplit s : currentSplits) saveTx.addSplit(s);
+
+            saveFromTabs(saveTx, dialogTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsCombo);
             refreshGrid();
             dialog.close();
             Notification.show(getTranslation("transactions.saved"));
@@ -805,11 +917,17 @@ public class TransactionHistoryView extends VerticalLayout {
                 return;
             }
             
-            saveFromTabs(new Transaction(), dialogTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsCombo);
+            Transaction keepTx = currentFormTransaction[0];
+            keepTx.getSplits().clear();
+            for (TransactionSplit s : currentSplits) keepTx.addSplit(s);
+
+            saveFromTabs(keepTx, dialogTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsCombo);
             refreshGrid();
             Notification.show(getTranslation("transactions.added"));
             
             currentFormTransaction[0] = new Transaction();
+            currentSplits.clear();
+            updateTotalAmount(currentSplits, amountField, categoryCombo);
             dialog.setHeaderTitle(getTranslation("dialog.add_transaction"));
         });
         addKeepButton.setVisible(true);
@@ -823,8 +941,21 @@ public class TransactionHistoryView extends VerticalLayout {
 
     private List<Category> getFilteredCategoriesFromTabs(Tabs tabs, Tab exp, Tab inc) {
         if (tabs.getSelectedTab() == exp) return categoryService.getCategoriesByType(Category.CategoryType.EXPENSE);
-        if (tabs.getSelectedTab() == inc) return categoryService.getCategoriesByType(Category.CategoryType.INCOME);
-        return categoryService.getAllCategories();
+        else if (tabs.getSelectedTab() == inc) return categoryService.getCategoriesByType(Category.CategoryType.INCOME);
+        return new ArrayList<>();
+    }
+
+    private void updateTotalAmount(List<TransactionSplit> splits, BigDecimalField amountField, ComboBox<Category> categoryCombo) {
+        if (!splits.isEmpty()) {
+            BigDecimal total = splits.stream().map(TransactionSplit::getAmount).filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
+            amountField.setValue(total);
+            amountField.setReadOnly(true);
+            categoryCombo.setReadOnly(true);
+            // Hide the component if splits exist, but keep value for fallback if removed. Wait, it's just locked.
+        } else {
+            amountField.setReadOnly(false);
+            categoryCombo.setReadOnly(false);
+        }
     }
 
     private void saveFromTabs(Transaction transaction, Tabs tabs, Tab exp, Tab inc, Tab transferTab, DatePicker datePicker, BigDecimalField amountField, ComboBox<Account> accountCombo, ComboBox<Account> toAccountCombo, ComboBox<Transaction.PaymentMethod> paymentCombo, TextField numberField, ComboBox<String> payeeCombo, ComboBox<Category> categoryCombo, ComboBox<Asset> assetCombo, BigDecimalField unitsField, TextArea memoField, MultiSelectComboBox<Tag> tagsCombo) {

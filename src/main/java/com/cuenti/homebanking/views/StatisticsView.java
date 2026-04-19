@@ -353,15 +353,30 @@ public class StatisticsView extends VerticalLayout {
         Map<String, BigDecimal[]> categoryData = new TreeMap<>();
 
         for (Transaction t : filteredTransactions) {
-            String categoryName = t.getCategory() != null ? t.getCategory().getName() : getTranslation("statistics.uncategorized");
-            categoryData.putIfAbsent(categoryName, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+            if (t.getSplits() != null && !t.getSplits().isEmpty()) {
+                for (TransactionSplit split : t.getSplits()) {
+                    String categoryName = split.getCategory() != null ? split.getCategory().getName() : getTranslation("statistics.uncategorized");
+                    categoryData.putIfAbsent(categoryName, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
 
-            if (t.getType() == Transaction.TransactionType.INCOME && t.getToAccount() != null) {
-                BigDecimal converted = exchangeRateService.convert(t.getAmount(), t.getToAccount().getCurrency(), currentUser.getDefaultCurrency());
-                categoryData.get(categoryName)[0] = categoryData.get(categoryName)[0].add(converted);
-            } else if (t.getType() == Transaction.TransactionType.EXPENSE && t.getFromAccount() != null) {
-                BigDecimal converted = exchangeRateService.convert(t.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency());
-                categoryData.get(categoryName)[1] = categoryData.get(categoryName)[1].add(converted);
+                    if (t.getType() == Transaction.TransactionType.INCOME && t.getToAccount() != null) {
+                        BigDecimal converted = exchangeRateService.convert(split.getAmount(), t.getToAccount().getCurrency(), currentUser.getDefaultCurrency());
+                        categoryData.get(categoryName)[0] = categoryData.get(categoryName)[0].add(converted);
+                    } else if (t.getType() == Transaction.TransactionType.EXPENSE && t.getFromAccount() != null) {
+                        BigDecimal converted = exchangeRateService.convert(split.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency());
+                        categoryData.get(categoryName)[1] = categoryData.get(categoryName)[1].add(converted);
+                    }
+                }
+            } else {
+                String categoryName = t.getCategory() != null ? t.getCategory().getName() : getTranslation("statistics.uncategorized");
+                categoryData.putIfAbsent(categoryName, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+
+                if (t.getType() == Transaction.TransactionType.INCOME && t.getToAccount() != null) {
+                    BigDecimal converted = exchangeRateService.convert(t.getAmount(), t.getToAccount().getCurrency(), currentUser.getDefaultCurrency());
+                    categoryData.get(categoryName)[0] = categoryData.get(categoryName)[0].add(converted);
+                } else if (t.getType() == Transaction.TransactionType.EXPENSE && t.getFromAccount() != null) {
+                    BigDecimal converted = exchangeRateService.convert(t.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency());
+                    categoryData.get(categoryName)[1] = categoryData.get(categoryName)[1].add(converted);
+                }
             }
         }
 
@@ -511,9 +526,17 @@ public class StatisticsView extends VerticalLayout {
 
         for (Transaction t : filteredTransactions) {
             if (t.getType() == Transaction.TransactionType.EXPENSE && t.getFromAccount() != null) {
-                String category = t.getCategory() != null ? t.getCategory().getName() : getTranslation("statistics.uncategorized");
-                BigDecimal converted = exchangeRateService.convert(t.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency());
-                categoryExpenses.merge(category, converted, BigDecimal::add);
+                if (t.getSplits() != null && !t.getSplits().isEmpty()) {
+                    for (TransactionSplit split : t.getSplits()) {
+                        String category = split.getCategory() != null ? split.getCategory().getName() : getTranslation("statistics.uncategorized");
+                        BigDecimal converted = exchangeRateService.convert(split.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency());
+                        categoryExpenses.merge(category, converted, BigDecimal::add);
+                    }
+                } else {
+                    String category = t.getCategory() != null ? t.getCategory().getName() : getTranslation("statistics.uncategorized");
+                    BigDecimal converted = exchangeRateService.convert(t.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency());
+                    categoryExpenses.merge(category, converted, BigDecimal::add);
+                }
             }
         }
 

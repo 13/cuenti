@@ -1,0 +1,13 @@
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: var(--lumo-font-size-xs);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  background-color: var(--tag-bg, var(--lumo-primary-color));
+  color: var(--tag-fg, var(--lumo-base-color));
+}
+

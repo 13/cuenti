@@ -11,7 +11,7 @@ import com.vaadin.flow.theme.lumo.Lumo;
  * Configures icons, manifest, and PWA settings for all devices.
  */
 @PWA(name = "Cuenti Homebanking", shortName = "Cuenti", offlinePath = "offline.html")
-@Theme(variant = Lumo.DARK)
+@Theme(value = "cuenti", variant = Lumo.DARK)
 public class AppShell implements AppShellConfigurator {
 
     @Override

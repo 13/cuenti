@@ -145,7 +145,7 @@ public class MainLayout extends AppLayout {
                 createSectionTitle(getTranslation("nav.general")),
                 createTab(VaadinIcon.DASHBOARD, getTranslation("nav.dashboard"), DashboardView.class),
                 createTab(VaadinIcon.LIST, getTranslation("nav.transactions"), TransactionHistoryView.class),
-                createTab(VaadinIcon.CALENDAR_CLOCK, "Scheduled", ScheduledTransactionsView.class),
+                createTab(VaadinIcon.CALENDAR_CLOCK, getTranslation("nav.scheduled"), ScheduledTransactionsView.class),
                 createTab(VaadinIcon.CHART, getTranslation("nav.statistics"), StatisticsView.class),
                 createTab(VaadinIcon.TRENDING_UP, getTranslation("nav.forecasts"), ForecastsView.class),
                 createTab(VaadinIcon.CAR, getTranslation("nav.vehicles"), VehiclesView.class),

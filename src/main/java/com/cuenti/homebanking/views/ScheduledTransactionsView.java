@@ -3,6 +3,7 @@ package com.cuenti.homebanking.views;
 import com.cuenti.homebanking.model.*;
 import com.cuenti.homebanking.security.SecurityUtils;
 import com.cuenti.homebanking.service.*;
+import com.cuenti.homebanking.views.components.TagColorUtil;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -22,9 +23,9 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
-import com.vaadin.flow.component.radiobutton.RadioGroupVariant;
 import com.vaadin.flow.component.select.Select;
+import com.vaadin.flow.component.tabs.Tab;
+import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.textfield.BigDecimalField;
 import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextArea;
@@ -62,7 +63,7 @@ public class ScheduledTransactionsView extends VerticalLayout {
 
     private final Grid<ScheduledTransaction> templateGrid = new Grid<>(ScheduledTransaction.class, false);
     private final Grid<ScheduledTransaction> pendingGrid = new Grid<>(ScheduledTransaction.class, false);
-    private final Select<String> horizonSelect = new Select<>();
+    private final Select<Integer> horizonSelect = new Select<>();
 
     public ScheduledTransactionsView(ScheduledTransactionService scheduledService, AccountService accountService,
                                      CategoryService categoryService, PayeeService payeeService, TagService tagService,
@@ -92,9 +93,10 @@ public class ScheduledTransactionsView extends VerticalLayout {
         H2 title = new H2(getTranslation("scheduled.title"));
         title.getStyle().set("margin-top", "0").set("color", "var(--lumo-primary-text-color)");
 
-        horizonSelect.setLabel("Showing transactions due within:");
-        horizonSelect.setItems("7 Days", "30 Days", "90 Days", "Unlimited (All)");
-        horizonSelect.setValue("7 Days");
+        horizonSelect.setLabel(getTranslation("scheduled.horizon.label"));
+        horizonSelect.setItems(7, 30, 90, -1);
+        horizonSelect.setItemLabelGenerator(this::getHorizonLabel);
+        horizonSelect.setValue(7);
         horizonSelect.addValueChangeListener(e -> refreshGrids());
         horizonSelect.setWidth("200px");
 
@@ -160,7 +162,10 @@ public class ScheduledTransactionsView extends VerticalLayout {
 
         templateGrid.addColumn(st -> st.getRecurrencePattern().name() + (st.getRecurrenceValue() != null ? " (" + st.getRecurrenceValue() + ")" : ""))
                 .setHeader(getTranslation("scheduled.recurrence")).setAutoWidth(true).setSortable(true);
-        
+
+        templateGrid.addComponentColumn(this::buildTagBadges)
+                .setHeader(getTranslation("dialog.tags")).setAutoWidth(true);
+
         templateGrid.addColumn(st -> st.getNextOccurrence().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
                 .setHeader(getTranslation("scheduled.next_date")).setAutoWidth(true).setSortable(true);
         
@@ -224,6 +229,9 @@ public class ScheduledTransactionsView extends VerticalLayout {
             return span;
         }).setHeader(getTranslation("dialog.amount")).setAutoWidth(true);
 
+        pendingGrid.addComponentColumn(this::buildTagBadges)
+                .setHeader(getTranslation("dialog.tags")).setAutoWidth(true);
+
         pendingGrid.addComponentColumn(st -> {
             Button postBtn = new Button(getTranslation("scheduled.post"), VaadinIcon.CHECK.create(), e -> {
                 scheduledService.post(st.getId());
@@ -255,10 +263,13 @@ public class ScheduledTransactionsView extends VerticalLayout {
         dialog.setWidth("600px");
 
         FormLayout form = new FormLayout();
-        
-        RadioButtonGroup<Transaction.TransactionType> type = new RadioButtonGroup<>(getTranslation("dialog.type"));
-        type.setItems(Transaction.TransactionType.values());
-        type.addThemeVariants(RadioGroupVariant.LUMO_HELPER_ABOVE_FIELD);
+
+        Tabs typeTabs = new Tabs();
+        Tab expenseTab = new Tab(getTranslation("transaction.type.expense"));
+        Tab incomeTab = new Tab(getTranslation("transaction.type.income"));
+        Tab transferTab = new Tab(getTranslation("transaction.type.transfer"));
+        typeTabs.add(expenseTab, incomeTab, transferTab);
+        typeTabs.setWidthFull();
         
         DatePicker nextDate = new DatePicker(getTranslation("scheduled.next_date"));
         BigDecimalField amount = new BigDecimalField(getTranslation("dialog.amount"));
@@ -285,7 +296,7 @@ public class ScheduledTransactionsView extends VerticalLayout {
         paymentMethod.setItems(Transaction.PaymentMethod.values());
         paymentMethod.setItemLabelGenerator(pm -> pm == Transaction.PaymentMethod.NONE ? getTranslation("dialog.none") : pm.getLabel());
 
-        IntegerField recValue = new IntegerField("Every X");
+        IntegerField recValue = new IntegerField(getTranslation("scheduled.every_x"));
         recValue.setMin(1);
         recValue.setStepButtonsVisible(true);
 
@@ -293,9 +304,28 @@ public class ScheduledTransactionsView extends VerticalLayout {
         category.setItemLabelGenerator(Category::getFullName);
         category.setAllowCustomValue(true);
 
+        if (st.getType() == Transaction.TransactionType.INCOME) {
+            typeTabs.setSelectedTab(incomeTab);
+        } else if (st.getType() == Transaction.TransactionType.TRANSFER) {
+            typeTabs.setSelectedTab(transferTab);
+        } else {
+            typeTabs.setSelectedTab(expenseTab);
+        }
+
+        java.util.function.Supplier<Transaction.TransactionType> selectedType = () -> {
+            Tab selected = typeTabs.getSelectedTab();
+            if (selected == incomeTab) {
+                return Transaction.TransactionType.INCOME;
+            }
+            if (selected == transferTab) {
+                return Transaction.TransactionType.TRANSFER;
+            }
+            return Transaction.TransactionType.EXPENSE;
+        };
+
         // Helper to update category items based on transaction type
         Runnable updateCategoryItems = () -> {
-            Transaction.TransactionType transactionType = type.getValue();
+            Transaction.TransactionType transactionType = selectedType.get();
             if (transactionType == Transaction.TransactionType.INCOME) {
                 category.setItems(categoryService.getCategoriesByType(Category.CategoryType.INCOME));
             } else if (transactionType == Transaction.TransactionType.EXPENSE) {
@@ -309,7 +339,7 @@ public class ScheduledTransactionsView extends VerticalLayout {
         category.addCustomValueSetListener(e -> {
             String newCatName = e.getDetail();
             // Determine category type based on transaction type
-            Category.CategoryType categoryType = type.getValue() == Transaction.TransactionType.INCOME
+            Category.CategoryType categoryType = selectedType.get() == Transaction.TransactionType.INCOME
                     ? Category.CategoryType.INCOME
                     : Category.CategoryType.EXPENSE;
 
@@ -385,13 +415,12 @@ public class ScheduledTransactionsView extends VerticalLayout {
             tags.setValue(current);
         });
 
-        type.addValueChangeListener(e -> {
-            toAccount.setVisible(e.getValue() == Transaction.TransactionType.TRANSFER);
+        typeTabs.addSelectedChangeListener(e -> {
+            toAccount.setVisible(selectedType.get() == Transaction.TransactionType.TRANSFER);
             updateCategoryItems.run();
         });
 
         Binder<ScheduledTransaction> binder = new Binder<>(ScheduledTransaction.class);
-        binder.forField(type).asRequired().bind(ScheduledTransaction::getType, ScheduledTransaction::setType);
         binder.forField(nextDate).asRequired().bind(t -> t.getNextOccurrence().toLocalDate(), (t, v) -> t.setNextOccurrence(v.atStartOfDay()));
         binder.forField(amount).asRequired().bind(ScheduledTransaction::getAmount, ScheduledTransaction::setAmount);
         binder.bind(payee, ScheduledTransaction::getPayee, ScheduledTransaction::setPayee);
@@ -432,14 +461,15 @@ public class ScheduledTransactionsView extends VerticalLayout {
         // Initialize category items based on current transaction type
         updateCategoryItems.run();
 
-        form.add(type, nextDate, amount, fromAccount, toAccount, payee, category, paymentMethod, pattern, recValue, memo, tags);
+        form.add(typeTabs, nextDate, amount, fromAccount, toAccount, payee, category, paymentMethod, pattern, recValue, memo, tags);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("400px", 2));
-        form.setColspan(type, 2);
+        form.setColspan(typeTabs, 2);
         form.setColspan(memo, 2);
         form.setColspan(tags, 2);
 
         Button save = new Button(getTranslation("dialog.save"), e -> {
             if (binder.validate().isOk()) {
+                st.setType(selectedType.get());
                 st.setUser(currentUser);
                 scheduledService.save(st);
                 refreshGrids();
@@ -458,12 +488,8 @@ public class ScheduledTransactionsView extends VerticalLayout {
         List<ScheduledTransaction> all = scheduledService.getByUser(currentUser);
         templateGrid.setItems(all);
         
-        int days = switch (horizonSelect.getValue()) {
-            case "7 Days" -> 7;
-            case "30 Days" -> 30;
-            case "90 Days" -> 90;
-            default -> 36500; // ~100 years for unlimited
-        };
+        Integer selectedHorizon = horizonSelect.getValue();
+        int days = selectedHorizon == null || selectedHorizon < 0 ? 36500 : selectedHorizon;
 
         List<ScheduledTransaction> pending = all.stream()
                 .filter(ScheduledTransaction::isEnabled)
@@ -482,6 +508,34 @@ public class ScheduledTransactionsView extends VerticalLayout {
                 .set("box-shadow", "var(--lumo-box-shadow-m)")
                 .set("margin-bottom", "var(--lumo-space-m)");
         return card;
+    }
+
+    private String getHorizonLabel(Integer value) {
+        if (value == null) {
+            return "";
+        }
+        return switch (value) {
+            case 7 -> getTranslation("scheduled.horizon.7");
+            case 30 -> getTranslation("scheduled.horizon.30");
+            case 90 -> getTranslation("scheduled.horizon.90");
+            default -> getTranslation("scheduled.horizon.unlimited");
+        };
+    }
+
+    private HorizontalLayout buildTagBadges(ScheduledTransaction st) {
+        HorizontalLayout layout = new HorizontalLayout();
+        layout.setSpacing(true);
+        if (st.getTags() == null || st.getTags().isBlank()) {
+            return layout;
+        }
+
+        Arrays.stream(st.getTags().split(","))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .distinct()
+                .forEach(tag -> layout.add(TagColorUtil.createTagBadge(tag)));
+
+        return layout;
     }
 
     private String formatCurrency(BigDecimal amount) {

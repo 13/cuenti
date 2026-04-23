@@ -3,6 +3,7 @@ package com.cuenti.homebanking.views;
 import com.cuenti.homebanking.model.*;
 import com.cuenti.homebanking.security.SecurityUtils;
 import com.cuenti.homebanking.service.*;
+import com.cuenti.homebanking.views.components.TagColorUtil;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -281,11 +282,7 @@ public class TransactionHistoryView extends VerticalLayout {
             hl.setSpacing(true);
             if (t.getTags() != null && !t.getTags().isEmpty()) {
                 for (String tagName : t.getTags().split(",")) {
-                    Span badge = new Span(tagName.trim());
-                    badge.getElement().getThemeList().add("badge pill");
-                    String color = getTagColor(tagName);
-                    badge.getStyle().set("background-color", color).set("color", "white");
-                    hl.add(badge);
+                    hl.add(TagColorUtil.createTagBadge(tagName));
                 }
             }
             return hl;
@@ -524,12 +521,6 @@ public class TransactionHistoryView extends VerticalLayout {
             grid.setItems(allAccountTransactions);
         }
         updateFilters();
-    }
-
-    private String getTagColor(String tag) {
-        int hash = tag.hashCode();
-        String[] colors = {"#3498db", "#e74c3c", "#2ecc71", "#f1c40f", "#9b59b6", "#1abc9c", "#e67e22", "#34495e"};
-        return colors[Math.abs(hash) % colors.length];
     }
 
     private Icon getPaymentIcon(Transaction t) {

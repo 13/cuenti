@@ -7,6 +7,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -37,9 +38,13 @@ import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Route(value = "scheduled", layout = MainLayout.class)
 @PageTitle("Scheduled Transactions | Cuenti")
@@ -50,6 +55,7 @@ public class ScheduledTransactionsView extends VerticalLayout {
     private final AccountService accountService;
     private final CategoryService categoryService;
     private final PayeeService payeeService;
+    private final TagService tagService;
     private final UserService userService;
     private final SecurityUtils securityUtils;
     private final User currentUser;
@@ -59,12 +65,13 @@ public class ScheduledTransactionsView extends VerticalLayout {
     private final Select<String> horizonSelect = new Select<>();
 
     public ScheduledTransactionsView(ScheduledTransactionService scheduledService, AccountService accountService,
-                                     CategoryService categoryService, PayeeService payeeService,
+                                     CategoryService categoryService, PayeeService payeeService, TagService tagService,
                                      UserService userService, SecurityUtils securityUtils) {
         this.scheduledService = scheduledService;
         this.accountService = accountService;
         this.categoryService = categoryService;
         this.payeeService = payeeService;
+        this.tagService = tagService;
         this.userService = userService;
         this.securityUtils = securityUtils;
 
@@ -273,7 +280,11 @@ public class ScheduledTransactionsView extends VerticalLayout {
 
         ComboBox<ScheduledTransaction.RecurrencePattern> pattern = new ComboBox<>(getTranslation("scheduled.recurrence"));
         pattern.setItems(ScheduledTransaction.RecurrencePattern.values());
-        
+
+        ComboBox<Transaction.PaymentMethod> paymentMethod = new ComboBox<>(getTranslation("dialog.payment_method"));
+        paymentMethod.setItems(Transaction.PaymentMethod.values());
+        paymentMethod.setItemLabelGenerator(pm -> pm == Transaction.PaymentMethod.NONE ? getTranslation("dialog.none") : pm.getLabel());
+
         IntegerField recValue = new IntegerField("Every X");
         recValue.setMin(1);
         recValue.setStepButtonsVisible(true);
@@ -290,9 +301,8 @@ public class ScheduledTransactionsView extends VerticalLayout {
             } else if (transactionType == Transaction.TransactionType.EXPENSE) {
                 category.setItems(categoryService.getCategoriesByType(Category.CategoryType.EXPENSE));
             } else {
-                // For transfers, clear categories as they don't apply
-                category.setItems(List.of());
-                category.clear();
+                // Transfers can still be categorized for reporting consistency.
+                category.setItems(categoryService.getAllCategories());
             }
         };
 
@@ -362,6 +372,19 @@ public class ScheduledTransactionsView extends VerticalLayout {
 
         TextArea memo = new TextArea(getTranslation("dialog.memo"));
 
+        MultiSelectComboBox<Tag> tags = new MultiSelectComboBox<>(getTranslation("dialog.tags"));
+        tags.setItems(tagService.getAllTags());
+        tags.setItemLabelGenerator(Tag::getName);
+        tags.setAllowCustomValue(true);
+        tags.addCustomValueSetListener(e -> {
+            Tag newTag = Tag.builder().name(e.getDetail()).build();
+            tagService.saveTag(newTag);
+            tags.setItems(tagService.getAllTags());
+            Set<Tag> current = new HashSet<>(tags.getValue());
+            current.add(newTag);
+            tags.setValue(current);
+        });
+
         type.addValueChangeListener(e -> {
             toAccount.setVisible(e.getValue() == Transaction.TransactionType.TRANSFER);
             updateCategoryItems.run();
@@ -377,7 +400,24 @@ public class ScheduledTransactionsView extends VerticalLayout {
         binder.forField(pattern).asRequired().bind(ScheduledTransaction::getRecurrencePattern, ScheduledTransaction::setRecurrencePattern);
         binder.bind(recValue, ScheduledTransaction::getRecurrenceValue, ScheduledTransaction::setRecurrenceValue);
         binder.bind(category, ScheduledTransaction::getCategory, ScheduledTransaction::setCategory);
+        binder.bind(paymentMethod,
+                stx -> stx.getPaymentMethod() != null ? stx.getPaymentMethod() : Transaction.PaymentMethod.NONE,
+                ScheduledTransaction::setPaymentMethod);
         binder.bind(memo, ScheduledTransaction::getMemo, ScheduledTransaction::setMemo);
+        binder.bind(tags,
+                stx -> {
+                    if (stx.getTags() == null || stx.getTags().isBlank()) {
+                        return Set.of();
+                    }
+                    Set<String> names = Arrays.stream(stx.getTags().split(","))
+                            .map(String::trim)
+                            .filter(value -> !value.isBlank())
+                            .collect(Collectors.toSet());
+                    return tagService.getAllTags().stream()
+                            .filter(tag -> names.contains(tag.getName()))
+                            .collect(Collectors.toSet());
+                },
+                (stx, selectedTags) -> stx.setTags(selectedTags.stream().map(Tag::getName).collect(Collectors.joining(","))));
 
         if (st.getId() != null) {
             binder.setBean(st);
@@ -385,16 +425,18 @@ public class ScheduledTransactionsView extends VerticalLayout {
         } else {
             st.setType(Transaction.TransactionType.EXPENSE);
             st.setNextOccurrence(LocalDateTime.now());
+            st.setPaymentMethod(Transaction.PaymentMethod.NONE);
             binder.setBean(st);
         }
 
         // Initialize category items based on current transaction type
         updateCategoryItems.run();
 
-        form.add(type, nextDate, amount, fromAccount, toAccount, payee, category, pattern, recValue, memo);
+        form.add(type, nextDate, amount, fromAccount, toAccount, payee, category, paymentMethod, pattern, recValue, memo, tags);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("400px", 2));
         form.setColspan(type, 2);
         form.setColspan(memo, 2);
+        form.setColspan(tags, 2);
 
         Button save = new Button(getTranslation("dialog.save"), e -> {
             if (binder.validate().isOk()) {

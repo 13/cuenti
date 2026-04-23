@@ -99,6 +99,7 @@ public class ScheduledTransactionApiController {
                 .memo(dto.getMemo())
                 .tags(dto.getTags())
                 .number(dto.getNumber())
+                .paymentMethod(dto.getPaymentMethod() != null ? dto.getPaymentMethod() : Transaction.PaymentMethod.NONE)
                 .units(dto.getUnits())
                 .recurrencePattern(dto.getRecurrencePattern())
                 .recurrenceValue(dto.getRecurrenceValue())

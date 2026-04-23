@@ -25,6 +25,7 @@ public class ScheduledTransactionDTO {
     private String memo;
     private String tags;
     private String number;
+    private Transaction.PaymentMethod paymentMethod;
     private Long assetId;
     private String assetName;
     private BigDecimal units;

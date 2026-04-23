@@ -44,6 +44,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
+import java.util.stream.Stream;
 import java.util.stream.Collectors;
 
 @Route(value = "transactions", layout = MainLayout.class)
@@ -308,7 +309,7 @@ public class TransactionHistoryView extends VerticalLayout {
         }).setHeader(getTranslation("category.type.expense"))
                 .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END)
                 .setSortable(true)
-                .setAutoWidth(true)
+                .setWidth("180px")
                 .setFlexGrow(0);
 
         // 7. Income Column
@@ -326,7 +327,7 @@ public class TransactionHistoryView extends VerticalLayout {
         }).setHeader(getTranslation("category.type.income"))
                 .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END)
                 .setSortable(true)
-                .setAutoWidth(true)
+                .setWidth("180px")
                 .setFlexGrow(0);
 
         // 8. Dynamic Balance Column
@@ -942,7 +943,12 @@ public class TransactionHistoryView extends VerticalLayout {
     private List<Category> getFilteredCategoriesFromTabs(Tabs tabs, Tab exp, Tab inc) {
         if (tabs.getSelectedTab() == exp) return categoryService.getCategoriesByType(Category.CategoryType.EXPENSE);
         else if (tabs.getSelectedTab() == inc) return categoryService.getCategoriesByType(Category.CategoryType.INCOME);
-        return new ArrayList<>();
+        return Stream.concat(
+                        categoryService.getCategoriesByType(Category.CategoryType.EXPENSE).stream(),
+                        categoryService.getCategoriesByType(Category.CategoryType.INCOME).stream())
+                .distinct()
+                .sorted(Comparator.comparing(Category::getFullName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     private void updateTotalAmount(List<TransactionSplit> splits, BigDecimalField amountField, ComboBox<Category> categoryCombo) {

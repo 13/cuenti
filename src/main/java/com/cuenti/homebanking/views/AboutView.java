@@ -11,24 +11,25 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.Version;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.boot.SpringBootVersion;
+import org.springframework.boot.info.BuildProperties;
+import org.springframework.beans.factory.ObjectProvider;
 
 import javax.sql.DataSource;
-import java.io.IOException;
-import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Properties;
 
 @Route(value = "about", layout = MainLayout.class)
 @PageTitle("About")
 @PermitAll
 public class AboutView extends VerticalLayout {
 
-    public AboutView(DataSource dataSource) {
+    private final BuildProperties buildProperties;
+
+    public AboutView(DataSource dataSource, ObjectProvider<BuildProperties> buildPropertiesProvider) {
+        this.buildProperties = buildPropertiesProvider.getIfAvailable();
         setSpacing(true);
         setPadding(true);
         setMaxWidth("800px");
@@ -133,45 +134,22 @@ public class AboutView extends VerticalLayout {
     }
 
     private String getVersion() {
-        try (InputStream input = getClass().getClassLoader().getResourceAsStream("application.properties")) {
-            if (input != null) {
-                Properties prop = new Properties();
-                prop.load(input);
-                String version = prop.getProperty("application.version");
-                if (version != null && !version.isEmpty()) {
-                    return version;
-                }
-            }
-        } catch (IOException e) {
-            // Ignore
+        if (buildProperties == null) {
+            return "unknown";
         }
-        return "0.0.1"; // Fallback version
+        String version = buildProperties.getVersion();
+        return (version != null && !version.isBlank()) ? version : "unknown";
     }
 
     private String getBuildDate() {
-        try (InputStream input = getClass().getClassLoader().getResourceAsStream("application.properties")) {
-            if (input != null) {
-                Properties prop = new Properties();
-                prop.load(input);
-                String timestamp = prop.getProperty("build.timestamp");
-                if (timestamp != null && !timestamp.isEmpty()) {
-                    try {
-                        Instant instant = Instant.parse(timestamp);
-                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM d, yyyy HH:mm:ss")
-                            .withZone(ZoneId.systemDefault());
-                        return formatter.format(instant);
-                    } catch (Exception e) {
-                        return timestamp;
-                    }
-                }
-            }
-        } catch (IOException e) {
-            // Ignore
+        if (buildProperties == null) {
+            return "unknown";
         }
-
-        // Return current date as fallback
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM d, yyyy")
-            .withZone(ZoneId.systemDefault());
-        return formatter.format(Instant.now());
+        if (buildProperties.getTime() != null) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM d, yyyy HH:mm:ss")
+                    .withZone(ZoneId.systemDefault());
+            return formatter.format(buildProperties.getTime());
+        }
+        return "unknown";
     }
 }

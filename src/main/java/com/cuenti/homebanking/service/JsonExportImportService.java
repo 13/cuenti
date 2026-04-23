@@ -249,6 +249,7 @@ public class JsonExportImportService {
                         .memo(dto.memo)
                         .tags(dto.tags)
                         .payee(dto.payee)
+                        .paymentMethod(dto.paymentMethod != null ? Transaction.PaymentMethod.valueOf(dto.paymentMethod) : Transaction.PaymentMethod.NONE)
                         .recurrencePattern(ScheduledTransaction.RecurrencePattern.valueOf(dto.recurrencePattern))
                         .recurrenceValue(dto.recurrenceValue)
                         .enabled(dto.enabled)
@@ -372,6 +373,7 @@ public class JsonExportImportService {
         dto.payee = st.getPayee();
         dto.memo = st.getMemo();
         dto.tags = st.getTags();
+        if (st.getPaymentMethod() != null) dto.paymentMethod = st.getPaymentMethod().name();
         dto.recurrencePattern = st.getRecurrencePattern().name();
         dto.recurrenceValue = st.getRecurrenceValue();
         dto.enabled = st.isEnabled();
@@ -460,6 +462,7 @@ public class JsonExportImportService {
         public String payee;
         public String memo;
         public String tags;
+        public String paymentMethod;
         public String fromAccountId;
         public String toAccountId;
         public String categoryId;

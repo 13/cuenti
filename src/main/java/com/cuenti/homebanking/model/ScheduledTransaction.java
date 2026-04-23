@@ -51,6 +51,10 @@ public class ScheduledTransaction {
     private String tags;
     private String number;
 
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private Transaction.PaymentMethod paymentMethod = Transaction.PaymentMethod.NONE;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "asset_id")
     private Asset asset;

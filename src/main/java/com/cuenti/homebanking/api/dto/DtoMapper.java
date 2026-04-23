@@ -119,6 +119,7 @@ public final class DtoMapper {
                 .memo(s.getMemo())
                 .tags(s.getTags())
                 .number(s.getNumber())
+                .paymentMethod(s.getPaymentMethod())
                 .assetId(s.getAsset() != null ? s.getAsset().getId() : null)
                 .assetName(s.getAsset() != null ? s.getAsset().getName() : null)
                 .units(s.getUnits())

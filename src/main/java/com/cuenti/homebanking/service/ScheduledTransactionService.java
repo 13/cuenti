@@ -90,6 +90,7 @@ public class ScheduledTransactionService {
                 .memo(scheduled.getMemo())
                 .tags(scheduled.getTags())
                 .number(scheduled.getNumber())
+                .paymentMethod(scheduled.getPaymentMethod() != null ? scheduled.getPaymentMethod() : Transaction.PaymentMethod.NONE)
                 .asset(scheduled.getAsset())
                 .units(scheduled.getUnits())
                 .transactionDate(scheduled.getNextOccurrence())

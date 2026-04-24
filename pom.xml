@@ -9,13 +9,13 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.10</version>
+        <version>3.5.14</version>
         <relativePath/>
     </parent>
 
     <groupId>com.cuenti</groupId>
     <artifactId>homebanking</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2</version>
 
     <name>Cuenti Homebanking</name>
     <description>Homebanking Application with Spring Boot and Vaadin</description>
@@ -25,8 +25,8 @@
     <!-- ===================== -->
     <properties>
         <java.version>25</java.version>
-        <vaadin.version>24.9.10</vaadin.version>
-        <lombok.version>1.18.42</lombok.version>
+        <vaadin.version>24.10.1</vaadin.version>
+        <lombok.version>1.18.46</lombok.version>
     </properties>
 
     <!-- ===================== -->

@@ -13,8 +13,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.*;
@@ -40,7 +42,12 @@ public class TradeRepublicImportService {
     public void importCsv(InputStream inputStream, Account cashAccount, Account assetAccount) throws Exception {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             String header = reader.readLine();
-            if (header == null) return;
+            if (header == null || header.trim().isEmpty()) {
+                return;
+            }
+
+            boolean isTransactionExport = header.contains("\"datetime\"") || header.contains("datetime");
+            Map<String, Integer> headerMap = isTransactionExport ? buildHeaderMap(parseCsvLine(header)) : Collections.emptyMap();
 
             String line;
             int rowNumber = 0;
@@ -49,11 +56,17 @@ public class TradeRepublicImportService {
                     continue;
                 }
 
-                String[] columns = line.split(";");
-                if (columns.length < 5) continue;
-
                 try {
-                    parseAndProcessRow(columns, cashAccount, assetAccount, rowNumber++);
+                    if (isTransactionExport) {
+                        List<String> columns = parseCsvLine(line);
+                        parseAndProcessTransactionExportRow(columns, headerMap, cashAccount, assetAccount, rowNumber++);
+                    } else {
+                        String[] columns = line.split(";");
+                        if (columns.length < 5) {
+                            continue;
+                        }
+                        parseAndProcessLegacyRow(columns, cashAccount, assetAccount, rowNumber++);
+                    }
                 } catch (Exception e) {
                     log.error("Error parsing row: " + line, e);
                 }
@@ -61,7 +74,7 @@ public class TradeRepublicImportService {
         }
     }
 
-    private void parseAndProcessRow(String[] columns, Account cashAccount, Account assetAccount, int rowNumber) {
+    private void parseAndProcessLegacyRow(String[] columns, Account cashAccount, Account assetAccount, int rowNumber) {
         String dateStr = columns[0].trim();
         String typeStr = columns[1].trim();
         String originalDescription = columns[2].trim();
@@ -143,6 +156,72 @@ public class TradeRepublicImportService {
         transactionService.saveTransaction(transaction);
     }
 
+    private void parseAndProcessTransactionExportRow(List<String> columns,
+                                                     Map<String, Integer> headerMap,
+                                                     Account cashAccount,
+                                                     Account assetAccount,
+                                                     int rowNumber) {
+        String txId = getColumn(columns, headerMap, "transaction_id");
+        if (!txId.isBlank() && transactionRepository.findByNumber(txId).isPresent()) {
+            log.debug("Skipping duplicate transaction by id: {}", txId);
+            return;
+        }
+
+        String type = getColumn(columns, headerMap, "type");
+        String description = getColumn(columns, headerMap, "description");
+        String name = getColumn(columns, headerMap, "name");
+        String symbol = getColumn(columns, headerMap, "symbol");
+        String shares = getColumn(columns, headerMap, "shares");
+        String counterparty = getColumn(columns, headerMap, "counterparty_name");
+
+        BigDecimal amount = parsePlainAmount(getColumn(columns, headerMap, "amount"));
+        BigDecimal fee = parsePlainAmount(getColumn(columns, headerMap, "fee"));
+        BigDecimal tax = parsePlainAmount(getColumn(columns, headerMap, "tax"));
+        BigDecimal netAmount = amount.add(fee).add(tax);
+        if (netAmount.compareTo(BigDecimal.ZERO) == 0) {
+            return;
+        }
+
+        Transaction transaction = new Transaction();
+        transaction.setNumber(txId.isBlank() ? null : txId);
+        transaction.setMemo(description);
+        transaction.setStatus(Transaction.TransactionStatus.COMPLETED);
+        transaction.setSortOrder(rowNumber);
+        transaction.setPaymentMethod(mapPaymentMethod(type));
+        transaction.setTransactionDate(parseTransactionDateTime(
+                getColumn(columns, headerMap, "datetime"),
+                getColumn(columns, headerMap, "date")
+        ));
+
+        boolean isAssetTrade = "BUY".equalsIgnoreCase(type)
+                || description.startsWith("Buy trade")
+                || description.startsWith("Savings plan execution");
+
+        if (isAssetTrade) {
+            transaction.setType(Transaction.TransactionType.TRANSFER);
+            transaction.setAmount(netAmount.abs());
+            transaction.setFromAccount(cashAccount);
+            transaction.setToAccount(assetAccount);
+            processAssetInfo(transaction, description, symbol, shares, name);
+            transaction.setPayee(resolvePayee(counterparty, name, description, transaction));
+        } else {
+            boolean isIncome = netAmount.compareTo(BigDecimal.ZERO) > 0;
+            transaction.setType(isIncome ? Transaction.TransactionType.INCOME : Transaction.TransactionType.EXPENSE);
+            transaction.setAmount(netAmount.abs());
+            transaction.setPayee(resolvePayee(counterparty, name, description, transaction));
+            if (isIncome) {
+                transaction.setToAccount(cashAccount);
+                transaction.setFromAccount(null);
+            } else {
+                transaction.setFromAccount(cashAccount);
+                transaction.setToAccount(null);
+            }
+        }
+
+        ensurePayeeExists(transaction.getPayee());
+        transactionService.saveTransaction(transaction);
+    }
+
     private void ensurePayeeExists(String name) {
         if (name == null || name.isEmpty()) return;
         // Note: This method should be updated to accept a User parameter
@@ -176,8 +255,149 @@ public class TradeRepublicImportService {
         }
     }
 
+    private void processAssetInfo(Transaction t, String description, String symbol, String shares, String name) {
+        String trimmedSymbol = symbol == null ? "" : symbol.trim();
+        if (!trimmedSymbol.isEmpty()) {
+            assetService.getAllAssets().stream()
+                    .filter(a -> a.getSymbol().equalsIgnoreCase(trimmedSymbol)
+                            || (trimmedSymbol.equals("IE00BK5BQT80") && a.getSymbol().equals("VWCE.DE")))
+                    .findFirst()
+                    .ifPresent(t::setAsset);
+        }
+
+        if (t.getAsset() == null) {
+            processAssetInfo(t, description);
+        }
+
+        if (t.getAsset() == null && name != null && !name.isBlank()) {
+            t.setPayee(name.trim());
+        }
+
+        String sharesValue = shares == null ? "" : shares.trim();
+        if (!sharesValue.isEmpty()) {
+            try {
+                t.setUnits(new BigDecimal(sharesValue));
+                return;
+            } catch (Exception ignored) {
+                // Fallback to description parsing below
+            }
+        }
+
+        if (t.getUnits() == null) {
+            processAssetInfo(t, description);
+        }
+    }
+
     private BigDecimal parseAmount(String amountStr) {
         String clean = amountStr.replace("€", "").replace(".", "").replace(",", ".").trim();
         return new BigDecimal(clean);
+    }
+
+    private BigDecimal parsePlainAmount(String value) {
+        if (value == null || value.isBlank()) {
+            return BigDecimal.ZERO;
+        }
+        return new BigDecimal(value.trim());
+    }
+
+    private Map<String, Integer> buildHeaderMap(List<String> headerColumns) {
+        Map<String, Integer> map = new HashMap<>();
+        for (int i = 0; i < headerColumns.size(); i++) {
+            map.put(headerColumns.get(i).trim().toLowerCase(Locale.ROOT), i);
+        }
+        return map;
+    }
+
+    private String getColumn(List<String> columns, Map<String, Integer> headerMap, String columnName) {
+        Integer index = headerMap.get(columnName.toLowerCase(Locale.ROOT));
+        if (index == null || index < 0 || index >= columns.size()) {
+            return "";
+        }
+        return columns.get(index).trim();
+    }
+
+    private List<String> parseCsvLine(String line) {
+        List<String> values = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char ch = line.charAt(i);
+            if (ch == '"') {
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    current.append('"');
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (ch == ',' && !inQuotes) {
+                values.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(ch);
+            }
+        }
+        values.add(current.toString());
+        return values;
+    }
+
+    private LocalDateTime parseTransactionDateTime(String dateTimeStr, String dateStr) {
+        if (dateTimeStr != null && !dateTimeStr.isBlank()) {
+            try {
+                return Instant.parse(dateTimeStr.trim()).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+            } catch (Exception ignored) {
+                try {
+                    return OffsetDateTime.parse(dateTimeStr.trim()).toLocalDateTime();
+                } catch (Exception ignoredAgain) {
+                    // Fallback to date-only parsing
+                }
+            }
+        }
+
+        if (dateStr != null && !dateStr.isBlank()) {
+            try {
+                return LocalDate.parse(dateStr.trim()).atStartOfDay();
+            } catch (Exception ignored) {
+                // Fallback below
+            }
+        }
+
+        return LocalDateTime.now();
+    }
+
+    private Transaction.PaymentMethod mapPaymentMethod(String tradeRepublicType) {
+        if (tradeRepublicType == null) {
+            return Transaction.PaymentMethod.NONE;
+        }
+
+        return switch (tradeRepublicType.trim().toUpperCase(Locale.ROOT)) {
+            case "CARD_TRANSACTION" -> Transaction.PaymentMethod.CARD_TRANSACTION;
+            case "TRANSFER_INSTANT_INBOUND", "TRANSFER_INSTANT_OUTBOUND" -> Transaction.PaymentMethod.TRANSFER;
+            case "BUY" -> Transaction.PaymentMethod.TRADE;
+            case "INTEREST_PAYMENT" -> Transaction.PaymentMethod.INTEREST;
+            case "BENEFITS_SAVEBACK" -> Transaction.PaymentMethod.REWARD;
+            case "TAX_OPTIMIZATION" -> Transaction.PaymentMethod.FI_FEE;
+            default -> Transaction.PaymentMethod.fromLabel(tradeRepublicType);
+        };
+    }
+
+    private String resolvePayee(String counterparty, String name, String description, Transaction transaction) {
+        if (transaction.getAsset() != null && transaction.getAsset().getName() != null) {
+            return cleanPayeeName(transaction.getAsset().getName());
+        }
+        if (name != null && !name.isBlank()) {
+            return cleanPayeeName(name);
+        }
+        if (counterparty != null && !counterparty.isBlank()) {
+            return cleanPayeeName(counterparty);
+        }
+        return cleanPayeeName(description);
+    }
+
+    private String cleanPayeeName(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("null", "").trim();
     }
 }

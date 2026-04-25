@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository for Transaction entity.
@@ -49,6 +50,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByFromAccountOrderByTransactionDateDesc(Account fromAccount);
     
     List<Transaction> findByToAccountOrderByTransactionDateDesc(Account toAccount);
+
+    Optional<Transaction> findByNumber(String number);
 
     /**
      * Count transactions that reference a specific asset.

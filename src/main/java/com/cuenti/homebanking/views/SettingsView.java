@@ -321,7 +321,7 @@ public class SettingsView extends VerticalLayout implements BeforeEnterObserver 
         trCard.add(new H2("Trade Republic Import"));
         trCard.add(new Paragraph("Import your Trade Republic CSV statement. Select target accounts for Cash and Assets."));
 
-        ComboBox<Account> cashAccountCombo = new ComboBox<>("Select Target Cash Account");
+        ComboBox<Account> cashAccountCombo = new ComboBox<>("Select Target TR Account");
         cashAccountCombo.setItems(accountService.getAccountsByUser(currentUser));
         cashAccountCombo.setItemLabelGenerator(Account::getAccountName);
         cashAccountCombo.setWidthFull();

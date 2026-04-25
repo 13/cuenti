@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +36,13 @@ public class CategoryService {
         return categoryRepository.findByUserAndType(currentUser, type);
     }
 
+    public Optional<Category> findById(Long id) {
+        String username = securityUtils.getAuthenticatedUsername().orElseThrow();
+        User currentUser = userService.findByUsername(username);
+        return categoryRepository.findById(id)
+                .filter(c -> c.getUser().getId().equals(currentUser.getId()));
+    }
+
     @Transactional
     public Category saveCategory(Category category) {
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
@@ -52,6 +60,15 @@ public class CategoryService {
             }
             category.setUser(currentUser);
         }
+
+        // Uniqueness check: name must be unique within same parent (or root) for same user
+        categoryRepository.findByUserAndParentAndName(currentUser, category.getParent(), category.getName())
+                .ifPresent(existing -> {
+                    if (!existing.getId().equals(category.getId())) {
+                        throw new IllegalArgumentException("Category with same name already exists in this hierarchy");
+                    }
+                });
+
         return categoryRepository.save(category);
     }
 

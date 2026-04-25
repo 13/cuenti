@@ -10,7 +10,9 @@ import java.util.List;
  * Category entity for classifying transactions with hierarchical support.
  */
 @Entity
-@Table(name = "categories")
+@Table(name = "categories", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"user_id", "parent_id", "name"})
+})
 @Getter
 @Setter
 @NoArgsConstructor

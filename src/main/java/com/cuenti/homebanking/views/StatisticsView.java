@@ -331,6 +331,14 @@ public class StatisticsView extends VerticalLayout {
             }
         }
 
+        // Build a String-keyed copy for renderBarCharts
+        Map<String, BigDecimal[]> accountDataByName = new LinkedHashMap<>();
+        accountData.forEach((acc, vals) -> accountDataByName.put(acc.getAccountName(), vals));
+
+        renderBarCharts(card, accountDataByName,
+                getTranslation("statistics.income_by_account"),
+                getTranslation("statistics.expense_by_account"));
+
         HorizontalLayout header = createSortableHeader(
                 new String[]{
                         getTranslation("statistics.account"),
@@ -422,8 +430,10 @@ public class StatisticsView extends VerticalLayout {
             }
         });
 
-        // 3. Chart — horizontal expense bars per parent category
-        renderCategoryChart(card, parentTotals);
+        // 3. Charts — side-by-side income and expense bars per parent category
+        renderBarCharts(card, parentTotals,
+                getTranslation("statistics.income_by_category"),
+                getTranslation("statistics.expense_by_category"));
 
         // 4. Sortable header
         card.add(createSortableHeader(
@@ -463,18 +473,66 @@ public class StatisticsView extends VerticalLayout {
         contentContainer.add(card);
     }
 
-    private void renderCategoryChart(Div container, Map<String, BigDecimal[]> parentTotals) {
-        List<Map.Entry<String, BigDecimal[]>> expenseEntries = parentTotals.entrySet().stream()
+    /**
+     * Renders side-by-side income and expense horizontal bar charts from a
+     * label → [income, expense] map. Shared by By Category and By Payee tabs.
+     */
+    private void renderBarCharts(Div container, Map<String, BigDecimal[]> data,
+                                  String incomeTitle, String expenseTitle) {
+        List<Map.Entry<String, BigDecimal>> incomeEntries = data.entrySet().stream()
+                .filter(e -> e.getValue()[0].compareTo(BigDecimal.ZERO) > 0)
+                .sorted((a, b) -> b.getValue()[0].compareTo(a.getValue()[0]))
+                .limit(10)
+                .map(e -> Map.entry(e.getKey(), e.getValue()[0]))
+                .collect(Collectors.toList());
+
+        List<Map.Entry<String, BigDecimal>> expenseEntries = data.entrySet().stream()
                 .filter(e -> e.getValue()[1].compareTo(BigDecimal.ZERO) > 0)
                 .sorted((a, b) -> b.getValue()[1].compareTo(a.getValue()[1]))
                 .limit(10)
+                .map(e -> Map.entry(e.getKey(), e.getValue()[1]))
                 .collect(Collectors.toList());
 
-        if (expenseEntries.isEmpty()) return;
+        if (incomeEntries.isEmpty() && expenseEntries.isEmpty()) return;
 
-        BigDecimal maxExpense = expenseEntries.get(0).getValue()[1];
+        FlexLayout chartsRow = new FlexLayout();
+        chartsRow.setWidthFull();
+        chartsRow.setFlexWrap(FlexLayout.FlexWrap.WRAP);
+        chartsRow.getStyle()
+                .set("gap", "var(--lumo-space-l)")
+                .set("margin-bottom", "var(--lumo-space-l)")
+                .set("padding-bottom", "var(--lumo-space-m)")
+                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)");
 
-        Span chartTitle = new Span(getTranslation("statistics.expense_by_category"));
+        if (!incomeEntries.isEmpty()) {
+            Div incomeChart = new Div();
+            incomeChart.getStyle().set("flex", "1 1 280px").set("min-width", "0");
+            renderHorizontalBarChart(incomeChart, incomeTitle, incomeEntries, "var(--lumo-success-color)");
+            chartsRow.add(incomeChart);
+        }
+
+        if (!expenseEntries.isEmpty()) {
+            Div expenseChart = new Div();
+            expenseChart.getStyle().set("flex", "1 1 280px").set("min-width", "0");
+            renderHorizontalBarChart(expenseChart, expenseTitle, expenseEntries, "var(--lumo-error-color)");
+            chartsRow.add(expenseChart);
+        }
+
+        container.add(chartsRow);
+    }
+
+    /**
+     * Renders a single titled horizontal bar chart into the given container.
+     * Entries must already be sorted descending; the first entry's value is used as 100%.
+     */
+    private void renderHorizontalBarChart(Div container, String title,
+                                           List<Map.Entry<String, BigDecimal>> entries,
+                                           String barColor) {
+        if (entries.isEmpty()) return;
+
+        BigDecimal maxValue = entries.get(0).getValue();
+
+        Span chartTitle = new Span(title);
         chartTitle.getStyle()
                 .set("font-size", "var(--lumo-font-size-s)")
                 .set("font-weight", "600")
@@ -487,15 +545,11 @@ public class StatisticsView extends VerticalLayout {
         chartDiv.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "6px")
-                .set("margin-bottom", "var(--lumo-space-l)")
-                .set("padding-bottom", "var(--lumo-space-m)")
-                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)");
+                .set("gap", "6px");
 
-        expenseEntries.forEach(entry -> {
-            BigDecimal expense = entry.getValue()[1];
-            double pct = maxExpense.compareTo(BigDecimal.ZERO) > 0
-                    ? expense.divide(maxExpense, 4, RoundingMode.HALF_UP).doubleValue() * 100
+        entries.forEach(entry -> {
+            double pct = maxValue.compareTo(BigDecimal.ZERO) > 0
+                    ? entry.getValue().divide(maxValue, 4, RoundingMode.HALF_UP).doubleValue() * 100
                     : 0;
 
             Div row = new Div();
@@ -504,8 +558,8 @@ public class StatisticsView extends VerticalLayout {
 
             Span label = new Span(entry.getKey());
             label.getStyle()
-                    .set("width", "130px")
-                    .set("min-width", "130px")
+                    .set("width", "120px")
+                    .set("min-width", "120px")
                     .set("font-size", "var(--lumo-font-size-xs)")
                     .set("color", "var(--lumo-secondary-text-color)")
                     .set("text-align", "right")
@@ -527,11 +581,11 @@ public class StatisticsView extends VerticalLayout {
                     .set("position", "absolute")
                     .set("left", "0").set("top", "0").set("bottom", "0")
                     .set("width", pct + "%")
-                    .set("background", "var(--lumo-error-color)")
+                    .set("background", barColor)
                     .set("opacity", "0.65")
                     .set("border-radius", "4px");
 
-            Span amount = new Span(formatCurrency(expense));
+            Span amount = new Span(formatCurrency(entry.getValue()));
             amount.getStyle()
                     .set("position", "absolute")
                     .set("right", "var(--lumo-space-xs)")
@@ -540,7 +594,7 @@ public class StatisticsView extends VerticalLayout {
                     .set("align-items", "center")
                     .set("font-size", "var(--lumo-font-size-xs)")
                     .set("font-weight", "600")
-                    .set("color", "var(--lumo-error-color)");
+                    .set("color", barColor);
 
             barBg.add(bar, amount);
             row.add(label, barBg);
@@ -567,6 +621,10 @@ public class StatisticsView extends VerticalLayout {
                 payeeData.get(payeeName)[1] = payeeData.get(payeeName)[1].add(converted);
             }
         }
+
+        renderBarCharts(card, payeeData,
+                getTranslation("statistics.income_by_payee"),
+                getTranslation("statistics.expense_by_payee"));
 
         HorizontalLayout header = createSortableHeader(
                 new String[]{
@@ -649,7 +707,7 @@ public class StatisticsView extends VerticalLayout {
             case "expense" -> Comparator.comparing(MonthRow::expense);
             case "net"     -> Comparator.comparing(MonthRow::net);
             case "pct"     -> Comparator.comparing(r -> r.pct() != null ? r.pct() : BigDecimal.valueOf(Long.MIN_VALUE));
-            default        -> Comparator.comparing(MonthRow::month); // chronological (yyyy-MM sorts lexicographically)
+            default        -> Comparator.comparing(MonthRow::month);
         };
         if (!sortAsc) comparator = comparator.reversed();
         rows.sort(comparator);

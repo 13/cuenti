@@ -331,7 +331,8 @@ public class StatisticsView extends VerticalLayout {
                 getTranslation("statistics.account"),
                 getTranslation("statistics.income"),
                 getTranslation("statistics.expense"),
-                getTranslation("statistics.net")
+                getTranslation("statistics.net"),
+                getTranslation("statistics.pct_change")
         );
         card.add(header);
 
@@ -346,7 +347,10 @@ public class StatisticsView extends VerticalLayout {
                         formatCurrency(income),
                         formatCurrency(expense),
                         formatCurrency(net),
-                        net.compareTo(BigDecimal.ZERO) >= 0
+                        net.compareTo(BigDecimal.ZERO) >= 0,
+                        formatPctChange(income.compareTo(BigDecimal.ZERO) > 0
+                                ? net.divide(income, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
+                                : null)
                 ));
             }
         }
@@ -362,7 +366,7 @@ public class StatisticsView extends VerticalLayout {
         for (Transaction t : filteredTransactions) {
             if (t.getSplits() != null && !t.getSplits().isEmpty()) {
                 for (TransactionSplit split : t.getSplits()) {
-                    String categoryName = split.getCategory() != null ? split.getCategory().getName() : getTranslation("statistics.uncategorized");
+                    String categoryName = getCategoryLabel(split.getCategory());
                     categoryData.putIfAbsent(categoryName, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
 
                     if (t.getType() == Transaction.TransactionType.INCOME && t.getToAccount() != null) {
@@ -374,7 +378,7 @@ public class StatisticsView extends VerticalLayout {
                     }
                 }
             } else {
-                String categoryName = t.getCategory() != null ? t.getCategory().getName() : getTranslation("statistics.uncategorized");
+                String categoryName = getCategoryLabel(t.getCategory());
                 categoryData.putIfAbsent(categoryName, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
 
                 if (t.getType() == Transaction.TransactionType.INCOME && t.getToAccount() != null) {
@@ -389,8 +393,6 @@ public class StatisticsView extends VerticalLayout {
 
         HorizontalLayout header = createTableHeader(
                 getTranslation("statistics.category"),
-                getTranslation("statistics.income"),
-                getTranslation("statistics.expense"),
                 getTranslation("statistics.net")
         );
         card.add(header);
@@ -403,7 +405,7 @@ public class StatisticsView extends VerticalLayout {
                     BigDecimal net = income.subtract(expense);
 
                     if (income.compareTo(BigDecimal.ZERO) > 0 || expense.compareTo(BigDecimal.ZERO) > 0) {
-                        card.add(createDataRow(entry.getKey(), formatCurrency(income), formatCurrency(expense), formatCurrency(net), net.compareTo(BigDecimal.ZERO) >= 0));
+                        card.add(createNetOnlyRow(entry.getKey(), formatCurrency(net), net.compareTo(BigDecimal.ZERO) >= 0));
                     }
                 });
 
@@ -430,8 +432,6 @@ public class StatisticsView extends VerticalLayout {
 
         HorizontalLayout header = createTableHeader(
                 getTranslation("statistics.payee"),
-                getTranslation("statistics.income"),
-                getTranslation("statistics.expense"),
                 getTranslation("statistics.net")
         );
         card.add(header);
@@ -445,7 +445,7 @@ public class StatisticsView extends VerticalLayout {
                     BigDecimal net = income.subtract(expense);
 
                     if (income.compareTo(BigDecimal.ZERO) > 0 || expense.compareTo(BigDecimal.ZERO) > 0) {
-                        card.add(createDataRow(entry.getKey(), formatCurrency(income), formatCurrency(expense), formatCurrency(net), net.compareTo(BigDecimal.ZERO) >= 0));
+                        card.add(createNetOnlyRow(entry.getKey(), formatCurrency(net), net.compareTo(BigDecimal.ZERO) >= 0));
                     }
                 });
 
@@ -479,15 +479,31 @@ public class StatisticsView extends VerticalLayout {
                 getTranslation("statistics.month"),
                 getTranslation("statistics.income"),
                 getTranslation("statistics.expense"),
-                getTranslation("statistics.net")
+                getTranslation("statistics.net"),
+                getTranslation("statistics.pct_change")
         );
         card.add(header);
 
+        BigDecimal[] prevNet = {null};
         monthlyData.forEach((month, values) -> {
             BigDecimal income = values[0];
             BigDecimal expense = values[1];
             BigDecimal net = income.subtract(expense);
-            card.add(createDataRow(month, formatCurrency(income), formatCurrency(expense), formatCurrency(net), net.compareTo(BigDecimal.ZERO) >= 0));
+
+            String pct;
+            if (prevNet[0] == null) {
+                pct = formatPctChange(null);
+            } else if (prevNet[0].compareTo(BigDecimal.ZERO) == 0) {
+                pct = formatPctChange(null);
+            } else {
+                BigDecimal change = net.subtract(prevNet[0])
+                        .divide(prevNet[0].abs(), 4, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100));
+                pct = formatPctChange(change);
+            }
+            prevNet[0] = net;
+
+            card.add(createDataRow(month, formatCurrency(income), formatCurrency(expense), formatCurrency(net), net.compareTo(BigDecimal.ZERO) >= 0, pct));
         });
 
         contentContainer.add(card);
@@ -535,12 +551,12 @@ public class StatisticsView extends VerticalLayout {
             if (t.getType() == Transaction.TransactionType.EXPENSE && t.getFromAccount() != null) {
                 if (t.getSplits() != null && !t.getSplits().isEmpty()) {
                     for (TransactionSplit split : t.getSplits()) {
-                        String category = split.getCategory() != null ? split.getCategory().getName() : getTranslation("statistics.uncategorized");
+                        String category = getCategoryLabel(split.getCategory());
                         BigDecimal converted = exchangeRateService.convert(split.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency());
                         categoryExpenses.merge(category, converted, BigDecimal::add);
                     }
                 } else {
-                    String category = t.getCategory() != null ? t.getCategory().getName() : getTranslation("statistics.uncategorized");
+                    String category = getCategoryLabel(t.getCategory());
                     BigDecimal converted = exchangeRateService.convert(t.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency());
                     categoryExpenses.merge(category, converted, BigDecimal::add);
                 }
@@ -683,6 +699,10 @@ public class StatisticsView extends VerticalLayout {
     }
 
     private HorizontalLayout createDataRow(String label, String income, String expense, String net, boolean isPositive) {
+        return createDataRow(label, income, expense, net, isPositive, null);
+    }
+
+    private HorizontalLayout createDataRow(String label, String income, String expense, String net, boolean isPositive, String pctChange) {
         HorizontalLayout row = new HorizontalLayout();
         row.setWidthFull();
         row.getStyle()
@@ -707,7 +727,58 @@ public class StatisticsView extends VerticalLayout {
                 .set("color", isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
 
         row.add(labelSpan, incomeSpan, expenseSpan, netSpan);
+
+        if (pctChange != null) {
+            Span pctSpan = new Span(pctChange);
+            boolean pctPositive = pctChange.startsWith("+");
+            pctSpan.getStyle()
+                    .set("flex", "1")
+                    .set("text-align", "right")
+                    .set("font-size", "var(--lumo-font-size-xs)")
+                    .set("color", pctChange.equals("—") ? "var(--lumo-secondary-text-color)"
+                            : pctPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
+            row.add(pctSpan);
+        }
+
         return row;
+    }
+
+    private HorizontalLayout createNetOnlyRow(String label, String net, boolean isPositive) {
+        HorizontalLayout row = new HorizontalLayout();
+        row.setWidthFull();
+        row.getStyle()
+                .set("padding", "var(--lumo-space-s) 0")
+                .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
+                .set("font-size", "var(--lumo-font-size-s)");
+
+        Span labelSpan = new Span(label);
+        labelSpan.getStyle().set("flex", "2");
+
+        Span netSpan = new Span(net);
+        netSpan.getStyle()
+                .set("flex", "1")
+                .set("text-align", "right")
+                .set("font-weight", "500")
+                .set("color", isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
+
+        row.add(labelSpan, netSpan);
+        return row;
+    }
+
+    private String getCategoryLabel(Category cat) {
+        if (cat == null) return getTranslation("statistics.uncategorized");
+        // Adjust getParent() to match your Category entity's actual parent accessor
+        Category parent = cat.getParent();
+        if (parent != null) {
+            return parent.getName() + ":" + cat.getName();
+        }
+        return cat.getName();
+    }
+
+    private String formatPctChange(BigDecimal pct) {
+        if (pct == null) return "—";
+        String sign = pct.compareTo(BigDecimal.ZERO) >= 0 ? "+" : "";
+        return sign + pct.setScale(1, RoundingMode.HALF_UP).toPlainString() + "%";
     }
 
     private Div createProgressRow(String label, BigDecimal amount, double percent) {

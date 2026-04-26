@@ -227,9 +227,16 @@ public class StatisticsView extends VerticalLayout {
                 .filter(t -> {
                     Account from = t.getFromAccount();
                     Account to = t.getToAccount();
-                    boolean fromOk = from == null || reportableAccountIds.contains(from.getId());
-                    boolean toOk = to == null || reportableAccountIds.contains(to.getId());
-                    return fromOk || toOk;
+                    if (t.getType() == Transaction.TransactionType.INCOME) {
+                        return to != null && reportableAccountIds.contains(to.getId());
+                    } else if (t.getType() == Transaction.TransactionType.EXPENSE) {
+                        return from != null && reportableAccountIds.contains(from.getId());
+                    } else if (t.getType() == Transaction.TransactionType.TRANSFER) {
+                        boolean fromOk = from != null && reportableAccountIds.contains(from.getId());
+                        boolean toOk = to != null && reportableAccountIds.contains(to.getId());
+                        return fromOk || toOk;
+                    }
+                    return false;
                 })
                 .collect(Collectors.toList());
 

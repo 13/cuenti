@@ -118,10 +118,14 @@ public class ForecastsView extends VerticalLayout {
             // Check if the transaction's account is reportable
             Account fromAccount = st.getFromAccount();
             Account toAccount = st.getToAccount();
-            boolean fromReportable = fromAccount == null || reportableAccountIds.contains(fromAccount.getId());
-            boolean toReportable = toAccount == null || reportableAccountIds.contains(toAccount.getId());
-            
-            if (!fromReportable && !toReportable) continue;
+
+            if (st.getType() == Transaction.TransactionType.INCOME) {
+                if (toAccount == null || !reportableAccountIds.contains(toAccount.getId())) continue;
+            } else if (st.getType() == Transaction.TransactionType.EXPENSE) {
+                if (fromAccount == null || !reportableAccountIds.contains(fromAccount.getId())) continue;
+            } else {
+                continue; // Ignore transfers for now as they aren't handled in forecasts
+            }
 
             // Calculate all occurrences in the selected year
             LocalDateTime occurrence = st.getNextOccurrence();

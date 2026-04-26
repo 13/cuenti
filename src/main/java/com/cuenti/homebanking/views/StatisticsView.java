@@ -372,61 +372,182 @@ public class StatisticsView extends VerticalLayout {
     private void renderByCategory() {
         Div card = createInnerCard(getTranslation("statistics.by_category"));
 
-        Map<String, BigDecimal[]> categoryData = new TreeMap<>();
+        // 1. Collect raw data keyed by "parent:child" or "name" for root categories
+        Map<String, BigDecimal[]> rawData = new TreeMap<>();
 
         for (Transaction t : filteredTransactions) {
             if (t.getSplits() != null && !t.getSplits().isEmpty()) {
                 for (TransactionSplit split : t.getSplits()) {
-                    String categoryName = getCategoryLabel(split.getCategory());
-                    categoryData.putIfAbsent(categoryName, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
-
+                    String key = getCategoryLabel(split.getCategory());
+                    rawData.putIfAbsent(key, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
                     if (t.getType() == Transaction.TransactionType.INCOME && t.getToAccount() != null) {
-                        BigDecimal converted = exchangeRateService.convert(split.getAmount(), t.getToAccount().getCurrency(), currentUser.getDefaultCurrency());
-                        categoryData.get(categoryName)[0] = categoryData.get(categoryName)[0].add(converted);
+                        BigDecimal c = exchangeRateService.convert(split.getAmount(), t.getToAccount().getCurrency(), currentUser.getDefaultCurrency());
+                        rawData.get(key)[0] = rawData.get(key)[0].add(c);
                     } else if (t.getType() == Transaction.TransactionType.EXPENSE && t.getFromAccount() != null) {
-                        BigDecimal converted = exchangeRateService.convert(split.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency());
-                        categoryData.get(categoryName)[1] = categoryData.get(categoryName)[1].add(converted);
+                        BigDecimal c = exchangeRateService.convert(split.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency());
+                        rawData.get(key)[1] = rawData.get(key)[1].add(c);
                     }
                 }
             } else {
-                String categoryName = getCategoryLabel(t.getCategory());
-                categoryData.putIfAbsent(categoryName, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
-
+                String key = getCategoryLabel(t.getCategory());
+                rawData.putIfAbsent(key, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
                 if (t.getType() == Transaction.TransactionType.INCOME && t.getToAccount() != null) {
-                    BigDecimal converted = exchangeRateService.convert(t.getAmount(), t.getToAccount().getCurrency(), currentUser.getDefaultCurrency());
-                    categoryData.get(categoryName)[0] = categoryData.get(categoryName)[0].add(converted);
+                    BigDecimal c = exchangeRateService.convert(t.getAmount(), t.getToAccount().getCurrency(), currentUser.getDefaultCurrency());
+                    rawData.get(key)[0] = rawData.get(key)[0].add(c);
                 } else if (t.getType() == Transaction.TransactionType.EXPENSE && t.getFromAccount() != null) {
-                    BigDecimal converted = exchangeRateService.convert(t.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency());
-                    categoryData.get(categoryName)[1] = categoryData.get(categoryName)[1].add(converted);
+                    BigDecimal c = exchangeRateService.convert(t.getAmount(), t.getFromAccount().getCurrency(), currentUser.getDefaultCurrency());
+                    rawData.get(key)[1] = rawData.get(key)[1].add(c);
                 }
             }
         }
 
-        HorizontalLayout header = createSortableHeader(
-                new String[]{
-                        getTranslation("statistics.category"),
-                        getTranslation("statistics.net")
-                },
-                new String[]{"label", "net"}
-        );
-        card.add(header);
+        // 2. Group into parent totals and per-parent children maps
+        //    Keys with ":" are "parent:child"; keys without are root categories.
+        Map<String, BigDecimal[]> parentTotals = new LinkedHashMap<>();
+        Map<String, Map<String, BigDecimal[]>> childrenMap = new LinkedHashMap<>();
 
+        rawData.forEach((label, values) -> {
+            if (values[0].compareTo(BigDecimal.ZERO) == 0 && values[1].compareTo(BigDecimal.ZERO) == 0) return;
+            int colon = label.indexOf(':');
+            if (colon >= 0) {
+                String parent = label.substring(0, colon);
+                parentTotals.compute(parent, (k, v) -> v == null
+                        ? new BigDecimal[]{values[0], values[1]}
+                        : new BigDecimal[]{v[0].add(values[0]), v[1].add(values[1])});
+                childrenMap.computeIfAbsent(parent, k -> new LinkedHashMap<>()).put(label, values);
+            } else {
+                parentTotals.compute(label, (k, v) -> v == null
+                        ? new BigDecimal[]{values[0], values[1]}
+                        : new BigDecimal[]{v[0].add(values[0]), v[1].add(values[1])});
+            }
+        });
+
+        // 3. Chart — horizontal expense bars per parent category
+        renderCategoryChart(card, parentTotals);
+
+        // 4. Sortable header
+        card.add(createSortableHeader(
+                new String[]{getTranslation("statistics.category"), getTranslation("statistics.net")},
+                new String[]{"label", "net"}
+        ));
+
+        // 5. Sort comparator (applied to both parent groups and children within each group)
         Comparator<Map.Entry<String, BigDecimal[]>> comparator = "label".equals(sortCol)
                 ? Comparator.comparing(Map.Entry::getKey)
                 : Comparator.comparing(e -> e.getValue()[0].subtract(e.getValue()[1]));
         if (!sortAsc) comparator = comparator.reversed();
+        final Comparator<Map.Entry<String, BigDecimal[]>> fc = comparator;
 
-        categoryData.entrySet().stream()
-                .filter(e -> e.getValue()[0].compareTo(BigDecimal.ZERO) > 0 || e.getValue()[1].compareTo(BigDecimal.ZERO) > 0)
+        // 6. Render: parent summary row → indented child rows
+        parentTotals.entrySet().stream()
                 .sorted(comparator)
-                .forEach(entry -> {
-                    BigDecimal income = entry.getValue()[0];
-                    BigDecimal expense = entry.getValue()[1];
-                    BigDecimal net = income.subtract(expense);
-                    card.add(createNetOnlyRow(entry.getKey(), formatCurrency(net), net.compareTo(BigDecimal.ZERO) >= 0));
+                .forEach(parentEntry -> {
+                    String parentName = parentEntry.getKey();
+                    BigDecimal pIncome  = parentEntry.getValue()[0];
+                    BigDecimal pExpense = parentEntry.getValue()[1];
+                    BigDecimal pNet     = pIncome.subtract(pExpense);
+
+                    card.add(createCategoryParentRow(parentName, formatCurrency(pNet), pNet.compareTo(BigDecimal.ZERO) >= 0));
+
+                    Map<String, BigDecimal[]> children = childrenMap.get(parentName);
+                    if (children != null) {
+                        children.entrySet().stream()
+                                .sorted(fc)
+                                .forEach(childEntry -> {
+                                    BigDecimal cNet = childEntry.getValue()[0].subtract(childEntry.getValue()[1]);
+                                    card.add(createCategoryChildRow(childEntry.getKey(), formatCurrency(cNet), cNet.compareTo(BigDecimal.ZERO) >= 0));
+                                });
+                    }
                 });
 
         contentContainer.add(card);
+    }
+
+    private void renderCategoryChart(Div container, Map<String, BigDecimal[]> parentTotals) {
+        List<Map.Entry<String, BigDecimal[]>> expenseEntries = parentTotals.entrySet().stream()
+                .filter(e -> e.getValue()[1].compareTo(BigDecimal.ZERO) > 0)
+                .sorted((a, b) -> b.getValue()[1].compareTo(a.getValue()[1]))
+                .limit(10)
+                .collect(Collectors.toList());
+
+        if (expenseEntries.isEmpty()) return;
+
+        BigDecimal maxExpense = expenseEntries.get(0).getValue()[1];
+
+        Span chartTitle = new Span(getTranslation("statistics.expense_by_category"));
+        chartTitle.getStyle()
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("font-weight", "600")
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("display", "block")
+                .set("margin-bottom", "var(--lumo-space-s)");
+
+        Div chartDiv = new Div();
+        chartDiv.setWidthFull();
+        chartDiv.getStyle()
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("gap", "6px")
+                .set("margin-bottom", "var(--lumo-space-l)")
+                .set("padding-bottom", "var(--lumo-space-m)")
+                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)");
+
+        expenseEntries.forEach(entry -> {
+            BigDecimal expense = entry.getValue()[1];
+            double pct = maxExpense.compareTo(BigDecimal.ZERO) > 0
+                    ? expense.divide(maxExpense, 4, RoundingMode.HALF_UP).doubleValue() * 100
+                    : 0;
+
+            Div row = new Div();
+            row.setWidthFull();
+            row.getStyle().set("display", "flex").set("align-items", "center").set("gap", "var(--lumo-space-s)");
+
+            Span label = new Span(entry.getKey());
+            label.getStyle()
+                    .set("width", "130px")
+                    .set("min-width", "130px")
+                    .set("font-size", "var(--lumo-font-size-xs)")
+                    .set("color", "var(--lumo-secondary-text-color)")
+                    .set("text-align", "right")
+                    .set("overflow", "hidden")
+                    .set("text-overflow", "ellipsis")
+                    .set("white-space", "nowrap");
+
+            Div barBg = new Div();
+            barBg.getStyle()
+                    .set("flex", "1")
+                    .set("background", "var(--lumo-contrast-10pct)")
+                    .set("border-radius", "4px")
+                    .set("height", "22px")
+                    .set("position", "relative")
+                    .set("overflow", "hidden");
+
+            Div bar = new Div();
+            bar.getStyle()
+                    .set("position", "absolute")
+                    .set("left", "0").set("top", "0").set("bottom", "0")
+                    .set("width", pct + "%")
+                    .set("background", "var(--lumo-error-color)")
+                    .set("opacity", "0.65")
+                    .set("border-radius", "4px");
+
+            Span amount = new Span(formatCurrency(expense));
+            amount.getStyle()
+                    .set("position", "absolute")
+                    .set("right", "var(--lumo-space-xs)")
+                    .set("top", "0").set("bottom", "0")
+                    .set("display", "flex")
+                    .set("align-items", "center")
+                    .set("font-size", "var(--lumo-font-size-xs)")
+                    .set("font-weight", "600")
+                    .set("color", "var(--lumo-error-color)");
+
+            barBg.add(bar, amount);
+            row.add(label, barBg);
+            chartDiv.add(row);
+        });
+
+        container.add(chartTitle, chartDiv);
     }
 
     private void renderByPayee() {
@@ -817,6 +938,53 @@ public class StatisticsView extends VerticalLayout {
             row.add(pctSpan);
         }
 
+        return row;
+    }
+
+    private HorizontalLayout createCategoryParentRow(String label, String net, boolean isPositive) {
+        HorizontalLayout row = new HorizontalLayout();
+        row.setWidthFull();
+        row.getStyle()
+                .set("padding", "var(--lumo-space-s) 0 var(--lumo-space-xs) 0")
+                .set("border-top", "1px solid var(--lumo-contrast-10pct)")
+                .set("margin-top", "var(--lumo-space-xs)")
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("font-weight", "600");
+
+        Span labelSpan = new Span(label);
+        labelSpan.getStyle().set("flex", "2");
+
+        Span netSpan = new Span(net);
+        netSpan.getStyle()
+                .set("flex", "1")
+                .set("text-align", "right")
+                .set("color", isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
+
+        row.add(labelSpan, netSpan);
+        return row;
+    }
+
+    private HorizontalLayout createCategoryChildRow(String label, String net, boolean isPositive) {
+        HorizontalLayout row = new HorizontalLayout();
+        row.setWidthFull();
+        row.getStyle()
+                .set("padding", "var(--lumo-space-xs) 0")
+                .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("padding-left", "var(--lumo-space-l)");
+
+        Span labelSpan = new Span(label);
+        labelSpan.getStyle()
+                .set("flex", "2")
+                .set("color", "var(--lumo-secondary-text-color)");
+
+        Span netSpan = new Span(net);
+        netSpan.getStyle()
+                .set("flex", "1")
+                .set("text-align", "right")
+                .set("color", isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
+
+        row.add(labelSpan, netSpan);
         return row;
     }
 

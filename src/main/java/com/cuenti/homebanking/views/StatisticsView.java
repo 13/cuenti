@@ -49,6 +49,8 @@ public class StatisticsView extends VerticalLayout {
     private LocalDate endDate;
 
     private String currentTab = "overview";
+    private String sortCol = "";
+    private boolean sortAsc = true;
 
     public StatisticsView(TransactionService transactionService, AccountService accountService,
                          UserService userService, ExchangeRateService exchangeRateService,
@@ -206,6 +208,8 @@ public class StatisticsView extends VerticalLayout {
             else if (selected == byCategoryTab) currentTab = "category";
             else if (selected == byPayeeTab) currentTab = "payee";
             else if (selected == trendsTab) currentTab = "trends";
+            sortCol = "";
+            sortAsc = true;
             renderContent();
         });
 
@@ -327,33 +331,40 @@ public class StatisticsView extends VerticalLayout {
             }
         }
 
-        HorizontalLayout header = createTableHeader(
-                getTranslation("statistics.account"),
-                getTranslation("statistics.income"),
-                getTranslation("statistics.expense"),
-                getTranslation("statistics.net"),
-                getTranslation("statistics.pct_change")
+        HorizontalLayout header = createSortableHeader(
+                new String[]{
+                        getTranslation("statistics.account"),
+                        getTranslation("statistics.income"),
+                        getTranslation("statistics.expense"),
+                        getTranslation("statistics.net")
+                },
+                new String[]{"label", "income", "expense", "net"}
         );
         card.add(header);
 
-        for (Map.Entry<Account, BigDecimal[]> entry : accountData.entrySet()) {
-            BigDecimal income = entry.getValue()[0];
-            BigDecimal expense = entry.getValue()[1];
-            BigDecimal net = income.subtract(expense);
+        Comparator<Map.Entry<Account, BigDecimal[]>> comparator = switch (sortCol) {
+            case "income"  -> Comparator.comparing(e -> e.getValue()[0]);
+            case "expense" -> Comparator.comparing(e -> e.getValue()[1]);
+            case "net"     -> Comparator.comparing(e -> e.getValue()[0].subtract(e.getValue()[1]));
+            default        -> Comparator.comparing(e -> e.getKey().getAccountName());
+        };
+        if (!sortAsc) comparator = comparator.reversed();
 
-            if (income.compareTo(BigDecimal.ZERO) > 0 || expense.compareTo(BigDecimal.ZERO) > 0) {
-                card.add(createDataRow(
-                        entry.getKey().getAccountName(),
-                        formatCurrency(income),
-                        formatCurrency(expense),
-                        formatCurrency(net),
-                        net.compareTo(BigDecimal.ZERO) >= 0,
-                        formatPctChange(income.compareTo(BigDecimal.ZERO) > 0
-                                ? net.divide(income, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
-                                : null)
-                ));
-            }
-        }
+        accountData.entrySet().stream()
+                .filter(e -> e.getValue()[0].compareTo(BigDecimal.ZERO) > 0 || e.getValue()[1].compareTo(BigDecimal.ZERO) > 0)
+                .sorted(comparator)
+                .forEach(entry -> {
+                    BigDecimal income = entry.getValue()[0];
+                    BigDecimal expense = entry.getValue()[1];
+                    BigDecimal net = income.subtract(expense);
+                    card.add(createDataRow(
+                            entry.getKey().getAccountName(),
+                            formatCurrency(income),
+                            formatCurrency(expense),
+                            formatCurrency(net),
+                            net.compareTo(BigDecimal.ZERO) >= 0
+                    ));
+                });
 
         contentContainer.add(card);
     }
@@ -391,22 +402,28 @@ public class StatisticsView extends VerticalLayout {
             }
         }
 
-        HorizontalLayout header = createTableHeader(
-                getTranslation("statistics.category"),
-                getTranslation("statistics.net")
+        HorizontalLayout header = createSortableHeader(
+                new String[]{
+                        getTranslation("statistics.category"),
+                        getTranslation("statistics.net")
+                },
+                new String[]{"label", "net"}
         );
         card.add(header);
 
+        Comparator<Map.Entry<String, BigDecimal[]>> comparator = "label".equals(sortCol)
+                ? Comparator.comparing(Map.Entry::getKey)
+                : Comparator.comparing(e -> e.getValue()[0].subtract(e.getValue()[1]));
+        if (!sortAsc) comparator = comparator.reversed();
+
         categoryData.entrySet().stream()
-                .sorted((a, b) -> b.getValue()[1].compareTo(a.getValue()[1]))
+                .filter(e -> e.getValue()[0].compareTo(BigDecimal.ZERO) > 0 || e.getValue()[1].compareTo(BigDecimal.ZERO) > 0)
+                .sorted(comparator)
                 .forEach(entry -> {
                     BigDecimal income = entry.getValue()[0];
                     BigDecimal expense = entry.getValue()[1];
                     BigDecimal net = income.subtract(expense);
-
-                    if (income.compareTo(BigDecimal.ZERO) > 0 || expense.compareTo(BigDecimal.ZERO) > 0) {
-                        card.add(createNetOnlyRow(entry.getKey(), formatCurrency(net), net.compareTo(BigDecimal.ZERO) >= 0));
-                    }
+                    card.add(createNetOnlyRow(entry.getKey(), formatCurrency(net), net.compareTo(BigDecimal.ZERO) >= 0));
                 });
 
         contentContainer.add(card);
@@ -430,23 +447,29 @@ public class StatisticsView extends VerticalLayout {
             }
         }
 
-        HorizontalLayout header = createTableHeader(
-                getTranslation("statistics.payee"),
-                getTranslation("statistics.net")
+        HorizontalLayout header = createSortableHeader(
+                new String[]{
+                        getTranslation("statistics.payee"),
+                        getTranslation("statistics.net")
+                },
+                new String[]{"label", "net"}
         );
         card.add(header);
 
+        Comparator<Map.Entry<String, BigDecimal[]>> comparator = "label".equals(sortCol)
+                ? Comparator.comparing(Map.Entry::getKey)
+                : Comparator.comparing(e -> e.getValue()[0].subtract(e.getValue()[1]));
+        if (!sortAsc) comparator = comparator.reversed();
+
         payeeData.entrySet().stream()
-                .sorted((a, b) -> b.getValue()[1].compareTo(a.getValue()[1]))
+                .filter(e -> e.getValue()[0].compareTo(BigDecimal.ZERO) > 0 || e.getValue()[1].compareTo(BigDecimal.ZERO) > 0)
+                .sorted(comparator)
                 .limit(50)
                 .forEach(entry -> {
                     BigDecimal income = entry.getValue()[0];
                     BigDecimal expense = entry.getValue()[1];
                     BigDecimal net = income.subtract(expense);
-
-                    if (income.compareTo(BigDecimal.ZERO) > 0 || expense.compareTo(BigDecimal.ZERO) > 0) {
-                        card.add(createNetOnlyRow(entry.getKey(), formatCurrency(net), net.compareTo(BigDecimal.ZERO) >= 0));
-                    }
+                    card.add(createNetOnlyRow(entry.getKey(), formatCurrency(net), net.compareTo(BigDecimal.ZERO) >= 0));
                 });
 
         contentContainer.add(card);
@@ -475,36 +498,49 @@ public class StatisticsView extends VerticalLayout {
             renderTrendChart(card, monthlyData);
         }
 
-        HorizontalLayout header = createTableHeader(
-                getTranslation("statistics.month"),
-                getTranslation("statistics.income"),
-                getTranslation("statistics.expense"),
-                getTranslation("statistics.net"),
-                getTranslation("statistics.pct_change")
+        HorizontalLayout header = createSortableHeader(
+                new String[]{
+                        getTranslation("statistics.month"),
+                        getTranslation("statistics.income"),
+                        getTranslation("statistics.expense"),
+                        getTranslation("statistics.net"),
+                        getTranslation("statistics.pct_change")
+                },
+                new String[]{"label", "income", "expense", "net", "pct"}
         );
         card.add(header);
 
-        BigDecimal[] prevNet = {null};
-        monthlyData.forEach((month, values) -> {
-            BigDecimal income = values[0];
-            BigDecimal expense = values[1];
-            BigDecimal net = income.subtract(expense);
+        // Pre-compute % change (net as % of income) for each month so it can also be used as a sort key
+        record MonthRow(String month, BigDecimal income, BigDecimal expense, BigDecimal net, BigDecimal pct) {}
 
-            String pct;
-            if (prevNet[0] == null) {
-                pct = formatPctChange(null);
-            } else if (prevNet[0].compareTo(BigDecimal.ZERO) == 0) {
-                pct = formatPctChange(null);
-            } else {
-                BigDecimal change = net.subtract(prevNet[0])
-                        .divide(prevNet[0].abs(), 4, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(100));
-                pct = formatPctChange(change);
-            }
-            prevNet[0] = net;
+        List<MonthRow> rows = monthlyData.entrySet().stream().map(e -> {
+            BigDecimal inc = e.getValue()[0];
+            BigDecimal exp = e.getValue()[1];
+            BigDecimal net = inc.subtract(exp);
+            BigDecimal pct = inc.compareTo(BigDecimal.ZERO) > 0
+                    ? net.divide(inc, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
+                    : null;
+            return new MonthRow(e.getKey(), inc, exp, net, pct);
+        }).collect(Collectors.toCollection(ArrayList::new));
 
-            card.add(createDataRow(month, formatCurrency(income), formatCurrency(expense), formatCurrency(net), net.compareTo(BigDecimal.ZERO) >= 0, pct));
-        });
+        Comparator<MonthRow> comparator = switch (sortCol) {
+            case "income"  -> Comparator.comparing(MonthRow::income);
+            case "expense" -> Comparator.comparing(MonthRow::expense);
+            case "net"     -> Comparator.comparing(MonthRow::net);
+            case "pct"     -> Comparator.comparing(r -> r.pct() != null ? r.pct() : BigDecimal.valueOf(Long.MIN_VALUE));
+            default        -> Comparator.comparing(MonthRow::month); // chronological (yyyy-MM sorts lexicographically)
+        };
+        if (!sortAsc) comparator = comparator.reversed();
+        rows.sort(comparator);
+
+        rows.forEach(row -> card.add(createDataRow(
+                row.month(),
+                formatCurrency(row.income()),
+                formatCurrency(row.expense()),
+                formatCurrency(row.net()),
+                row.net().compareTo(BigDecimal.ZERO) >= 0,
+                formatPctChange(row.pct())
+        )));
 
         contentContainer.add(card);
     }
@@ -692,6 +728,47 @@ public class StatisticsView extends VerticalLayout {
         for (int i = 0; i < columns.length; i++) {
             Span col = new Span(columns[i]);
             col.getStyle().set("flex", i == 0 ? "2" : "1").set("text-align", i == 0 ? "left" : "right");
+            header.add(col);
+        }
+
+        return header;
+    }
+
+    /**
+     * Creates a sortable table header. labels[] are display names; keys[] are sort identifiers.
+     * Clicking a column header sets sortCol/sortAsc and re-renders the current tab.
+     */
+    private HorizontalLayout createSortableHeader(String[] labels, String[] keys) {
+        HorizontalLayout header = new HorizontalLayout();
+        header.setWidthFull();
+        header.getStyle()
+                .set("padding", "var(--lumo-space-s) 0")
+                .set("border-bottom", "2px solid var(--lumo-contrast-10pct)")
+                .set("font-weight", "bold")
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("color", "var(--lumo-secondary-text-color)");
+
+        for (int i = 0; i < labels.length; i++) {
+            final String key = keys[i];
+            String indicator = key.equals(sortCol) ? (sortAsc ? " ↑" : " ↓") : "";
+            Span col = new Span(labels[i] + indicator);
+            col.getStyle()
+                    .set("flex", i == 0 ? "2" : "1")
+                    .set("text-align", i == 0 ? "left" : "right")
+                    .set("cursor", "pointer")
+                    .set("user-select", "none");
+            if (key.equals(sortCol)) {
+                col.getStyle().set("color", "var(--lumo-primary-color)");
+            }
+            col.addClickListener(e -> {
+                if (sortCol.equals(key)) {
+                    sortAsc = !sortAsc;
+                } else {
+                    sortCol = key;
+                    sortAsc = true;
+                }
+                renderContent();
+            });
             header.add(col);
         }
 

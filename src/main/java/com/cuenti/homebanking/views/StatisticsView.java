@@ -80,42 +80,59 @@ public class StatisticsView extends VerticalLayout {
     }
 
     private void setupUI() {
-        H3 title = new H3(getTranslation("statistics.title"));
-        title.getStyle().set("margin", "0");
+        // Page header
+        Div header = new Div();
+        header.getStyle()
+                .set("display", "flex")
+                .set("align-items", "baseline")
+                .set("gap", "var(--lumo-space-m)")
+                .set("margin-bottom", "var(--lumo-space-xs)");
+
+        Span title = new Span(getTranslation("statistics.title"));
+        title.getStyle()
+                .set("font-size", "var(--lumo-font-size-xxl)")
+                .set("font-weight", "700")
+                .set("color", "var(--lumo-header-text-color)");
+        header.add(title);
 
         HorizontalLayout filters = createTimeFilter();
         Tabs tabs = createTabs();
 
         contentContainer.setWidthFull();
 
-        // Always use card layout
         Div card = new Div();
         card.setSizeFull();
         card.getStyle()
                 .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "16px")
+                .set("border-radius", "20px")
                 .set("padding", "var(--lumo-space-l)")
-                .set("box-shadow", "var(--lumo-box-shadow-m)")
+                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
                 .set("display", "flex")
                 .set("flex-direction", "column")
                 .set("box-sizing", "border-box")
                 .set("gap", "var(--lumo-space-m)");
         card.add(filters, tabs, contentContainer);
-        add(title, card);
+        add(header, card);
         expand(card);
     }
 
     private HorizontalLayout createTimeFilter() {
         HorizontalLayout filterLayout = new HorizontalLayout();
         filterLayout.setWidthFull();
-        filterLayout.setAlignItems(Alignment.END);
-        filterLayout.getStyle().set("flex-wrap", "wrap").set("gap", "var(--lumo-space-m)");
+        filterLayout.setAlignItems(Alignment.CENTER);
+        filterLayout.getStyle()
+                .set("flex-wrap", "wrap")
+                .set("gap", "var(--lumo-space-s)")
+                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("border-radius", "12px");
 
         timeRangeSelect = new Select<>();
         timeRangeSelect.setLabel(getTranslation("statistics.time_range"));
         timeRangeSelect.setItems("today", "this_week", "this_month", "this_quarter", "this_year", "last_month", "last_quarter", "last_year", "custom");
         timeRangeSelect.setItemLabelGenerator(item -> getTranslation("statistics.range_" + item));
         timeRangeSelect.setValue("this_month");
+        timeRangeSelect.getStyle().set("min-width", "160px");
         timeRangeSelect.addValueChangeListener(e -> {
             updateDateRange(e.getValue());
             loadData();
@@ -530,12 +547,17 @@ public class StatisticsView extends VerticalLayout {
                                            String barColor) {
         if (entries.isEmpty()) return;
 
+        // Derive a lighter end-color for the gradient
+        boolean isIncome = barColor.contains("success");
+        String gradientEnd = isIncome ? "#b7f5c8" : "#ffb3b3";
+
         BigDecimal maxValue = entries.get(0).getValue();
 
-        Span chartTitle = new Span(title);
+        Span chartTitle = new Span(title.toUpperCase());
         chartTitle.getStyle()
-                .set("font-size", "var(--lumo-font-size-s)")
-                .set("font-weight", "600")
+                .set("font-size", "10px")
+                .set("font-weight", "700")
+                .set("letter-spacing", "0.08em")
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("display", "block")
                 .set("margin-bottom", "var(--lumo-space-s)");
@@ -545,7 +567,7 @@ public class StatisticsView extends VerticalLayout {
         chartDiv.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "6px");
+                .set("gap", "8px");
 
         entries.forEach(entry -> {
             double pct = maxValue.compareTo(BigDecimal.ZERO) > 0
@@ -554,13 +576,14 @@ public class StatisticsView extends VerticalLayout {
 
             Div row = new Div();
             row.setWidthFull();
-            row.getStyle().set("display", "flex").set("align-items", "center").set("gap", "var(--lumo-space-s)");
+            row.getStyle().set("display", "flex").set("align-items", "center").set("gap", "10px");
 
             Span label = new Span(entry.getKey());
             label.getStyle()
-                    .set("width", "120px")
-                    .set("min-width", "120px")
+                    .set("width", "110px")
+                    .set("min-width", "110px")
                     .set("font-size", "var(--lumo-font-size-xs)")
+                    .set("font-weight", "500")
                     .set("color", "var(--lumo-secondary-text-color)")
                     .set("text-align", "right")
                     .set("overflow", "hidden")
@@ -570,9 +593,9 @@ public class StatisticsView extends VerticalLayout {
             Div barBg = new Div();
             barBg.getStyle()
                     .set("flex", "1")
-                    .set("background", "var(--lumo-contrast-10pct)")
-                    .set("border-radius", "4px")
-                    .set("height", "22px")
+                    .set("background", "var(--lumo-contrast-5pct)")
+                    .set("border-radius", "6px")
+                    .set("height", "26px")
                     .set("position", "relative")
                     .set("overflow", "hidden");
 
@@ -581,20 +604,20 @@ public class StatisticsView extends VerticalLayout {
                     .set("position", "absolute")
                     .set("left", "0").set("top", "0").set("bottom", "0")
                     .set("width", pct + "%")
-                    .set("background", barColor)
-                    .set("opacity", "0.65")
-                    .set("border-radius", "4px");
+                    .set("background", "linear-gradient(90deg, " + barColor + ", " + gradientEnd + ")")
+                    .set("border-radius", "6px")
+                    .set("transition", "width 0.3s ease");
 
             Span amount = new Span(formatCurrency(entry.getValue()));
             amount.getStyle()
                     .set("position", "absolute")
-                    .set("right", "var(--lumo-space-xs)")
+                    .set("right", "var(--lumo-space-s)")
                     .set("top", "0").set("bottom", "0")
                     .set("display", "flex")
                     .set("align-items", "center")
                     .set("font-size", "var(--lumo-font-size-xs)")
-                    .set("font-weight", "600")
-                    .set("color", barColor);
+                    .set("font-weight", "700")
+                    .set("color", "var(--lumo-body-text-color)");
 
             barBg.add(bar, amount);
             row.add(label, barBg);
@@ -728,32 +751,52 @@ public class StatisticsView extends VerticalLayout {
         BigDecimal total = income.add(expense);
         if (total.compareTo(BigDecimal.ZERO) == 0) return;
 
-        double incomePercent = income.divide(total, 4, RoundingMode.HALF_UP).doubleValue() * 100;
+        double incomePercent  = income.divide(total, 4, RoundingMode.HALF_UP).doubleValue() * 100;
         double expensePercent = 100 - incomePercent;
 
         Div chartContainer = new Div();
         chartContainer.getStyle()
                 .set("display", "flex")
-                .set("height", "40px")
-                .set("border-radius", "8px")
+                .set("height", "48px")
+                .set("border-radius", "12px")
                 .set("overflow", "hidden")
-                .set("margin", "var(--lumo-space-m) 0");
+                .set("margin", "var(--lumo-space-m) 0")
+                .set("box-shadow", "0 1px 4px rgba(0,0,0,0.08)");
 
         Div incomeBar = new Div();
         incomeBar.setWidth(incomePercent + "%");
-        incomeBar.getStyle().set("background", "var(--lumo-success-color)");
+        incomeBar.getStyle()
+                .set("background", "linear-gradient(90deg, #1a9a5c, var(--lumo-success-color))")
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("justify-content", "center");
+        if (incomePercent > 12) {
+            Span lbl = new Span(String.format("%.0f%%", incomePercent));
+            lbl.getStyle().set("color", "white").set("font-size", "var(--lumo-font-size-xs)").set("font-weight", "700");
+            incomeBar.add(lbl);
+        }
 
         Div expenseBar = new Div();
         expenseBar.setWidth(expensePercent + "%");
-        expenseBar.getStyle().set("background", "var(--lumo-error-color)");
+        expenseBar.getStyle()
+                .set("background", "linear-gradient(90deg, var(--lumo-error-color), #d94040)")
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("justify-content", "center");
+        if (expensePercent > 12) {
+            Span lbl = new Span(String.format("%.0f%%", expensePercent));
+            lbl.getStyle().set("color", "white").set("font-size", "var(--lumo-font-size-xs)").set("font-weight", "700");
+            expenseBar.add(lbl);
+        }
 
         chartContainer.add(incomeBar, expenseBar);
 
         HorizontalLayout legend = new HorizontalLayout();
         legend.setSpacing(true);
+        legend.getStyle().set("margin-top", "var(--lumo-space-xs)");
         legend.add(
-                createLegendItem(getTranslation("statistics.income") + " (" + String.format("%.1f", incomePercent) + "%)", "var(--lumo-success-color)"),
-                createLegendItem(getTranslation("statistics.expense") + " (" + String.format("%.1f", expensePercent) + "%)", "var(--lumo-error-color)")
+                createLegendItem(getTranslation("statistics.income") + " — " + formatCurrency(income), "var(--lumo-success-color)"),
+                createLegendItem(getTranslation("statistics.expense") + " — " + formatCurrency(expense), "var(--lumo-error-color)")
         );
 
         container.add(chartContainer, legend);
@@ -792,15 +835,23 @@ public class StatisticsView extends VerticalLayout {
     }
 
     private void renderTrendChart(Div container, Map<String, BigDecimal[]> monthlyData) {
+        Div chartWrapper = new Div();
+        chartWrapper.setWidthFull();
+        chartWrapper.getStyle()
+                .set("overflow-x", "auto")
+                .set("padding-bottom", "var(--lumo-space-s)");
+
         Div chartArea = new Div();
         chartArea.getStyle()
                 .set("display", "flex")
                 .set("align-items", "flex-end")
                 .set("justify-content", "space-around")
+                .set("min-width", "min-content")
                 .set("height", "200px")
-                .set("padding", "var(--lumo-space-m)")
-                .set("border-bottom", "1px solid var(--lumo-contrast-20pct)")
-                .set("margin-bottom", "var(--lumo-space-m)");
+                .set("padding", "var(--lumo-space-m) var(--lumo-space-s) 0 var(--lumo-space-s)")
+                .set("border-bottom", "2px solid var(--lumo-contrast-10pct)")
+                .set("margin-bottom", "var(--lumo-space-s)")
+                .set("gap", "6px");
 
         BigDecimal maxValue = monthlyData.values().stream()
                 .flatMap(arr -> Arrays.stream(new BigDecimal[]{arr[0], arr[1]}))
@@ -813,43 +864,57 @@ public class StatisticsView extends VerticalLayout {
                     .set("display", "flex")
                     .set("flex-direction", "column")
                     .set("align-items", "center")
-                    .set("gap", "4px");
+                    .set("gap", "3px")
+                    .set("min-width", "32px");
 
             HorizontalLayout bars = new HorizontalLayout();
             bars.setAlignItems(Alignment.END);
             bars.setSpacing(false);
-            bars.getStyle().set("gap", "2px");
+            bars.getStyle().set("gap", "2px").set("height", "160px").set("align-items", "flex-end");
 
-            bars.add(createBar(entry.getValue()[0], maxValue, "var(--lumo-success-color)"));
-            bars.add(createBar(entry.getValue()[1], maxValue, "var(--lumo-error-color)"));
+            bars.add(createGradientBar(entry.getValue()[0], maxValue, "var(--lumo-success-color)", "#b7f5c8"));
+            bars.add(createGradientBar(entry.getValue()[1], maxValue, "var(--lumo-error-color)", "#ffb3b3"));
 
-            Span label = new Span(entry.getKey().substring(5));
-            label.getStyle().set("font-size", "10px").set("color", "var(--lumo-secondary-text-color)");
+            String monthLabel = entry.getKey().length() >= 7 ? entry.getKey().substring(5) : entry.getKey();
+            Span label = new Span(monthLabel);
+            label.getStyle()
+                    .set("font-size", "10px")
+                    .set("font-weight", "600")
+                    .set("color", "var(--lumo-secondary-text-color)")
+                    .set("letter-spacing", "0.03em");
 
             barGroup.add(bars, label);
             chartArea.add(barGroup);
         }
 
+        chartWrapper.add(chartArea);
+
         HorizontalLayout legend = new HorizontalLayout();
         legend.setSpacing(true);
+        legend.getStyle().set("margin-top", "var(--lumo-space-s)");
         legend.add(
                 createLegendItem(getTranslation("statistics.income"), "var(--lumo-success-color)"),
                 createLegendItem(getTranslation("statistics.expense"), "var(--lumo-error-color)")
         );
 
-        container.add(chartArea, legend);
+        container.add(chartWrapper, legend);
     }
 
-    private Div createBar(BigDecimal value, BigDecimal max, String color) {
+    private Div createGradientBar(BigDecimal value, BigDecimal max, String colorTop, String colorBottom) {
         Div bar = new Div();
         double height = max.compareTo(BigDecimal.ZERO) > 0
                 ? value.divide(max, 4, RoundingMode.HALF_UP).doubleValue() * 150
                 : 0;
-        bar.setWidth("12px");
+        bar.setWidth("14px");
         bar.setHeight(Math.max(2, height) + "px");
         bar.getStyle()
-                .set("background", color)
-                .set("border-radius", "2px 2px 0 0");
+                .set("background", "linear-gradient(to top, " + colorBottom + ", " + colorTop + ")")
+                .set("border-radius", "3px 3px 0 0")
+                .set("transition", "opacity 0.15s");
+        bar.getElement().executeJs(
+                "this.addEventListener('mouseenter', () => this.style.opacity='0.75');" +
+                "this.addEventListener('mouseleave', () => this.style.opacity='1');"
+        );
         return bar;
     }
 
@@ -858,21 +923,28 @@ public class StatisticsView extends VerticalLayout {
         card.getStyle()
                 .set("flex", "1 1 200px")
                 .set("min-width", "180px")
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("border-radius", "12px")
-                .set("padding", "var(--lumo-space-m)")
-                .set("box-shadow", "none");
+                .set("background", "var(--lumo-base-color)")
+                .set("border-radius", "16px")
+                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
+                .set("box-shadow", "0 1px 6px rgba(0,0,0,0.07)")
+                .set("border-left", "4px solid " + color)
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("gap", "var(--lumo-space-xs)");
 
-        Span titleSpan = new Span(title);
+        Span titleSpan = new Span(title.toUpperCase());
         titleSpan.getStyle()
-                .set("font-size", "var(--lumo-font-size-s)")
-                .set("color", "var(--lumo-secondary-text-color)")
-                .set("display", "block");
+                .set("font-size", "10px")
+                .set("font-weight", "700")
+                .set("letter-spacing", "0.08em")
+                .set("color", "var(--lumo-secondary-text-color)");
 
-        H4 valueSpan = new H4(formatCurrency(amount));
+        Span valueSpan = new Span(formatCurrency(amount));
         valueSpan.getStyle()
-                .set("margin", "var(--lumo-space-xs) 0 0 0")
-                .set("color", color);
+                .set("font-size", "var(--lumo-font-size-xxl)")
+                .set("font-weight", "700")
+                .set("color", color)
+                .set("line-height", "1.1");
 
         card.add(titleSpan, valueSpan);
         return card;
@@ -880,15 +952,21 @@ public class StatisticsView extends VerticalLayout {
 
     private Div createInnerCard(String title) {
         Div card = new Div();
+        card.setWidthFull();
         card.getStyle()
                 .set("background", "var(--lumo-contrast-5pct)")
-                .set("border-radius", "12px")
-                .set("padding", "var(--lumo-space-m)")
+                .set("border-radius", "16px")
+                .set("padding", "var(--lumo-space-l)")
                 .set("margin-top", "var(--lumo-space-m)")
-                .set("box-shadow", "none");
+                .set("box-sizing", "border-box");
 
-        H4 titleEl = new H4(title);
-        titleEl.getStyle().set("margin", "0 0 var(--lumo-space-m) 0");
+        Span titleEl = new Span(title);
+        titleEl.getStyle()
+                .set("font-size", "var(--lumo-font-size-m)")
+                .set("font-weight", "700")
+                .set("color", "var(--lumo-header-text-color)")
+                .set("display", "block")
+                .set("margin-bottom", "var(--lumo-space-m)");
         card.add(titleEl);
 
         return card;
@@ -913,32 +991,31 @@ public class StatisticsView extends VerticalLayout {
         return header;
     }
 
-    /**
-     * Creates a sortable table header. labels[] are display names; keys[] are sort identifiers.
-     * Clicking a column header sets sortCol/sortAsc and re-renders the current tab.
-     */
     private HorizontalLayout createSortableHeader(String[] labels, String[] keys) {
         HorizontalLayout header = new HorizontalLayout();
         header.setWidthFull();
         header.getStyle()
-                .set("padding", "var(--lumo-space-s) 0")
+                .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
                 .set("border-bottom", "2px solid var(--lumo-contrast-10pct)")
-                .set("font-weight", "bold")
-                .set("font-size", "var(--lumo-font-size-s)")
-                .set("color", "var(--lumo-secondary-text-color)");
+                .set("margin-bottom", "var(--lumo-space-xs)");
 
         for (int i = 0; i < labels.length; i++) {
             final String key = keys[i];
-            String indicator = key.equals(sortCol) ? (sortAsc ? " ↑" : " ↓") : "";
-            Span col = new Span(labels[i] + indicator);
+            boolean active = key.equals(sortCol);
+            String arrow = active ? (sortAsc ? " ▲" : " ▼") : "";
+
+            Span col = new Span(labels[i].toUpperCase() + arrow);
             col.getStyle()
                     .set("flex", i == 0 ? "2" : "1")
                     .set("text-align", i == 0 ? "left" : "right")
+                    .set("font-size", "10px")
+                    .set("font-weight", "700")
+                    .set("letter-spacing", "0.07em")
                     .set("cursor", "pointer")
-                    .set("user-select", "none");
-            if (key.equals(sortCol)) {
-                col.getStyle().set("color", "var(--lumo-primary-color)");
-            }
+                    .set("user-select", "none")
+                    .set("color", active ? "var(--lumo-primary-color)" : "var(--lumo-secondary-text-color)")
+                    .set("transition", "color 0.15s");
+
             col.addClickListener(e -> {
                 if (sortCol.equals(key)) {
                     sortAsc = !sortAsc;
@@ -962,36 +1039,41 @@ public class StatisticsView extends VerticalLayout {
         HorizontalLayout row = new HorizontalLayout();
         row.setWidthFull();
         row.getStyle()
-                .set("padding", "var(--lumo-space-s) 0")
+                .set("padding", "var(--lumo-space-s) var(--lumo-space-s)")
+                .set("border-radius", "8px")
                 .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
-                .set("font-size", "var(--lumo-font-size-s)");
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("align-items", "center")
+                .set("transition", "background 0.12s");
+        row.getElement().executeJs(
+                "this.addEventListener('mouseenter', () => this.style.background='var(--lumo-contrast-5pct)');" +
+                "this.addEventListener('mouseleave', () => this.style.background='');"
+        );
 
         Span labelSpan = new Span(label);
-        labelSpan.getStyle().set("flex", "2");
-
-        Span incomeSpan = new Span(income);
-        incomeSpan.getStyle().set("flex", "1").set("text-align", "right").set("color", "var(--lumo-success-color)");
-
-        Span expenseSpan = new Span(expense);
-        expenseSpan.getStyle().set("flex", "1").set("text-align", "right").set("color", "var(--lumo-error-color)");
-
-        Span netSpan = new Span(net);
-        netSpan.getStyle()
-                .set("flex", "1")
-                .set("text-align", "right")
+        labelSpan.getStyle()
+                .set("flex", "2")
                 .set("font-weight", "500")
-                .set("color", isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
+                .set("color", "var(--lumo-body-text-color)")
+                .set("overflow", "hidden")
+                .set("text-overflow", "ellipsis")
+                .set("white-space", "nowrap");
 
-        row.add(labelSpan, incomeSpan, expenseSpan, netSpan);
+        row.add(labelSpan, createAmountBadge(income, "var(--lumo-success-color)", "rgba(var(--lumo-success-color-50pct-rgb, 0,168,80),0.1)"),
+                createAmountBadge(expense, "var(--lumo-error-color)", "rgba(var(--lumo-error-color-50pct-rgb, 255,63,63),0.1)"),
+                createAmountBadge(net, isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)",
+                        isPositive ? "rgba(var(--lumo-success-color-50pct-rgb, 0,168,80),0.15)" : "rgba(var(--lumo-error-color-50pct-rgb, 255,63,63),0.15)"));
 
         if (pctChange != null) {
-            Span pctSpan = new Span(pctChange);
             boolean pctPositive = pctChange.startsWith("+");
+            boolean pctNeutral  = pctChange.equals("—");
+            Span pctSpan = new Span(pctChange);
             pctSpan.getStyle()
                     .set("flex", "1")
                     .set("text-align", "right")
                     .set("font-size", "var(--lumo-font-size-xs)")
-                    .set("color", pctChange.equals("—") ? "var(--lumo-secondary-text-color)"
+                    .set("font-weight", "600")
+                    .set("color", pctNeutral ? "var(--lumo-secondary-text-color)"
                             : pctPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
             row.add(pctSpan);
         }
@@ -999,23 +1081,50 @@ public class StatisticsView extends VerticalLayout {
         return row;
     }
 
+    private Span createAmountBadge(String text, String color, String bg) {
+        Span badge = new Span(text);
+        badge.getStyle()
+                .set("flex", "1")
+                .set("text-align", "right")
+                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("font-weight", "600")
+                .set("color", color);
+        return badge;
+    }
+
     private HorizontalLayout createCategoryParentRow(String label, String net, boolean isPositive) {
         HorizontalLayout row = new HorizontalLayout();
         row.setWidthFull();
         row.getStyle()
-                .set("padding", "var(--lumo-space-s) 0 var(--lumo-space-xs) 0")
-                .set("border-top", "1px solid var(--lumo-contrast-10pct)")
-                .set("margin-top", "var(--lumo-space-xs)")
-                .set("font-size", "var(--lumo-font-size-s)")
-                .set("font-weight", "600");
+                .set("padding", "var(--lumo-space-s) var(--lumo-space-s) var(--lumo-space-xs) var(--lumo-space-s)")
+                .set("margin-top", "var(--lumo-space-s)")
+                .set("border-radius", "8px 8px 0 0")
+                .set("background", "var(--lumo-contrast-10pct)")
+                .set("align-items", "center");
+
+        Span indicator = new Span("▸ ");
+        indicator.getStyle()
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("margin-right", "4px");
 
         Span labelSpan = new Span(label);
-        labelSpan.getStyle().set("flex", "2");
+        labelSpan.getStyle()
+                .set("flex", "2")
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("font-weight", "700")
+                .set("color", "var(--lumo-header-text-color)")
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("gap", "2px");
+        labelSpan.addComponentAsFirst(indicator);
 
         Span netSpan = new Span(net);
         netSpan.getStyle()
                 .set("flex", "1")
                 .set("text-align", "right")
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("font-weight", "700")
                 .set("color", isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
 
         row.add(labelSpan, netSpan);
@@ -1026,20 +1135,39 @@ public class StatisticsView extends VerticalLayout {
         HorizontalLayout row = new HorizontalLayout();
         row.setWidthFull();
         row.getStyle()
-                .set("padding", "var(--lumo-space-xs) 0")
+                .set("padding", "var(--lumo-space-xs) var(--lumo-space-s) var(--lumo-space-xs) var(--lumo-space-xl)")
                 .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
-                .set("font-size", "var(--lumo-font-size-s)")
-                .set("padding-left", "var(--lumo-space-l)");
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("align-items", "center")
+                .set("transition", "background 0.12s");
+        row.getElement().executeJs(
+                "this.addEventListener('mouseenter', () => this.style.background='var(--lumo-contrast-10pct)');" +
+                "this.addEventListener('mouseleave', () => this.style.background='var(--lumo-contrast-5pct)');"
+        );
+
+        Div dot = new Div();
+        dot.getStyle()
+                .set("width", "6px").set("height", "6px")
+                .set("border-radius", "50%")
+                .set("background", isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)")
+                .set("flex-shrink", "0")
+                .set("margin-right", "var(--lumo-space-s)");
 
         Span labelSpan = new Span(label);
         labelSpan.getStyle()
                 .set("flex", "2")
-                .set("color", "var(--lumo-secondary-text-color)");
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("display", "flex")
+                .set("align-items", "center");
+        labelSpan.addComponentAsFirst(dot);
 
         Span netSpan = new Span(net);
         netSpan.getStyle()
                 .set("flex", "1")
                 .set("text-align", "right")
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("font-weight", "600")
                 .set("color", isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
 
         row.add(labelSpan, netSpan);
@@ -1050,18 +1178,30 @@ public class StatisticsView extends VerticalLayout {
         HorizontalLayout row = new HorizontalLayout();
         row.setWidthFull();
         row.getStyle()
-                .set("padding", "var(--lumo-space-s) 0")
+                .set("padding", "var(--lumo-space-s) var(--lumo-space-s)")
+                .set("border-radius", "8px")
                 .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
-                .set("font-size", "var(--lumo-font-size-s)");
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("align-items", "center")
+                .set("transition", "background 0.12s");
+        row.getElement().executeJs(
+                "this.addEventListener('mouseenter', () => this.style.background='var(--lumo-contrast-5pct)');" +
+                "this.addEventListener('mouseleave', () => this.style.background='');"
+        );
 
         Span labelSpan = new Span(label);
-        labelSpan.getStyle().set("flex", "2");
+        labelSpan.getStyle()
+                .set("flex", "2")
+                .set("font-weight", "500")
+                .set("overflow", "hidden")
+                .set("text-overflow", "ellipsis")
+                .set("white-space", "nowrap");
 
         Span netSpan = new Span(net);
         netSpan.getStyle()
                 .set("flex", "1")
                 .set("text-align", "right")
-                .set("font-weight", "500")
+                .set("font-weight", "700")
                 .set("color", isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
 
         row.add(labelSpan, netSpan);
@@ -1087,25 +1227,51 @@ public class StatisticsView extends VerticalLayout {
     private Div createProgressRow(String label, BigDecimal amount, double percent) {
         Div row = new Div();
         row.setWidthFull();
-        row.getStyle().set("margin-bottom", "var(--lumo-space-s)");
+        row.getStyle()
+                .set("margin-bottom", "var(--lumo-space-m)")
+                .set("padding", "var(--lumo-space-s)")
+                .set("border-radius", "8px")
+                .set("transition", "background 0.12s");
+        row.getElement().executeJs(
+                "this.addEventListener('mouseenter', () => this.style.background='var(--lumo-contrast-5pct)');" +
+                "this.addEventListener('mouseleave', () => this.style.background='');"
+        );
 
         HorizontalLayout info = new HorizontalLayout();
         info.setWidthFull();
         info.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
-        info.add(new Span(label), new Span(formatCurrency(amount)));
+        info.setAlignItems(Alignment.BASELINE);
+
+        Span labelSpan = new Span(label);
+        labelSpan.getStyle().set("font-size", "var(--lumo-font-size-s)").set("font-weight", "500");
+
+        HorizontalLayout rightInfo = new HorizontalLayout();
+        rightInfo.setSpacing(true);
+        rightInfo.setAlignItems(Alignment.BASELINE);
+
+        Span amountSpan = new Span(formatCurrency(amount));
+        amountSpan.getStyle().set("font-size", "var(--lumo-font-size-s)").set("font-weight", "700").set("color", "var(--lumo-error-color)");
+
+        Span pctSpan = new Span(String.format("%.0f%%", percent));
+        pctSpan.getStyle().set("font-size", "var(--lumo-font-size-xs)").set("color", "var(--lumo-secondary-text-color)");
+
+        rightInfo.add(pctSpan, amountSpan);
+        info.add(labelSpan, rightInfo);
 
         Div progressBg = new Div();
         progressBg.setWidthFull();
         progressBg.getStyle()
                 .set("background", "var(--lumo-contrast-10pct)")
-                .set("border-radius", "4px")
-                .set("height", "6px")
-                .set("margin-top", "4px");
+                .set("border-radius", "6px")
+                .set("height", "8px")
+                .set("margin-top", "6px");
 
         Div progressBar = new Div();
         progressBar.setWidth(percent + "%");
         progressBar.setHeight("100%");
-        progressBar.getStyle().set("background", "var(--lumo-primary-color)").set("border-radius", "4px");
+        progressBar.getStyle()
+                .set("background", "linear-gradient(90deg, var(--lumo-error-color), var(--lumo-error-color-50pct, #ff9999))")
+                .set("border-radius", "6px");
 
         progressBg.add(progressBar);
         row.add(info, progressBg);
@@ -1115,15 +1281,22 @@ public class StatisticsView extends VerticalLayout {
     private HorizontalLayout createLegendItem(String label, String color) {
         HorizontalLayout item = new HorizontalLayout();
         item.setAlignItems(Alignment.CENTER);
-        item.setSpacing(true);
+        item.setSpacing(false);
+        item.getStyle().set("gap", "6px");
 
         Div dot = new Div();
         dot.setWidth("10px");
         dot.setHeight("10px");
-        dot.getStyle().set("background", color).set("border-radius", "50%");
+        dot.getStyle()
+                .set("background", color)
+                .set("border-radius", "3px")
+                .set("flex-shrink", "0");
 
         Span text = new Span(label);
-        text.getStyle().set("font-size", "var(--lumo-font-size-s)");
+        text.getStyle()
+                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("font-weight", "500")
+                .set("color", "var(--lumo-secondary-text-color)");
 
         item.add(dot, text);
         return item;

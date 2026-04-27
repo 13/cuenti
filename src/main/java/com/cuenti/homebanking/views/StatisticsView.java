@@ -608,19 +608,20 @@ public class StatisticsView extends VerticalLayout {
                     .set("border-radius", "6px")
                     .set("transition", "width 0.3s ease");
 
+            barBg.add(bar);
+
+            // Amount is outside the bar — no contrast issues in any theme
             Span amount = new Span(formatCurrency(entry.getValue()));
             amount.getStyle()
-                    .set("position", "absolute")
-                    .set("right", "var(--lumo-space-s)")
-                    .set("top", "0").set("bottom", "0")
-                    .set("display", "flex")
-                    .set("align-items", "center")
+                    .set("width", "90px")
+                    .set("min-width", "90px")
+                    .set("text-align", "right")
                     .set("font-size", "var(--lumo-font-size-xs)")
                     .set("font-weight", "700")
-                    .set("color", "var(--lumo-body-text-color)");
+                    .set("color", barColor)
+                    .set("flex-shrink", "0");
 
-            barBg.add(bar, amount);
-            row.add(label, barBg);
+            row.add(label, barBg, amount);
             chartDiv.add(row);
         });
 
@@ -766,37 +767,28 @@ public class StatisticsView extends VerticalLayout {
         Div incomeBar = new Div();
         incomeBar.setWidth(incomePercent + "%");
         incomeBar.getStyle()
-                .set("background", "linear-gradient(90deg, #1a9a5c, var(--lumo-success-color))")
-                .set("display", "flex")
-                .set("align-items", "center")
-                .set("justify-content", "center");
-        if (incomePercent > 12) {
-            Span lbl = new Span(String.format("%.0f%%", incomePercent));
-            lbl.getStyle().set("color", "white").set("font-size", "var(--lumo-font-size-xs)").set("font-weight", "700");
-            incomeBar.add(lbl);
-        }
+                .set("background", "linear-gradient(90deg, #1a9a5c, var(--lumo-success-color))");
 
         Div expenseBar = new Div();
         expenseBar.setWidth(expensePercent + "%");
         expenseBar.getStyle()
-                .set("background", "linear-gradient(90deg, var(--lumo-error-color), #d94040)")
-                .set("display", "flex")
-                .set("align-items", "center")
-                .set("justify-content", "center");
-        if (expensePercent > 12) {
-            Span lbl = new Span(String.format("%.0f%%", expensePercent));
-            lbl.getStyle().set("color", "white").set("font-size", "var(--lumo-font-size-xs)").set("font-weight", "700");
-            expenseBar.add(lbl);
-        }
+                .set("background", "linear-gradient(90deg, var(--lumo-error-color), #d94040)");
 
         chartContainer.add(incomeBar, expenseBar);
 
+        // Percentages shown in legend — no text-on-gradient contrast issues
         HorizontalLayout legend = new HorizontalLayout();
         legend.setSpacing(true);
         legend.getStyle().set("margin-top", "var(--lumo-space-xs)");
         legend.add(
-                createLegendItem(getTranslation("statistics.income") + " — " + formatCurrency(income), "var(--lumo-success-color)"),
-                createLegendItem(getTranslation("statistics.expense") + " — " + formatCurrency(expense), "var(--lumo-error-color)")
+                createLegendItem(getTranslation("statistics.income")
+                        + " — " + formatCurrency(income)
+                        + " (" + String.format("%.0f%%", incomePercent) + ")",
+                        "var(--lumo-success-color)"),
+                createLegendItem(getTranslation("statistics.expense")
+                        + " — " + formatCurrency(expense)
+                        + " (" + String.format("%.0f%%", expensePercent) + ")",
+                        "var(--lumo-error-color)")
         );
 
         container.add(chartContainer, legend);

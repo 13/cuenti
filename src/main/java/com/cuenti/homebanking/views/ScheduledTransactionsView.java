@@ -448,6 +448,9 @@ public class ScheduledTransactionsView extends VerticalLayout {
                 },
                 (stx, selectedTags) -> stx.setTags(selectedTags.stream().map(Tag::getName).collect(Collectors.joining(","))));
 
+        // Populate category items before binder.setBean(...) so ComboBox can accept existing value.
+        updateCategoryItems.run();
+
         if (st.getId() != null) {
             binder.setBean(st);
             toAccount.setVisible(st.getType() == Transaction.TransactionType.TRANSFER);
@@ -458,8 +461,6 @@ public class ScheduledTransactionsView extends VerticalLayout {
             binder.setBean(st);
         }
 
-        // Initialize category items based on current transaction type
-        updateCategoryItems.run();
 
         form.add(typeTabs, nextDate, amount, fromAccount, toAccount, payee, category, paymentMethod, pattern, recValue, memo, tags);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("400px", 2));

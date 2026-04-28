@@ -618,8 +618,9 @@ public class DashboardView extends VerticalLayout {
                     bar.setWidth(barPct + "%");
                     bar.setHeight("100%");
                     bar.getStyle()
-                            .set("background", "linear-gradient(90deg, " + color + ", " + color + "88)")
-                            .set("border-radius", "6px");
+                            .set("background", color)
+                            .set("border-radius", "6px")
+                            .set("opacity", "0.85");
                     progressBg.add(bar);
 
                     Div item = new Div(info, progressBg);

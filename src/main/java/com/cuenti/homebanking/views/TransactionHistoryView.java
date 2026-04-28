@@ -16,7 +16,6 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridSortOrder;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -93,17 +92,23 @@ public class TransactionHistoryView extends VerticalLayout {
         this.currentUser = userService.findByUsername(username);
 
         setSizeFull();
-        setPadding(true);
-        setSpacing(true);
-        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
+        setPadding(false);
+        setSpacing(false);
+        getStyle()
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("padding", "var(--lumo-space-m)")
+                .set("overflow", "hidden");
         
         setupUI();
         refreshGrid();
     }
 
     private void setupUI() {
-        H2 title = new H2(getTranslation("transactions.title"));
-        title.getStyle().set("margin-top", "0").set("color", "var(--lumo-primary-text-color)");
+        Span title = new Span(getTranslation("transactions.title"));
+        title.getStyle()
+                .set("font-size", "var(--lumo-font-size-xxl)")
+                .set("font-weight", "700")
+                .set("color", "var(--lumo-header-text-color)");
 
         accountSelector.setPlaceholder(getTranslation("dialog.account"));
         accountSelector.setItems(accountService.getAccountsByUser(currentUser));
@@ -158,34 +163,52 @@ public class TransactionHistoryView extends VerticalLayout {
         searchField.setClearButtonVisible(true);
         searchField.setValueChangeMode(ValueChangeMode.LAZY);
         searchField.addValueChangeListener(e -> updateFilters());
-        searchField.setWidth("200px");
+        searchField.setWidth("220px");
 
         Button addButton = new Button(getTranslation("transactions.new"), VaadinIcon.PLUS.create(), e -> openTransactionDialog(new Transaction()));
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        addButton.getStyle().set("border-radius", "8px");
 
         setupTabs();
 
-        HorizontalLayout toolbar = new HorizontalLayout(accountSelector, dateFrom, dateTo, typeTabs, searchField, addButton);
+        // Filters row
+        HorizontalLayout filtersRow = new HorizontalLayout(accountSelector, dateFrom, dateTo, searchField);
+        filtersRow.setAlignItems(Alignment.BASELINE);
+        filtersRow.setSpacing(false);
+        filtersRow.getStyle().set("gap", "var(--lumo-space-s)").set("flex-wrap", "wrap");
+
+        // Top toolbar: filters left, add button right
+        HorizontalLayout toolbar = new HorizontalLayout(filtersRow, addButton);
         toolbar.setWidthFull();
         toolbar.setAlignItems(Alignment.CENTER);
-        toolbar.expand(typeTabs);
+        toolbar.setJustifyContentMode(JustifyContentMode.BETWEEN);
+        toolbar.getStyle()
+                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("border-radius", "12px");
+
+        // Type tabs row — full width below toolbar
+        typeTabs.setWidthFull();
+        typeTabs.getStyle()
+                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
+                .set("margin-bottom", "var(--lumo-space-xs)");
 
         setupGrid();
-        
+
         add(title);
 
-        // Always use card layout for better UX
         Div card = new Div();
         card.setSizeFull();
         card.getStyle()
                 .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "16px")
+                .set("border-radius", "20px")
                 .set("padding", "var(--lumo-space-l)")
-                .set("box-shadow", "var(--lumo-box-shadow-m)")
+                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("box-sizing", "border-box");
-        card.add(toolbar, grid);
+                .set("box-sizing", "border-box")
+                .set("gap", "var(--lumo-space-s)");
+        card.add(toolbar, typeTabs, grid);
         add(card);
         expand(card);
     }
@@ -235,124 +258,163 @@ public class TransactionHistoryView extends VerticalLayout {
     }
 
     private void setupGrid() {
-        grid.addThemeVariants(GridVariant.LUMO_NO_BORDER, GridVariant.LUMO_ROW_STRIPES);
+        grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
         grid.setSizeFull();
-        
-        // 1. Icon Column
-        grid.addColumn(new ComponentRenderer<>(t -> {
-            Transaction.PaymentMethod pm = t.getPaymentMethod();
-            boolean showIcon = (pm != null && pm != Transaction.PaymentMethod.NONE) || t.getType() == Transaction.TransactionType.TRANSFER;
-            if (showIcon) {
-                Icon icon = getPaymentIcon(t);
-                icon.getStyle().set("font-size", "var(--lumo-font-size-s)");
-                return icon;
-            }
-            return new Span();
-        })).setHeader("").setAutoWidth(true).setFlexGrow(0);
-        // 2. Date Column
-        Grid.Column<Transaction> dateColumn = grid.addColumn(t -> 
-                t.getTransactionDate().format(getDateTimeFormatter()))
-                .setHeader(getTranslation("transactions.date"))
-                .setSortable(true)
-                .setComparator(Transaction::getTransactionDate)
-                .setAutoWidth(true)
-                .setFlexGrow(0);
 
-        // 3. Payee Column
-        grid.addColumn(Transaction::getPayee)
-                .setHeader(getTranslation("transactions.payee"))
+        // 1. Type + icon avatar
+        grid.addComponentColumn(t -> {
+            Div avatar = new Div();
+            avatar.getStyle()
+                    .set("width", "32px").set("height", "32px").set("border-radius", "50%")
+                    .set("display", "flex").set("align-items", "center").set("justify-content", "center")
+                    .set("flex-shrink", "0");
+            String bg;
+            if (t.getType() == Transaction.TransactionType.INCOME)        bg = "rgba(var(--lumo-success-color-50pct-rgb,0,168,80),0.15)";
+            else if (t.getType() == Transaction.TransactionType.TRANSFER) bg = "rgba(var(--lumo-primary-color-50pct-rgb,26,119,242),0.15)";
+            else                                                           bg = "rgba(var(--lumo-error-color-50pct-rgb,255,63,63),0.15)";
+            avatar.getStyle().set("background", bg);
+            Icon icon = getPaymentIcon(t);
+            String iconColor;
+            if (t.getType() == Transaction.TransactionType.INCOME)        iconColor = "var(--lumo-success-color)";
+            else if (t.getType() == Transaction.TransactionType.TRANSFER) iconColor = "var(--lumo-primary-color)";
+            else                                                           iconColor = "var(--lumo-error-color)";
+            icon.getStyle().set("font-size", "14px").set("color", iconColor);
+            avatar.add(icon);
+            return avatar;
+        }).setHeader("").setWidth("48px").setFlexGrow(0);
+
+        // 2. Date
+        grid.addComponentColumn(t -> {
+            Span date = new Span(t.getTransactionDate().format(getDateTimeFormatter()));
+            date.getStyle()
+                    .set("font-size", "var(--lumo-font-size-s)")
+                    .set("color", "var(--lumo-secondary-text-color)");
+            return date;
+        }).setHeader(getTranslation("transactions.date"))
+                .setSortable(true).setComparator(Transaction::getTransactionDate)
+                .setAutoWidth(true).setFlexGrow(0);
+
+        // 3. Payee + account stacked
+        grid.addComponentColumn(t -> {
+            Span payee = new Span(t.getPayee() != null ? t.getPayee() : "—");
+            payee.getStyle().set("font-weight", "600").set("font-size", "var(--lumo-font-size-s)");
+
+            Account acc = t.getType() == Transaction.TransactionType.INCOME ? t.getToAccount() : t.getFromAccount();
+            String accName = acc != null ? acc.getAccountName() : "";
+            if (t.getType() == Transaction.TransactionType.TRANSFER && t.getFromAccount() != null && t.getToAccount() != null) {
+                accName = t.getFromAccount().getAccountName() + " → " + t.getToAccount().getAccountName();
+            }
+            Span account = new Span(accName);
+            account.getStyle()
+                    .set("font-size", "var(--lumo-font-size-xs)")
+                    .set("color", "var(--lumo-secondary-text-color)");
+
+            Div stack = new Div(payee, account);
+            stack.getStyle().set("display", "flex").set("flex-direction", "column")
+                    .set("gap", "1px").set("padding", "var(--lumo-space-xs) 0");
+            return stack;
+        }).setHeader(getTranslation("transactions.payee"))
                 .setSortable(true)
+                .setComparator(Comparator.comparing(t -> t.getPayee() != null ? t.getPayee() : ""))
                 .setAutoWidth(true);
 
-        // 4. Category Column
-        grid.addColumn(t -> {
+        // 4. Category pill
+        grid.addComponentColumn(t -> {
+            String cat;
             if (t.getSplits() != null && !t.getSplits().isEmpty()) {
-                String translated = getTranslation("transactions.split");
-                return translated.equals("!transactions.split!") ? "Multiple" : translated;
+                String s = getTranslation("transactions.split");
+                cat = s.startsWith("!") ? "Split" : s;
+            } else {
+                cat = t.getCategory() != null ? t.getCategory().getFullName() : "";
             }
-            return t.getCategory() != null ? t.getCategory().getFullName() : "";
-        })
-                .setHeader(getTranslation("transactions.category"))
+            if (cat.isBlank()) return new Span();
+            Span badge = new Span(cat);
+            badge.getStyle()
+                    .set("font-size", "var(--lumo-font-size-xs)").set("font-weight", "500")
+                    .set("padding", "2px 8px").set("border-radius", "99px")
+                    .set("background", "var(--lumo-contrast-10pct)")
+                    .set("color", "var(--lumo-secondary-text-color)")
+                    .set("white-space", "nowrap").set("max-width", "160px")
+                    .set("overflow", "hidden").set("text-overflow", "ellipsis").set("display", "block");
+            return badge;
+        }).setHeader(getTranslation("transactions.category"))
                 .setSortable(true)
+                .setComparator(Comparator.comparing(t -> t.getCategory() != null ? t.getCategory().getFullName() : ""))
                 .setAutoWidth(true);
 
-        // 5. Tags Column (Colored Tags)
-        grid.addComponentColumn(t -> {
-            HorizontalLayout hl = new HorizontalLayout();
-            hl.setSpacing(true);
-            if (t.getTags() != null && !t.getTags().isEmpty()) {
-                for (String tagName : t.getTags().split(",")) {
-                    hl.add(TagColorUtil.createTagBadge(tagName));
-                }
-            }
-            return hl;
-        }).setHeader(getTranslation("dialog.tags"))
-                .setSortable(true)
-                .setAutoWidth(true)
-                .setFlexGrow(0);
-
-        // 6. Expense Column
-        grid.addComponentColumn(t -> {
-            Account selected = accountSelector.getValue();
-            boolean isExpensePerspective = (t.getType() == Transaction.TransactionType.EXPENSE) || 
-                                           (t.getType() == Transaction.TransactionType.TRANSFER && (selected == null || (t.getFromAccount() != null && t.getFromAccount().getId().equals(selected.getId()))));
-            
-            if (isExpensePerspective) {
-                Span s = new Span(formatCurrency(t.getAmount()));
-                s.getStyle().set("color", "var(--lumo-error-text-color)");
-                return s;
-            }
-            return new Span();
-        }).setHeader(getTranslation("category.type.expense"))
-                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END)
-                .setSortable(true)
-                .setWidth("180px")
-                .setFlexGrow(0);
-
-        // 7. Income Column
-        grid.addComponentColumn(t -> {
-            Account selected = accountSelector.getValue();
-            boolean isIncomePerspective = (t.getType() == Transaction.TransactionType.INCOME) || 
-                                          (t.getType() == Transaction.TransactionType.TRANSFER && (selected == null || (t.getToAccount() != null && t.getToAccount().getId().equals(selected.getId()))));
-            
-            if (isIncomePerspective) {
-                Span s = new Span(formatCurrency(t.getAmount()));
-                s.getStyle().set("color", "var(--lumo-success-text-color)");
-                return s;
-            }
-            return new Span();
-        }).setHeader(getTranslation("category.type.income"))
-                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END)
-                .setSortable(true)
-                .setWidth("180px")
-                .setFlexGrow(0);
-
-        // 8. Dynamic Balance Column
-        grid.addColumn(new ComponentRenderer<>(t -> new Span(formatCurrency(balanceCache.getOrDefault(t.getId(), BigDecimal.ZERO)))))
-            .setHeader(getTranslation("accounts.balance"))
-            .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END)
-                .setSortable(true)
-                .setAutoWidth(true)
-                .setFlexGrow(0);;
-
-        // 9. Memo Column
-        grid.addColumn(Transaction::getMemo)
-                .setHeader(getTranslation("dialog.memo"))
-                .setSortable(true)
-                .setAutoWidth(true)
-                .setFlexGrow(0);;
-
-        // 10. Actions
+        // 5. Tags
         grid.addComponentColumn(t -> {
             HorizontalLayout hl = new HorizontalLayout();
             hl.setSpacing(false);
+            hl.getStyle().set("gap", "4px").set("flex-wrap", "wrap");
+            if (t.getTags() != null && !t.getTags().isBlank()) {
+                for (String tagName : t.getTags().split(",")) {
+                    hl.add(TagColorUtil.createTagBadge(tagName.trim()));
+                }
+            }
+            return hl;
+        }).setHeader(getTranslation("dialog.tags")).setAutoWidth(true).setFlexGrow(0);
+
+        // 6. Amount – single column, coloured and signed
+        grid.addComponentColumn(t -> {
+            Account selected = accountSelector.getValue();
+            boolean isCredit = (t.getType() == Transaction.TransactionType.INCOME)
+                    || (t.getType() == Transaction.TransactionType.TRANSFER
+                        && selected != null && t.getToAccount() != null
+                        && t.getToAccount().getId().equals(selected.getId()));
+
+            String sign  = isCredit ? "+" : "−";
+            String color = isCredit ? "var(--lumo-success-color)" : "var(--lumo-error-color)";
+            if (t.getType() == Transaction.TransactionType.TRANSFER && selected == null)
+                color = "var(--lumo-primary-color)";
+
+            Span s = new Span(sign + formatCurrency(t.getAmount()));
+            s.getStyle().set("font-weight", "700").set("font-size", "var(--lumo-font-size-s)")
+                    .set("color", color).set("white-space", "nowrap");
+            return s;
+        }).setHeader(getTranslation("dialog.amount"))
+                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END)
+                .setSortable(true).setComparator(Comparator.comparing(Transaction::getAmount))
+                .setAutoWidth(true).setFlexGrow(0);
+
+        // 7. Balance
+        grid.addComponentColumn(t -> {
+            BigDecimal bal = balanceCache.getOrDefault(t.getId(), BigDecimal.ZERO);
+            Span s = new Span(formatCurrency(bal));
+            s.getStyle()
+                    .set("font-size", "var(--lumo-font-size-s)").set("font-weight", "500")
+                    .set("color", bal.compareTo(BigDecimal.ZERO) >= 0
+                            ? "var(--lumo-body-text-color)" : "var(--lumo-error-color)");
+            return s;
+        }).setHeader(getTranslation("accounts.balance"))
+                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END)
+                .setSortable(true).setAutoWidth(true).setFlexGrow(0);
+
+        // 8. Memo — truncated
+        grid.addComponentColumn(t -> {
+            if (t.getMemo() == null || t.getMemo().isBlank()) return new Span();
+            Span s = new Span(t.getMemo());
+            s.getStyle()
+                    .set("font-size", "var(--lumo-font-size-xs)")
+                    .set("color", "var(--lumo-secondary-text-color)")
+                    .set("max-width", "180px").set("overflow", "hidden")
+                    .set("text-overflow", "ellipsis").set("white-space", "nowrap")
+                    .set("display", "block");
+            s.getElement().setAttribute("title", t.getMemo());
+            return s;
+        }).setHeader(getTranslation("dialog.memo"))
+                .setAutoWidth(true).setFlexGrow(0);
+
+        // 9. Actions – reorder + edit + delete
+        grid.addComponentColumn(t -> {
+            HorizontalLayout hl = new HorizontalLayout();
+            hl.setSpacing(false);
+            hl.setAlignItems(Alignment.CENTER);
             hl.getStyle().set("gap", "var(--lumo-space-xs)");
 
-            // Reordering arrows logic
             Account selected = accountSelector.getValue();
             if (selected != null) {
                 LocalDate date = t.getTransactionDate().toLocalDate();
-                // Get transactions for the same day in display order (descending - latest on top)
                 List<Transaction> sameDay = allAccountTransactions.stream()
                         .filter(tr -> tr.getTransactionDate().toLocalDate().equals(date))
                         .sorted(Comparator.comparing(Transaction::getSortOrder).reversed()
@@ -360,29 +422,20 @@ public class TransactionHistoryView extends VerticalLayout {
                         .collect(Collectors.toList());
 
                 if (sameDay.size() > 1) {
-                    // Find index by ID, not by object reference
                     int index = -1;
                     for (int i = 0; i < sameDay.size(); i++) {
-                        if (sameDay.get(i).getId().equals(t.getId())) {
-                            index = i;
-                            break;
-                        }
+                        if (sameDay.get(i).getId().equals(t.getId())) { index = i; break; }
                     }
-
                     if (index >= 0) {
-                        final int currentIdx = index;
-                        // Up arrow moves transaction earlier in the day (higher sortOrder)
+                        final int idx = index;
                         Button upBtn = new Button(VaadinIcon.ARROW_UP.create(), e -> moveTransaction(t, -1));
                         upBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-                        upBtn.setEnabled(currentIdx > 0);
+                        upBtn.setEnabled(idx > 0);
                         upBtn.setTooltipText(getTranslation("transactions.move_up"));
-
-                        // Down arrow moves transaction later in the day (lower sortOrder)
                         Button downBtn = new Button(VaadinIcon.ARROW_DOWN.create(), e -> moveTransaction(t, 1));
                         downBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-                        downBtn.setEnabled(currentIdx < sameDay.size() - 1);
+                        downBtn.setEnabled(idx < sameDay.size() - 1);
                         downBtn.setTooltipText(getTranslation("transactions.move_down"));
-
                         hl.add(upBtn, downBtn);
                     }
                 }
@@ -391,17 +444,16 @@ public class TransactionHistoryView extends VerticalLayout {
             Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> openTransactionDialog(t));
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             editBtn.setTooltipText(getTranslation("transactions.edit"));
-            
+
             Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> confirmDelete(t));
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
             deleteBtn.setTooltipText(getTranslation("transactions.delete"));
-            
+
             hl.add(editBtn, deleteBtn);
             return hl;
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
 
         grid.setHeightFull();
-        // Grid items are pre-sorted in refreshGrid() with latest entries on top
     }
 
     private void confirmDelete(Transaction t) {
@@ -409,19 +461,27 @@ public class TransactionHistoryView extends VerticalLayout {
         confirmDialog.setHeaderTitle(getTranslation("dialog.confirm_delete"));
 
         String message = t.getPayee() != null && !t.getPayee().isEmpty()
-            ? t.getPayee() + " - " + formatCurrency(t.getAmount())
-            : formatCurrency(t.getAmount());
-        Span content = new Span(getTranslation("dialog.confirm_delete_message") + " \"" + message + "\"?");
-        confirmDialog.add(content);
+                ? t.getPayee() + "  —  " + formatCurrency(t.getAmount())
+                : formatCurrency(t.getAmount());
+
+        Div body = new Div();
+        body.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "var(--lumo-space-s)");
+        Span msg = new Span(getTranslation("dialog.confirm_delete_message") + "?");
+        msg.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-secondary-text-color)");
+        Span detail = new Span(message);
+        detail.getStyle().set("font-weight", "700").set("font-size", "var(--lumo-font-size-m)");
+        body.add(msg, detail);
+        confirmDialog.add(body);
 
         Button cancelBtn = new Button(getTranslation("dialog.cancel"), e -> confirmDialog.close());
         cancelBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
-        Button deleteBtn = new Button(getTranslation("transactions.delete"), e -> {
+        Button deleteBtn = new Button(getTranslation("transactions.delete"), VaadinIcon.TRASH.create(), e -> {
             transactionService.deleteTransaction(t);
             confirmDialog.close();
             refreshGrid();
-            Notification.show(getTranslation("transactions.deleted"));
+            Notification n = Notification.show(getTranslation("transactions.deleted"), 2000, Notification.Position.BOTTOM_END);
+            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
         });
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
 
@@ -552,7 +612,8 @@ public class TransactionHistoryView extends VerticalLayout {
         final Transaction[] currentFormTransaction = {transaction};
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle(transaction.getId() == null ? getTranslation("dialog.add_transaction") : getTranslation("dialog.edit_transaction"));
-        dialog.setWidth("600px");
+        dialog.setWidth("680px");
+        dialog.getElement().getStyle().set("--lumo-border-radius-l", "16px");
 
         Tabs dialogTabs = new Tabs();
         Tab expenseTab = new Tab(getTranslation("transaction.type.expense"));
@@ -596,9 +657,11 @@ public class TransactionHistoryView extends VerticalLayout {
         VerticalLayout splitLayout = new VerticalLayout();
         splitLayout.setPadding(false);
         splitLayout.setMargin(false);
-        splitLayout.getStyle().set("border", "1px solid var(--lumo-contrast-20pct)")
-                              .set("border-radius", "var(--lumo-border-radius-m)")
-                              .set("padding", "var(--lumo-space-s)");
+        splitLayout.getStyle()
+                .set("border", "1px solid var(--lumo-contrast-10pct)")
+                .set("border-radius", "12px")
+                .set("padding", "var(--lumo-space-m)")
+                .set("background", "var(--lumo-contrast-5pct)");
         splitLayout.setVisible(!currentSplits.isEmpty());
 
         com.vaadin.flow.component.grid.Grid<TransactionSplit> splitGrid = new com.vaadin.flow.component.grid.Grid<>(TransactionSplit.class, false);
@@ -895,7 +958,8 @@ public class TransactionHistoryView extends VerticalLayout {
             saveFromTabs(saveTx, dialogTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsCombo);
             refreshGrid();
             dialog.close();
-            Notification.show(getTranslation("transactions.saved"));
+            Notification n1 = Notification.show(getTranslation("transactions.saved"), 2000, Notification.Position.BOTTOM_END);
+            n1.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
@@ -915,7 +979,8 @@ public class TransactionHistoryView extends VerticalLayout {
 
             saveFromTabs(keepTx, dialogTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsCombo);
             refreshGrid();
-            Notification.show(getTranslation("transactions.added"));
+            Notification n2 = Notification.show(getTranslation("transactions.added"), 2000, Notification.Position.BOTTOM_END);
+            n2.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             
             currentFormTransaction[0] = new Transaction();
             currentSplits.clear();
@@ -925,6 +990,7 @@ public class TransactionHistoryView extends VerticalLayout {
         addKeepButton.setVisible(true);
 
         Button cancelButton = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
+        cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
         dialog.add(formLayout);
         dialog.getFooter().add(cancelButton, addKeepButton, saveButton);

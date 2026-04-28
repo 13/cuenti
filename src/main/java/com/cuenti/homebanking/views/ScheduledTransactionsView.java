@@ -11,7 +11,6 @@ import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
-import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -21,6 +20,8 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
@@ -363,154 +364,182 @@ public class ScheduledTransactionsView extends VerticalLayout {
 
     private void openEditDialog(ScheduledTransaction st) {
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle(st.getId() == null ? getTranslation("dialog.add_transaction") : getTranslation("dialog.edit_transaction"));
-        dialog.setWidth("640px");
-        dialog.getElement().getStyle().set("--lumo-border-radius-l", "16px");
+        dialog.setWidth("min(700px, 96vw)");
+        dialog.setResizable(false);
+        dialog.getElement().getStyle()
+                .set("--lumo-border-radius-l", "20px")
+                .set("padding", "0")
+                .set("overflow-x", "hidden");
 
-        FormLayout form = new FormLayout();
+        // ── Type selector: coloured pill buttons ─────────────────────
+        Button expenseBtn  = new Button(getTranslation("transaction.type.expense"));
+        Button incomeBtn   = new Button(getTranslation("transaction.type.income"));
+        Button transferBtn = new Button(getTranslation("transaction.type.transfer"));
 
+        // Hidden Tabs kept for binder selectedType logic
         Tabs typeTabs = new Tabs();
-        Tab expenseTab = new Tab(getTranslation("transaction.type.expense"));
-        Tab incomeTab = new Tab(getTranslation("transaction.type.income"));
+        Tab expenseTab  = new Tab(getTranslation("transaction.type.expense"));
+        Tab incomeTab   = new Tab(getTranslation("transaction.type.income"));
         Tab transferTab = new Tab(getTranslation("transaction.type.transfer"));
         typeTabs.add(expenseTab, incomeTab, transferTab);
-        typeTabs.setWidthFull();
-        
-        DatePicker nextDate = new DatePicker(getTranslation("scheduled.next_date"));
-        BigDecimalField amount = new BigDecimalField(getTranslation("dialog.amount"));
+        typeTabs.setVisible(false);
 
+        String[] TYPE_COLORS = {
+            "var(--lumo-error-color)",
+            "var(--lumo-success-color)",
+            "var(--lumo-primary-color)"
+        };
+        Button[] typeBtns = {expenseBtn, incomeBtn, transferBtn};
+        Tab[]    typeTabArr = {expenseTab, incomeTab, transferTab};
+
+        Div accentBar = new Div();
+        accentBar.setWidthFull();
+        accentBar.setHeight("4px");
+        accentBar.getStyle().set("border-radius", "20px 20px 0 0").set("transition", "background 0.2s");
+
+        Runnable[] applyTypeStyle = {null};
+        applyTypeStyle[0] = () -> {
+            int sel = 0;
+            for (int i = 0; i < typeTabArr.length; i++) {
+                if (typeTabs.getSelectedTab() == typeTabArr[i]) { sel = i; break; }
+            }
+            final int fs = sel;
+            for (int i = 0; i < typeBtns.length; i++) {
+                boolean active = (i == fs);
+                typeBtns[i].getElement().getStyle()
+                        .set("background", active ? TYPE_COLORS[i] : "var(--lumo-contrast-5pct)")
+                        .set("color", active ? "white" : "var(--lumo-secondary-text-color)")
+                        .set("border", "none").set("border-radius", "99px")
+                        .set("font-weight", active ? "700" : "500")
+                        .set("font-size", "var(--lumo-font-size-s)")
+                        .set("padding", "var(--lumo-space-xs) var(--lumo-space-m)")
+                        .set("cursor", "pointer").set("transition", "all 0.15s");
+            }
+            accentBar.getStyle().set("background", TYPE_COLORS[fs]);
+        };
+
+        expenseBtn.addClickListener(e  -> { typeTabs.setSelectedTab(expenseTab);  applyTypeStyle[0].run(); });
+        incomeBtn.addClickListener(e   -> { typeTabs.setSelectedTab(incomeTab);   applyTypeStyle[0].run(); });
+        transferBtn.addClickListener(e -> { typeTabs.setSelectedTab(transferTab); applyTypeStyle[0].run(); });
+
+        // Initialise from existing transaction type
+        if (st.getType() == Transaction.TransactionType.INCOME) typeTabs.setSelectedTab(incomeTab);
+        else if (st.getType() == Transaction.TransactionType.TRANSFER) typeTabs.setSelectedTab(transferTab);
+        else typeTabs.setSelectedTab(expenseTab);
+
+        HorizontalLayout typeRow = new HorizontalLayout(expenseBtn, incomeBtn, transferBtn);
+        typeRow.setSpacing(false);
+        typeRow.getStyle()
+                .set("gap", "var(--lumo-space-xs)")
+                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
+                .set("flex-wrap", "wrap");
+
+        // ── Helper: resolve current type from tabs ────────────────────
+        java.util.function.Supplier<Transaction.TransactionType> selectedType = () -> {
+            if (typeTabs.getSelectedTab() == incomeTab)   return Transaction.TransactionType.INCOME;
+            if (typeTabs.getSelectedTab() == transferTab) return Transaction.TransactionType.TRANSFER;
+            return Transaction.TransactionType.EXPENSE;
+        };
+
+        // ── Hero: Amount field ────────────────────────────────────────
+        BigDecimalField amount = new BigDecimalField();
+        amount.setWidthFull();
+        amount.setRequiredIndicatorVisible(true);
+        amount.getElement().getStyle()
+                .set("font-size", "var(--lumo-font-size-xxl)").set("font-weight", "800");
+
+        Span amountLabel = new Span(getTranslation("dialog.amount").toUpperCase());
+        amountLabel.getStyle()
+                .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
+                .set("color", "var(--lumo-secondary-text-color)");
+
+        Div heroSection = new Div(amountLabel, amount);
+        heroSection.setWidthFull();
+        heroSection.getStyle()
+                .set("padding", "var(--lumo-space-m) var(--lumo-space-l) var(--lumo-space-l)")
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
+                .set("box-sizing", "border-box")
+                .set("display", "flex").set("flex-direction", "column").set("gap", "var(--lumo-space-xs)");
+
+        // ── Date + Enabled toggle ─────────────────────────────────────
+        DatePicker nextDate = new DatePicker(getTranslation("scheduled.next_date"));
+        nextDate.setWidthFull();
+
+        Checkbox enabled = new Checkbox(getTranslation("scheduled.enabled"));
+
+        HorizontalLayout dateRow = new HorizontalLayout(nextDate, enabled);
+        dateRow.setWidthFull(); dateRow.setSpacing(false);
+        dateRow.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap")
+                .set("align-items", "center");
+        nextDate.getStyle().set("flex", "1 1 160px");
+
+        // ── Accounts ──────────────────────────────────────────────────
+        List<Account> accounts = accountService.getAccountsByUser(currentUser);
+        ComboBox<Account> fromAccount = new ComboBox<>(getTranslation("dialog.from"));
+        fromAccount.setItems(accounts);
+        fromAccount.setItemLabelGenerator(Account::getAccountName);
+        fromAccount.setWidthFull();
+
+        ComboBox<Account> toAccount = new ComboBox<>(getTranslation("dialog.to"));
+        toAccount.setItems(accounts);
+        toAccount.setItemLabelGenerator(Account::getAccountName);
+        toAccount.setWidthFull();
+
+        HorizontalLayout accountRow = new HorizontalLayout(fromAccount, toAccount);
+        accountRow.setWidthFull(); accountRow.setSpacing(false);
+        accountRow.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        fromAccount.getStyle().set("flex", "1 1 200px");
+        toAccount.getStyle().set("flex", "1 1 200px");
+
+        // ── Payee + Category ──────────────────────────────────────────
         ComboBox<String> payee = new ComboBox<>(getTranslation("transactions.payee"));
         List<String> existingPayees = payeeService.getAllPayees().stream().map(Payee::getName).distinct().toList();
         payee.setItems(existingPayees);
         payee.setAllowCustomValue(true);
         payee.addCustomValueSetListener(e -> payee.setValue(e.getDetail()));
-
-        ComboBox<Account> fromAccount = new ComboBox<>(getTranslation("dialog.from"));
-        fromAccount.setItems(accountService.getAccountsByUser(currentUser));
-        fromAccount.setItemLabelGenerator(Account::getAccountName);
-        
-        ComboBox<Account> toAccount = new ComboBox<>(getTranslation("dialog.to"));
-        toAccount.setItems(accountService.getAccountsByUser(currentUser));
-        toAccount.setItemLabelGenerator(Account::getAccountName);
-        toAccount.setVisible(false);
-
-        ComboBox<ScheduledTransaction.RecurrencePattern> pattern = new ComboBox<>(getTranslation("scheduled.recurrence"));
-        pattern.setItems(ScheduledTransaction.RecurrencePattern.values());
-
-        ComboBox<Transaction.PaymentMethod> paymentMethod = new ComboBox<>(getTranslation("dialog.payment_method"));
-        paymentMethod.setItems(Transaction.PaymentMethod.values());
-        paymentMethod.setItemLabelGenerator(pm -> pm == Transaction.PaymentMethod.NONE ? getTranslation("dialog.none") : pm.getLabel());
-
-        IntegerField recValue = new IntegerField(getTranslation("scheduled.every_x"));
-        recValue.setMin(1);
-        recValue.setStepButtonsVisible(true);
+        payee.setWidthFull();
+        payee.setPrefixComponent(VaadinIcon.USER.create());
 
         ComboBox<Category> category = new ComboBox<>(getTranslation("transactions.category"));
         category.setItemLabelGenerator(Category::getFullName);
         category.setAllowCustomValue(true);
+        category.setWidthFull();
 
-        if (st.getType() == Transaction.TransactionType.INCOME) {
-            typeTabs.setSelectedTab(incomeTab);
-        } else if (st.getType() == Transaction.TransactionType.TRANSFER) {
-            typeTabs.setSelectedTab(transferTab);
-        } else {
-            typeTabs.setSelectedTab(expenseTab);
-        }
+        HorizontalLayout payeeCatRow = new HorizontalLayout(payee, category);
+        payeeCatRow.setWidthFull(); payeeCatRow.setSpacing(false);
+        payeeCatRow.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        payee.getStyle().set("flex", "1 1 200px");
+        category.getStyle().set("flex", "1 1 200px");
 
-        java.util.function.Supplier<Transaction.TransactionType> selectedType = () -> {
-            Tab selected = typeTabs.getSelectedTab();
-            if (selected == incomeTab) {
-                return Transaction.TransactionType.INCOME;
-            }
-            if (selected == transferTab) {
-                return Transaction.TransactionType.TRANSFER;
-            }
-            return Transaction.TransactionType.EXPENSE;
-        };
+        // ── Recurrence section ────────────────────────────────────────
+        ComboBox<ScheduledTransaction.RecurrencePattern> pattern = new ComboBox<>(getTranslation("scheduled.recurrence"));
+        pattern.setItems(ScheduledTransaction.RecurrencePattern.values());
+        pattern.setWidthFull();
 
-        // Helper to update category items based on transaction type
-        Runnable updateCategoryItems = () -> {
-            Transaction.TransactionType transactionType = selectedType.get();
-            if (transactionType == Transaction.TransactionType.INCOME) {
-                category.setItems(categoryService.getCategoriesByType(Category.CategoryType.INCOME));
-            } else if (transactionType == Transaction.TransactionType.EXPENSE) {
-                category.setItems(categoryService.getCategoriesByType(Category.CategoryType.EXPENSE));
-            } else {
-                // Transfers can still be categorized for reporting consistency.
-                category.setItems(categoryService.getAllCategories());
-            }
-        };
+        IntegerField recValue = new IntegerField(getTranslation("scheduled.every_x"));
+        recValue.setMin(1);
+        recValue.setStepButtonsVisible(true);
+        recValue.setWidthFull();
 
-        category.addCustomValueSetListener(e -> {
-            String newCatName = e.getDetail();
-            // Determine category type based on transaction type
-            Category.CategoryType categoryType = selectedType.get() == Transaction.TransactionType.INCOME
-                    ? Category.CategoryType.INCOME
-                    : Category.CategoryType.EXPENSE;
+        HorizontalLayout recurrenceRow = new HorizontalLayout(pattern, recValue);
+        recurrenceRow.setWidthFull(); recurrenceRow.setSpacing(false);
+        recurrenceRow.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        pattern.getStyle().set("flex", "2 1 200px");
+        recValue.getStyle().set("flex", "1 1 120px");
 
-            Category saved;
-            // Check if the name contains ":" for Parent:Child format
-            if (newCatName != null && newCatName.contains(":")) {
-                String[] parts = newCatName.split(":", 2);
-                if (parts.length == 2) {
-                    String parentName = parts[0].trim();
-                    String childName = parts[1].trim();
+        // ── Payment method ────────────────────────────────────────────
+        ComboBox<Transaction.PaymentMethod> paymentMethod = new ComboBox<>(getTranslation("dialog.payment_method"));
+        paymentMethod.setItems(Transaction.PaymentMethod.values());
+        paymentMethod.setItemLabelGenerator(pm -> pm == Transaction.PaymentMethod.NONE ? getTranslation("dialog.none") : pm.getLabel());
+        paymentMethod.setWidthFull();
 
-                    // Find or create parent category
-                    Category parentCategory = categoryService.getAllCategories().stream()
-                            .filter(c -> c.getName().equals(parentName) && c.getParent() == null && c.getType() == categoryType)
-                            .findFirst()
-                            .orElse(null);
-
-                    if (parentCategory == null) {
-                        // Create new parent category
-                        parentCategory = Category.builder()
-                                .name(parentName)
-                                .type(categoryType)
-                                .user(currentUser)
-                                .parent(null)
-                                .build();
-                        parentCategory = categoryService.saveCategory(parentCategory);
-                        Notification.show(getTranslation("categories.parent_created") + ": " + parentName, 3000, Notification.Position.MIDDLE);
-                    }
-
-                    // Create child category with parent
-                    Category newCat = Category.builder()
-                            .name(childName)
-                            .type(categoryType)
-                            .parent(parentCategory)
-                            .user(currentUser)
-                            .build();
-                    saved = categoryService.saveCategory(newCat);
-                } else {
-                    // Fallback to simple category creation
-                    Category newCat = Category.builder()
-                            .name(newCatName)
-                            .type(categoryType)
-                            .user(currentUser)
-                            .build();
-                    saved = categoryService.saveCategory(newCat);
-                }
-            } else {
-                // Simple category creation
-                Category newCat = Category.builder()
-                        .name(newCatName)
-                        .type(categoryType)
-                        .user(currentUser)
-                        .build();
-                saved = categoryService.saveCategory(newCat);
-            }
-
-            updateCategoryItems.run();
-            category.setValue(saved);
-        });
-
-        TextArea memo = new TextArea(getTranslation("dialog.memo"));
-
+        // ── Tags + Memo ───────────────────────────────────────────────
         MultiSelectComboBox<Tag> tags = new MultiSelectComboBox<>(getTranslation("dialog.tags"));
         tags.setItems(tagService.getAllTags());
         tags.setItemLabelGenerator(Tag::getName);
         tags.setAllowCustomValue(true);
+        tags.setWidthFull();
         tags.addCustomValueSetListener(e -> {
             Tag newTag = Tag.builder().name(e.getDetail()).build();
             tagService.saveTag(newTag);
@@ -520,67 +549,132 @@ public class ScheduledTransactionsView extends VerticalLayout {
             tags.setValue(current);
         });
 
-        typeTabs.addSelectedChangeListener(e -> {
-            toAccount.setVisible(selectedType.get() == Transaction.TransactionType.TRANSFER);
+        TextArea memo = new TextArea(getTranslation("dialog.memo"));
+        memo.setWidthFull();
+        memo.setMinHeight("60px");
+        memo.setMaxHeight("100px");
+
+        // ── Category update helper ────────────────────────────────────
+        Runnable updateCategoryItems = () -> {
+            Transaction.TransactionType transactionType = selectedType.get();
+            Category currentCat = category.getValue();
+            if (transactionType == Transaction.TransactionType.INCOME) {
+                category.setItems(categoryService.getCategoriesByType(Category.CategoryType.INCOME));
+            } else if (transactionType == Transaction.TransactionType.EXPENSE) {
+                category.setItems(categoryService.getCategoriesByType(Category.CategoryType.EXPENSE));
+            } else {
+                category.setItems(categoryService.getAllCategories());
+            }
+            if (currentCat != null) category.setValue(currentCat);
+        };
+
+        category.addCustomValueSetListener(e -> {
+            String newCatName = e.getDetail();
+            Category.CategoryType categoryType = selectedType.get() == Transaction.TransactionType.INCOME
+                    ? Category.CategoryType.INCOME : Category.CategoryType.EXPENSE;
+            Category saved;
+            if (newCatName != null && newCatName.contains(":")) {
+                String[] parts = newCatName.split(":", 2);
+                String parentName = parts[0].trim(); String childName = parts[1].trim();
+                Category parentCategory = categoryService.getAllCategories().stream()
+                        .filter(c -> c.getName().equals(parentName) && c.getParent() == null && c.getType() == categoryType)
+                        .findFirst().orElse(null);
+                if (parentCategory == null) {
+                    parentCategory = categoryService.saveCategory(Category.builder()
+                            .name(parentName).type(categoryType).user(currentUser).parent(null).build());
+                    Notification.show(getTranslation("categories.parent_created") + ": " + parentName, 3000, Notification.Position.MIDDLE);
+                }
+                saved = categoryService.saveCategory(Category.builder()
+                        .name(childName).type(categoryType).parent(parentCategory).user(currentUser).build());
+            } else {
+                saved = categoryService.saveCategory(Category.builder()
+                        .name(newCatName).type(categoryType).user(currentUser).build());
+            }
             updateCategoryItems.run();
+            category.setValue(saved);
         });
 
+        // On type change: update visible fields + category list
+        typeTabs.addSelectedChangeListener(e -> {
+            boolean isTransfer = selectedType.get() == Transaction.TransactionType.TRANSFER;
+            toAccount.setVisible(isTransfer);
+            paymentMethod.setVisible(!isTransfer);
+            updateCategoryItems.run();
+            applyTypeStyle[0].run();
+        });
+
+        // ── Binder ────────────────────────────────────────────────────
         Binder<ScheduledTransaction> binder = new Binder<>(ScheduledTransaction.class);
-        binder.forField(nextDate).asRequired().bind(t -> t.getNextOccurrence().toLocalDate(), (t, v) -> t.setNextOccurrence(v.atStartOfDay()));
-        binder.forField(amount).asRequired().bind(ScheduledTransaction::getAmount, ScheduledTransaction::setAmount);
+        binder.forField(nextDate).asRequired()
+                .bind(t -> t.getNextOccurrence().toLocalDate(), (t, v) -> t.setNextOccurrence(v.atStartOfDay()));
+        binder.forField(amount).asRequired()
+                .bind(ScheduledTransaction::getAmount, ScheduledTransaction::setAmount);
         binder.bind(payee, ScheduledTransaction::getPayee, ScheduledTransaction::setPayee);
-        binder.forField(fromAccount).asRequired().bind(ScheduledTransaction::getFromAccount, ScheduledTransaction::setFromAccount);
+        binder.forField(fromAccount).asRequired()
+                .bind(ScheduledTransaction::getFromAccount, ScheduledTransaction::setFromAccount);
         binder.bind(toAccount, ScheduledTransaction::getToAccount, ScheduledTransaction::setToAccount);
-        binder.forField(pattern).asRequired().bind(ScheduledTransaction::getRecurrencePattern, ScheduledTransaction::setRecurrencePattern);
+        binder.forField(pattern).asRequired()
+                .bind(ScheduledTransaction::getRecurrencePattern, ScheduledTransaction::setRecurrencePattern);
         binder.bind(recValue, ScheduledTransaction::getRecurrenceValue, ScheduledTransaction::setRecurrenceValue);
         binder.bind(category, ScheduledTransaction::getCategory, ScheduledTransaction::setCategory);
         binder.bind(paymentMethod,
                 stx -> stx.getPaymentMethod() != null ? stx.getPaymentMethod() : Transaction.PaymentMethod.NONE,
                 ScheduledTransaction::setPaymentMethod);
+        binder.bind(enabled, ScheduledTransaction::isEnabled, ScheduledTransaction::setEnabled);
         binder.bind(memo, ScheduledTransaction::getMemo, ScheduledTransaction::setMemo);
         binder.bind(tags,
                 stx -> {
-                    if (stx.getTags() == null || stx.getTags().isBlank()) {
-                        return Set.of();
-                    }
+                    if (stx.getTags() == null || stx.getTags().isBlank()) return Set.of();
                     Set<String> names = Arrays.stream(stx.getTags().split(","))
-                            .map(String::trim)
-                            .filter(value -> !value.isBlank())
-                            .collect(Collectors.toSet());
+                            .map(String::trim).filter(v -> !v.isBlank()).collect(Collectors.toSet());
                     return tagService.getAllTags().stream()
-                            .filter(tag -> names.contains(tag.getName()))
-                            .collect(Collectors.toSet());
+                            .filter(tag -> names.contains(tag.getName())).collect(Collectors.toSet());
                 },
-                (stx, selectedTags) -> stx.setTags(selectedTags.stream().map(Tag::getName).collect(Collectors.joining(","))));
+                (stx, sel) -> stx.setTags(sel.stream().map(Tag::getName).collect(Collectors.joining(","))));
 
-        // Populate category items before binder.setBean(...) so ComboBox can accept existing value.
+        // Populate and bind
         updateCategoryItems.run();
-
         if (st.getId() != null) {
             binder.setBean(st);
-            toAccount.setVisible(st.getType() == Transaction.TransactionType.TRANSFER);
+            boolean isTransfer = st.getType() == Transaction.TransactionType.TRANSFER;
+            toAccount.setVisible(isTransfer);
+            paymentMethod.setVisible(!isTransfer);
         } else {
             st.setType(Transaction.TransactionType.EXPENSE);
             st.setNextOccurrence(LocalDateTime.now());
             st.setPaymentMethod(Transaction.PaymentMethod.NONE);
+            st.setEnabled(true);
             binder.setBean(st);
+            toAccount.setVisible(false);
         }
+        applyTypeStyle[0].run();
 
+        // ── Assemble sections ─────────────────────────────────────────
+        Div coreSection = createFormSection(null);
+        coreSection.add(dateRow, accountRow, payeeCatRow);
 
-        form.add(typeTabs, nextDate, amount, fromAccount, toAccount, payee, category, paymentMethod, pattern, recValue, memo, tags);
-        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("400px", 2));
-        form.setColspan(typeTabs, 2);
-        form.setColspan(memo, 2);
-        form.setColspan(tags, 2);
+        Div recurrenceSection = createFormSection(getTranslation("scheduled.recurrence"));
+        recurrenceSection.add(recurrenceRow);
 
-        Button save = new Button(getTranslation("dialog.save"), e -> {
+        Div extraSection = createFormSection(null);
+        extraSection.add(paymentMethod, tags, memo, typeTabs);
+
+        Div body = new Div(accentBar, typeRow, heroSection, coreSection, recurrenceSection, extraSection);
+        body.setWidthFull();
+        body.getStyle()
+                .set("display", "flex").set("flex-direction", "column")
+                .set("overflow-x", "hidden").set("box-sizing", "border-box");
+
+        // ── Footer ────────────────────────────────────────────────────
+        Button save = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
             if (binder.validate().isOk()) {
                 st.setType(selectedType.get());
                 st.setUser(currentUser);
                 scheduledService.save(st);
                 refreshGrids();
                 dialog.close();
-                Notification.show(getTranslation("dialog.saved"), 2000, Notification.Position.BOTTOM_END);
+                Notification n = Notification.show(getTranslation("dialog.saved"), 2000, Notification.Position.BOTTOM_END);
+                n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             }
         });
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -588,9 +682,28 @@ public class ScheduledTransactionsView extends VerticalLayout {
         Button cancel = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
         cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
-        dialog.add(form);
+        dialog.add(body);
         dialog.getFooter().add(cancel, save);
         dialog.open();
+    }
+
+    /** Creates a padded section container with an optional all-caps label. */
+    private Div createFormSection(String label) {
+        Div section = new Div();
+        section.setWidthFull();
+        section.getStyle()
+                .set("display", "flex").set("flex-direction", "column")
+                .set("gap", "var(--lumo-space-s)")
+                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
+                .set("box-sizing", "border-box");
+        if (label != null && !label.isBlank()) {
+            Span lbl = new Span(label.toUpperCase());
+            lbl.getStyle()
+                    .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
+                    .set("color", "var(--lumo-secondary-text-color)");
+            section.add(lbl);
+        }
+        return section;
     }
 
     // ─────────────────────────────────────────────────────────────────

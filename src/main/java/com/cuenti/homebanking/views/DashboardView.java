@@ -555,14 +555,11 @@ public class DashboardView extends VerticalLayout {
 
         BigDecimal total = data.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Collect top 5 first so we can compute the max for bar scaling
+        // Collect top 5 first
         List<Map.Entry<String, BigDecimal>> top5 = data.entrySet().stream()
                 .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
                 .limit(5)
                 .collect(Collectors.toList());
-
-        // The largest bar fills 100 %; others are relative to it — bars always look meaningful
-        BigDecimal maxValue = top5.isEmpty() ? BigDecimal.ONE : top5.get(0).getValue();
 
         // Colour palette cycling through Lumo + accent colours
         String[] COLORS = {
@@ -578,11 +575,7 @@ public class DashboardView extends VerticalLayout {
                     String color = COLORS[ci[0] % COLORS.length];
                     ci[0]++;
 
-                    // Bar width relative to top entry (always 100 % for #1)
-                    double barPct = maxValue.compareTo(BigDecimal.ZERO) > 0
-                            ? entry.getValue().divide(maxValue, 4, RoundingMode.HALF_UP).doubleValue() * 100 : 0;
-
-                    // Label shows share of total spending for context
+                    // Share of total spending — used for both bar width and label
                     double ofTotal = total.compareTo(BigDecimal.ZERO) > 0
                             ? entry.getValue().divide(total, 4, RoundingMode.HALF_UP).doubleValue() * 100 : 0;
 
@@ -615,7 +608,8 @@ public class DashboardView extends VerticalLayout {
                             .set("background", "var(--lumo-contrast-5pct)")
                             .set("border-radius", "6px").set("height", "8px").set("overflow", "hidden");
                     Div bar = new Div();
-                    bar.setWidth(barPct + "%");
+                    // Bar width = actual share of total spending (honest representation)
+                    bar.setWidth(ofTotal + "%");
                     bar.setHeight("100%");
                     bar.getStyle()
                             .set("background", color)

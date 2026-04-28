@@ -555,6 +555,15 @@ public class DashboardView extends VerticalLayout {
 
         BigDecimal total = data.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // Collect top 5 first so we can compute the max for bar scaling
+        List<Map.Entry<String, BigDecimal>> top5 = data.entrySet().stream()
+                .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
+                .limit(5)
+                .collect(Collectors.toList());
+
+        // The largest bar fills 100 %; others are relative to it — bars always look meaningful
+        BigDecimal maxValue = top5.isEmpty() ? BigDecimal.ONE : top5.get(0).getValue();
+
         // Colour palette cycling through Lumo + accent colours
         String[] COLORS = {
             "var(--lumo-primary-color)",
@@ -565,19 +574,22 @@ public class DashboardView extends VerticalLayout {
         };
 
         int[] ci = {0};
-        data.entrySet().stream()
-                .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
-                .limit(5)
-                .forEach(entry -> {
+        top5.forEach(entry -> {
                     String color = COLORS[ci[0] % COLORS.length];
                     ci[0]++;
-                    double pct = total.compareTo(BigDecimal.ZERO) > 0
+
+                    // Bar width relative to top entry (always 100 % for #1)
+                    double barPct = maxValue.compareTo(BigDecimal.ZERO) > 0
+                            ? entry.getValue().divide(maxValue, 4, RoundingMode.HALF_UP).doubleValue() * 100 : 0;
+
+                    // Label shows share of total spending for context
+                    double ofTotal = total.compareTo(BigDecimal.ZERO) > 0
                             ? entry.getValue().divide(total, 4, RoundingMode.HALF_UP).doubleValue() * 100 : 0;
 
                     Span catSpan = new Span(entry.getKey());
                     catSpan.getStyle().set("font-size", "var(--lumo-font-size-s)").set("font-weight", "500");
 
-                    Span pctSpan = new Span(String.format("%.0f%%", pct));
+                    Span pctSpan = new Span(String.format("%.0f%%", ofTotal));
                     pctSpan.getStyle().set("font-size", "var(--lumo-font-size-xs)")
                             .set("color", "var(--lumo-secondary-text-color)");
 
@@ -603,7 +615,7 @@ public class DashboardView extends VerticalLayout {
                             .set("background", "var(--lumo-contrast-5pct)")
                             .set("border-radius", "6px").set("height", "8px").set("overflow", "hidden");
                     Div bar = new Div();
-                    bar.setWidth(pct + "%");
+                    bar.setWidth(barPct + "%");
                     bar.setHeight("100%");
                     bar.getStyle()
                             .set("background", "linear-gradient(90deg, " + color + ", " + color + "88)")

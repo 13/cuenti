@@ -111,8 +111,17 @@ public class TransactionHistoryView extends VerticalLayout {
                 .set("color", "var(--lumo-header-text-color)");
 
         accountSelector.setPlaceholder(getTranslation("dialog.account"));
-        accountSelector.setItems(accountService.getAccountsByUser(currentUser));
+        // Build items including a pseudo "All Accounts" entry which shows transactions from all accounts
+        List<Account> accounts = new ArrayList<>(accountService.getAccountsByUser(currentUser));
+        Account allAccounts = Account.builder()
+                .id(-1L)
+                .accountName(getTranslation("accounts.all"))
+                .build();
+        accounts.add(0, allAccounts);
+        accountSelector.setItems(accounts);
         accountSelector.setItemLabelGenerator(Account::getAccountName);
+        // Select "All Accounts" by default so the view initially shows all transactions
+        accountSelector.setValue(allAccounts);
         accountSelector.setClearButtonVisible(true);
         accountSelector.addValueChangeListener(e -> refreshGrid());
         accountSelector.setWidth("200px");
@@ -234,14 +243,16 @@ public class TransactionHistoryView extends VerticalLayout {
         ListDataProvider<Transaction> dataProvider = (ListDataProvider<Transaction>) grid.getDataProvider();
         String filter = searchField.getValue().toLowerCase();
         Account selectedAccount = accountSelector.getValue();
+        boolean allAccountsSelected = (selectedAccount == null) ||
+                (selectedAccount.getId() != null && selectedAccount.getId().equals(-1L));
         LocalDate from = dateFrom.getValue();
         LocalDate to = dateTo.getValue();
         
         dataProvider.setFilter(t -> {
-            boolean accountMatch = selectedAccount == null || 
-                                  (t.getFromAccount() != null && t.getFromAccount().getId().equals(selectedAccount.getId())) || 
-                                  (t.getToAccount() != null && t.getToAccount().getId().equals(selectedAccount.getId()));
-            
+            boolean accountMatch = allAccountsSelected ||
+                    (selectedAccount != null && t.getFromAccount() != null && t.getFromAccount().getId().equals(selectedAccount.getId())) ||
+                    (selectedAccount != null && t.getToAccount() != null && t.getToAccount().getId().equals(selectedAccount.getId()));
+
             boolean dateMatch = true;
             if (from != null && t.getTransactionDate().toLocalDate().isBefore(from)) dateMatch = false;
             if (to != null && t.getTransactionDate().toLocalDate().isAfter(to)) dateMatch = false;
@@ -358,6 +369,7 @@ public class TransactionHistoryView extends VerticalLayout {
         // 6. Amount – single column, coloured and signed
         grid.addComponentColumn(t -> {
             Account selected = accountSelector.getValue();
+            boolean allSelected = (selected == null) || (selected.getId() != null && selected.getId().equals(-1L));
             boolean isCredit = (t.getType() == Transaction.TransactionType.INCOME)
                     || (t.getType() == Transaction.TransactionType.TRANSFER
                         && selected != null && t.getToAccount() != null
@@ -365,7 +377,7 @@ public class TransactionHistoryView extends VerticalLayout {
 
             String sign  = isCredit ? "+" : "−";
             String color = isCredit ? "var(--lumo-success-color)" : "var(--lumo-error-color)";
-            if (t.getType() == Transaction.TransactionType.TRANSFER && selected == null)
+            if (t.getType() == Transaction.TransactionType.TRANSFER && allSelected)
                 color = "var(--lumo-primary-color)";
 
             Span s = new Span(sign + formatCurrency(t.getAmount()));
@@ -413,7 +425,8 @@ public class TransactionHistoryView extends VerticalLayout {
             hl.getStyle().set("gap", "var(--lumo-space-xs)");
 
             Account selected = accountSelector.getValue();
-            if (selected != null) {
+            boolean allSelected = (selected == null) || (selected.getId() != null && selected.getId().equals(-1L));
+            if (!allSelected) {
                 LocalDate date = t.getTransactionDate().toLocalDate();
                 List<Transaction> sameDay = allAccountTransactions.stream()
                         .filter(tr -> tr.getTransactionDate().toLocalDate().equals(date))
@@ -491,7 +504,7 @@ public class TransactionHistoryView extends VerticalLayout {
 
     private void moveTransaction(Transaction t, int visualDirection) {
         Account selected = accountSelector.getValue();
-        if (selected == null) return;
+        if (selected == null || (selected.getId() != null && selected.getId().equals(-1L))) return;
 
         LocalDate date = t.getTransactionDate().toLocalDate();
 
@@ -545,10 +558,19 @@ public class TransactionHistoryView extends VerticalLayout {
 
     private void refreshGrid() {
         Account selected = accountSelector.getValue();
-        if (selected == null) {
-            grid.setItems(Collections.emptyList());
-            allAccountTransactions = Collections.emptyList();
+        // If "All Accounts" pseudo-account is selected (id == -1) or no selection, show all user transactions
+        if (selected == null || (selected.getId() != null && selected.getId().equals(-1L))) {
+            List<Transaction> rawTransactions = transactionService.getTransactionsByUser(currentUser);
+            // Clear per-account balance cache since running balances are account-specific
             balanceCache.clear();
+            // Store sorted transactions for display (descending order - latest on top)
+            allAccountTransactions = new ArrayList<>(rawTransactions);
+            allAccountTransactions.sort(Comparator.comparing(Transaction::getTransactionDate)
+                    .thenComparing(Transaction::getSortOrder)
+                    .reversed());
+            grid.setItems(allAccountTransactions);
+            updateFilters();
+            return;
         } else {
             List<Transaction> rawTransactions = transactionService.getTransactionsByAccount(selected);
 
@@ -575,8 +597,8 @@ public class TransactionHistoryView extends VerticalLayout {
             // Store sorted transactions for display (descending order - latest on top)
             allAccountTransactions = new ArrayList<>(rawTransactions);
             allAccountTransactions.sort(Comparator.comparing(Transaction::getTransactionDate)
-                              .thenComparing(Transaction::getSortOrder)
-                              .reversed());
+                    .thenComparing(Transaction::getSortOrder)
+                    .reversed());
 
             grid.setItems(allAccountTransactions);
         }
@@ -747,7 +769,8 @@ public class TransactionHistoryView extends VerticalLayout {
         accountCombo.setItemLabelGenerator(Account::getAccountName);
         accountCombo.setRequired(true);
         accountCombo.setWidthFull();
-        if (currentFormTransaction[0].getId() == null && accountSelector.getValue() != null) {
+        if (currentFormTransaction[0].getId() == null && accountSelector.getValue() != null
+                && accountSelector.getValue().getId() != null && !accountSelector.getValue().getId().equals(-1L)) {
             accountCombo.setValue(accountSelector.getValue());
         }
 

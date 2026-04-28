@@ -558,11 +558,9 @@ public class TransactionHistoryView extends VerticalLayout {
 
     private void refreshGrid() {
         Account selected = accountSelector.getValue();
-        // If "All Accounts" pseudo-account is selected (id == -1) or no selection, show all user transactions
-        if (selected == null || (selected.getId() != null && selected.getId().equals(-1L))) {
+        if (isAllAccountsSelected(selected)) {
             List<Transaction> rawTransactions = transactionService.getTransactionsByUser(currentUser);
-            // Clear per-account balance cache since running balances are account-specific
-            balanceCache.clear();
+            rebuildBalanceCacheForAllAccounts(rawTransactions);
             // Store sorted transactions for display (descending order - latest on top)
             allAccountTransactions = new ArrayList<>(rawTransactions);
             allAccountTransactions.sort(Comparator.comparing(Transaction::getTransactionDate)
@@ -571,38 +569,79 @@ public class TransactionHistoryView extends VerticalLayout {
             grid.setItems(allAccountTransactions);
             updateFilters();
             return;
-        } else {
-            List<Transaction> rawTransactions = transactionService.getTransactionsByAccount(selected);
-
-            // Calculate running balance cache (in chronological order)
-            List<Transaction> sortedForBalance = new ArrayList<>(rawTransactions);
-            sortedForBalance.sort(Comparator.comparing(Transaction::getTransactionDate)
-                              .thenComparing(Transaction::getSortOrder));
-
-            balanceCache.clear();
-            BigDecimal currentBalance = selected.getStartBalance();
-            for (Transaction t : sortedForBalance) {
-                BigDecimal amount = t.getAmount();
-                if (t.getType() == Transaction.TransactionType.INCOME && t.getToAccount() != null && t.getToAccount().getId().equals(selected.getId())) {
-                    currentBalance = currentBalance.add(amount);
-                } else if (t.getType() == Transaction.TransactionType.EXPENSE && t.getFromAccount() != null && t.getFromAccount().getId().equals(selected.getId())) {
-                    currentBalance = currentBalance.subtract(amount);
-                } else if (t.getType() == Transaction.TransactionType.TRANSFER) {
-                    if (t.getFromAccount() != null && t.getFromAccount().getId().equals(selected.getId())) currentBalance = currentBalance.subtract(amount);
-                    if (t.getToAccount() != null && t.getToAccount().getId().equals(selected.getId())) currentBalance = currentBalance.add(amount);
-                }
-                balanceCache.put(t.getId(), currentBalance);
-            }
-
-            // Store sorted transactions for display (descending order - latest on top)
-            allAccountTransactions = new ArrayList<>(rawTransactions);
-            allAccountTransactions.sort(Comparator.comparing(Transaction::getTransactionDate)
-                    .thenComparing(Transaction::getSortOrder)
-                    .reversed());
-
-            grid.setItems(allAccountTransactions);
         }
+
+        List<Transaction> rawTransactions = transactionService.getTransactionsByAccount(selected);
+        rebuildBalanceCacheForAccount(selected, rawTransactions);
+
+        // Store sorted transactions for display (descending order - latest on top)
+        allAccountTransactions = new ArrayList<>(rawTransactions);
+        allAccountTransactions.sort(Comparator.comparing(Transaction::getTransactionDate)
+                .thenComparing(Transaction::getSortOrder)
+                .reversed());
+
+        grid.setItems(allAccountTransactions);
         updateFilters();
+    }
+
+    private boolean isAllAccountsSelected(Account selected) {
+        return selected == null || (selected.getId() != null && selected.getId().equals(-1L));
+    }
+
+    private void rebuildBalanceCacheForAllAccounts(List<Transaction> transactions) {
+        balanceCache.clear();
+
+        BigDecimal currentBalance = accountService.getAccountsByUser(currentUser).stream()
+                .map(Account::getStartBalance)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<Transaction> sortedForBalance = new ArrayList<>(transactions);
+        sortedForBalance.sort(Comparator.comparing(Transaction::getTransactionDate)
+                .thenComparing(Transaction::getSortOrder)
+                .thenComparing(Transaction::getId, Comparator.nullsLast(Comparator.naturalOrder())));
+
+        for (Transaction t : sortedForBalance) {
+            BigDecimal amount = t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO;
+            switch (t.getType()) {
+                case INCOME:
+                    currentBalance = currentBalance.add(amount);
+                    break;
+                case EXPENSE:
+                    currentBalance = currentBalance.subtract(amount);
+                    break;
+                case TRANSFER:
+                    break;
+            }
+            balanceCache.put(t.getId(), currentBalance);
+        }
+    }
+
+    private void rebuildBalanceCacheForAccount(Account selected, List<Transaction> transactions) {
+        balanceCache.clear();
+
+        if (selected == null) {
+            return;
+        }
+
+        List<Transaction> sortedForBalance = new ArrayList<>(transactions);
+        sortedForBalance.sort(Comparator.comparing(Transaction::getTransactionDate)
+                .thenComparing(Transaction::getSortOrder)
+                .thenComparing(Transaction::getId, Comparator.nullsLast(Comparator.naturalOrder())));
+
+        BigDecimal currentBalance = selected.getStartBalance() != null ? selected.getStartBalance() : BigDecimal.ZERO;
+        for (Transaction t : sortedForBalance) {
+            BigDecimal amount = t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO;
+            if (t.getType() == Transaction.TransactionType.INCOME && t.getToAccount() != null && t.getToAccount().getId().equals(selected.getId())) {
+                currentBalance = currentBalance.add(amount);
+            } else if (t.getType() == Transaction.TransactionType.EXPENSE && t.getFromAccount() != null && t.getFromAccount().getId().equals(selected.getId())) {
+                currentBalance = currentBalance.subtract(amount);
+            } else if (t.getType() == Transaction.TransactionType.TRANSFER) {
+                if (t.getFromAccount() != null && t.getFromAccount().getId().equals(selected.getId())) currentBalance = currentBalance.subtract(amount);
+                if (t.getToAccount() != null && t.getToAccount().getId().equals(selected.getId())) currentBalance = currentBalance.add(amount);
+            }
+            balanceCache.put(t.getId(), currentBalance);
+        }
     }
 
     private Icon getPaymentIcon(Transaction t) {

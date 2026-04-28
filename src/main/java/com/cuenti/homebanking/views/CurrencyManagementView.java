@@ -80,9 +80,9 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
         grid.addColumn(Currency::getCode).setHeader(getTranslation("currencies.code")).setSortable(true).setAutoWidth(true);
         grid.addColumn(Currency::getName).setHeader(getTranslation("currencies.name")).setSortable(true).setAutoWidth(true);
         grid.addColumn(Currency::getSymbol).setHeader(getTranslation("currencies.symbol")).setAutoWidth(true);
-        grid.addColumn(Currency::getDecimalChar).setHeader("Decimal Char").setAutoWidth(true);
-        grid.addColumn(Currency::getFracDigits).setHeader("Frac Digits").setAutoWidth(true);
-        grid.addColumn(Currency::getGroupingChar).setHeader("Grouping Char").setAutoWidth(true);
+        grid.addColumn(Currency::getDecimalChar).setHeader(getTranslation("currencies.decimal_char")).setAutoWidth(true);
+        grid.addColumn(Currency::getFracDigits).setHeader(getTranslation("currencies.frac_digits")).setAutoWidth(true);
+        grid.addColumn(Currency::getGroupingChar).setHeader(getTranslation("currencies.grouping_char")).setAutoWidth(true);
 
         grid.addComponentColumn(currency -> {
             Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> openCurrencyDialog(currency));

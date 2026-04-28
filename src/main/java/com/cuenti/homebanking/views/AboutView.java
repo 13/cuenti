@@ -87,15 +87,16 @@ public class AboutView extends VerticalLayout implements HasDynamicTitle {
                 .set("background","var(--lumo-contrast-5pct)").set("border-radius","16px")
                 .set("padding","var(--lumo-space-m) var(--lumo-space-l)")
                 .set("display","flex").set("flex-direction","column").set("gap","var(--lumo-space-xs)");
-        Span techTitle = new Span("Technology Stack".toUpperCase());
+        Span techTitle = new Span(getTranslation("about.tech_title").toUpperCase());
         techTitle.getStyle().set("font-size","10px").set("font-weight","700").set("letter-spacing","0.08em").set("color","var(--lumo-secondary-text-color)");
         techCard.add(techTitle);
-        for (String[] row : new String[][]{
-                {"Spring Boot", SpringBootVersion.getVersion()},
-                {"Vaadin", Version.getFullVersion()},
-                {"Java", System.getProperty("java.version")},
-                {"Database", getDatabaseInfo(dataSource)}
-        }) {
+        String[][] rows = new String[][]{
+                { getTranslation("tech.spring_boot"), SpringBootVersion.getVersion() },
+                { getTranslation("tech.vaadin"), Version.getFullVersion() },
+                { getTranslation("tech.java"), System.getProperty("java.version") },
+                { getTranslation("tech.database"), getDatabaseInfo(dataSource) }
+        };
+        for (String[] row : rows) {
             Div rowDiv = new Div();
             rowDiv.getStyle().set("display","flex").set("justify-content","space-between").set("align-items","center")
                     .set("padding","var(--lumo-space-xs) 0").set("border-bottom","1px solid var(--lumo-contrast-5pct)");
@@ -107,7 +108,7 @@ public class AboutView extends VerticalLayout implements HasDynamicTitle {
         card.add(techCard);
 
         // Copyright
-        Span copyright = new Span("© " + currentYear + " " + getTranslation("app.name") + ". All rights reserved.");
+        Span copyright = new Span(getTranslation("about.copyright", String.valueOf(currentYear), getTranslation("app.name")));
         copyright.getStyle().set("font-size","var(--lumo-font-size-xs)").set("color","var(--lumo-tertiary-text-color)");
         card.add(copyright);
 
@@ -119,7 +120,7 @@ public class AboutView extends VerticalLayout implements HasDynamicTitle {
             DatabaseMetaData metaData = connection.getMetaData();
             return metaData.getDatabaseProductName() + " " + metaData.getDatabaseProductVersion();
         } catch (Exception e) {
-            return "Unknown Database";
+            return getTranslation("error.unknown_database");
         }
     }
 

@@ -168,6 +168,8 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
 
         RadioButtonGroup<Category.CategoryType> typeGroup = new RadioButtonGroup<>(getTranslation("categories.type"));
         typeGroup.setItems(Category.CategoryType.values());
+        // Show translated labels for the enum values (e.g. "category.type.expense")
+        typeGroup.setItemLabelGenerator(ct -> getTranslation("category.type." + ct.name().toLowerCase()));
         typeGroup.addThemeVariants(RadioGroupVariant.LUMO_HELPER_ABOVE_FIELD);
 
         ComboBox<Category> parentCombo = new ComboBox<>(getTranslation("categories.parent"));

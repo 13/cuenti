@@ -273,9 +273,9 @@ public class SettingsView extends VerticalLayout implements BeforeEnterObserver,
         localeComboBox.setItems("de-DE", "en-US", "en-GB");
         localeComboBox.setItemLabelGenerator(l -> {
             switch(l) {
-                case "de-DE": return "Deutsch (DE)";
-                case "en-GB": return "English (UK)";
-                case "en-US": return "English (US)";
+                case "de-DE": return getTranslation("locale.de");
+                case "en-GB": return getTranslation("locale.en_gb");
+                case "en-US": return getTranslation("locale.en_us");
                 default: return l;
             }
         });
@@ -533,7 +533,7 @@ public class SettingsView extends VerticalLayout implements BeforeEnterObserver,
                 Notification.show(getTranslation("settings.user_created"));
                 dialog.close();
             } catch (Exception ex) {
-                Notification.show("Error: " + ex.getMessage(), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                Notification.show(getTranslation("settings.error_prefix") + ex.getMessage(), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
             }
         });
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);

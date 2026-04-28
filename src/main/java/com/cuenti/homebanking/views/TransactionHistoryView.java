@@ -329,7 +329,7 @@ public class TransactionHistoryView extends VerticalLayout {
                 .setComparator(Comparator.comparing(t -> t.getPayee() != null ? t.getPayee() : ""))
                 .setAutoWidth(true);
 
-        // 4. Category pill
+        // 4. Category (plain text)
         grid.addComponentColumn(t -> {
             String cat;
             if (t.getSplits() != null && !t.getSplits().isEmpty()) {
@@ -339,15 +339,11 @@ public class TransactionHistoryView extends VerticalLayout {
                 cat = t.getCategory() != null ? t.getCategory().getFullName() : "";
             }
             if (cat.isBlank()) return new Span();
-            Span badge = new Span(cat);
-            badge.getStyle()
-                    .set("font-size", "var(--lumo-font-size-xs)").set("font-weight", "500")
-                    .set("padding", "2px 8px").set("border-radius", "99px")
-                    .set("background", "var(--lumo-contrast-10pct)")
-                    .set("color", "var(--lumo-secondary-text-color)")
-                    .set("white-space", "nowrap").set("max-width", "160px")
-                    .set("overflow", "hidden").set("text-overflow", "ellipsis").set("display", "block");
-            return badge;
+            Span text = new Span(cat);
+            text.getStyle()
+                    .set("font-size", "var(--lumo-font-size-s)")
+                    .set("color", "var(--lumo-body-text-color)");
+            return text;
         }).setHeader(getTranslation("transactions.category"))
                 .setSortable(true)
                 .setComparator(Comparator.comparing(t -> t.getCategory() != null ? t.getCategory().getFullName() : ""))

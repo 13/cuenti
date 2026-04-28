@@ -352,7 +352,7 @@ public class DashboardView extends VerticalLayout {
         // ── Cash Flow card ────────────────────────────────────────────
         Div timeChartCard = createCardContainer();
         timeChartCard.getStyle().set("flex", "1 1 450px").set("min-width", "0");
-        timeChartCard.add(createSectionHeader("dashboard.cash_flow", VaadinIcon.BAR_CHART));
+        timeChartCard.add(createSectionHeader("dashboard.cash_flow", VaadinIcon.BAR_CHART, currentUser.getDefaultCurrency()));
 
         // Range selector + legend in one toolbar row
         Select<String> timeRange = new Select<>();
@@ -394,7 +394,7 @@ public class DashboardView extends VerticalLayout {
         // ── Top Spending card ─────────────────────────────────────────
         Div distCard = createCardContainer();
         distCard.getStyle().set("flex", "1 1 300px").set("min-width", "0");
-        distCard.add(createSectionHeader("dashboard.top_spending", VaadinIcon.PIE_CHART));
+        distCard.add(createSectionHeader("dashboard.top_spending", VaadinIcon.PIE_CHART, currentUser.getDefaultCurrency()));
 
         distributionContainer.setWidthFull();
         distributionContainer.getStyle()
@@ -772,11 +772,18 @@ public class DashboardView extends VerticalLayout {
     }
 
     private Div createSectionHeader(String titleKey, VaadinIcon iconType) {
+        return createSectionHeader(titleKey, iconType, (Object[]) null);
+    }
+
+    private Div createSectionHeader(String titleKey, VaadinIcon iconType, Object... params) {
         Icon ico = iconType.create();
         ico.getStyle()
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("font-size", "var(--lumo-font-size-m)").set("flex-shrink", "0");
-        Span title = new Span(getTranslation(titleKey));
+        String translatedTitle = (params != null && params.length > 0)
+                ? getTranslation(titleKey, params)
+                : getTranslation(titleKey);
+        Span title = new Span(translatedTitle);
         title.getStyle()
                 .set("font-size", "var(--lumo-font-size-m)").set("font-weight", "700")
                 .set("color", "var(--lumo-header-text-color)");

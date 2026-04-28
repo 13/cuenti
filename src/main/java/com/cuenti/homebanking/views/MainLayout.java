@@ -209,16 +209,16 @@ public class MainLayout extends AppLayout {
 
     private void createDrawer() {
         // Logo at the top of the drawer
-        Image logo = new Image("images/CuentiText.png", "Cuenti");
-        logo.setHeight("28px");
+        Image logo = new Image("images/Cuenti.png", "Cuenti");
+        logo.setHeight("53px");
         logo.setWidth("auto");
 
         Div logoSection = new Div(logo);
         logoSection.getStyle()
-                .set("padding", "0 var(--lumo-space-l)")
+                .set("padding", "0 var(--lumo-space-xs)")
                 .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
                 .set("display", "flex").set("align-items", "center")
-                .set("height", "53px").set("flex-shrink", "0")
+                .set("height", "54px").set("flex-shrink", "0")
                 .set("box-sizing", "border-box");
 
         // Scrollable nav area

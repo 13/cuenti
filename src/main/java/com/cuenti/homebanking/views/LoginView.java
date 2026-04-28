@@ -76,7 +76,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
   private Image createLogo() {
     Image logo = new Image("images/Cuenti.png", "Cuenti");
     logo.getElement().setAttribute("srcset",
-            "images/CuentiText.png 120w, images/Cuenti.png 800w");
+            "images/Cuenti.png 120w, images/Cuenti.png 800w");
     // When viewport is <=480px use ~120px image, otherwise use up to 200px.
     logo.getElement().setAttribute("sizes",
             "(max-width: 480px) 120px, 200px");

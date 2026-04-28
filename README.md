@@ -1,4 +1,4 @@
-# <img src="src/main/resources/static/images/CuentiLogo.png" width="30" height="30" /> Cuenti Homebanking
+# <img src="src/main/resources/static/images/Cuenti.png" width="30" height="30" /> Cuenti Homebanking
 
 A comprehensive personal finance management application that helps you track your income, expenses, assets, and investments all in one place.
 

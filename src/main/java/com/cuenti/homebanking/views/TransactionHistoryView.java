@@ -875,20 +875,52 @@ public class TransactionHistoryView extends VerticalLayout {
         MultiSelectComboBox<Tag> tagsCombo = new MultiSelectComboBox<>(getTranslation("dialog.tags"));
         tagsCombo.setItems(tagService.getAllTags());
         tagsCombo.setItemLabelGenerator(Tag::getName);
-        tagsCombo.setAllowCustomValue(true);
         tagsCombo.setWidthFull();
         if (currentFormTransaction[0].getTags() != null && !currentFormTransaction[0].getTags().isEmpty()) {
             Set<String> tagNames = new HashSet<>(Arrays.asList(currentFormTransaction[0].getTags().split(",")));
             tagsCombo.setValue(tagService.getAllTags().stream()
                     .filter(t -> tagNames.contains(t.getName())).collect(Collectors.toSet()));
         }
-        tagsCombo.addCustomValueSetListener(e -> {
-            Tag newTag = Tag.builder().name(e.getDetail()).build();
-            tagService.saveTag(newTag);
-            tagsCombo.setItems(tagService.getAllTags());
-            Set<Tag> sel = new HashSet<>(tagsCombo.getValue()); sel.add(newTag);
-            tagsCombo.setValue(sel);
+
+        // Add a text field + button for creating new tags (separate from multi-select)
+        TextField newTagField = new TextField();
+        newTagField.setPlaceholder(getTranslation("dialog.tags"));
+        newTagField.setWidth("100%");
+
+        Button addNewTagBtn = new Button(VaadinIcon.PLUS.create(), ev -> {
+            String newTagName = newTagField.getValue().trim();
+            if (!newTagName.isEmpty()) {
+                // Check if tag already exists
+                boolean tagExists = tagService.getAllTags().stream()
+                        .anyMatch(t -> t.getName().equalsIgnoreCase(newTagName));
+                if (!tagExists) {
+                    Tag newTag = Tag.builder().name(newTagName).build();
+                    tagService.saveTag(newTag);
+                }
+                // Refresh combo items and add the tag to current selection
+                Set<Tag> sel = new HashSet<>(tagsCombo.getValue());
+                Tag newTag = tagService.getAllTags().stream()
+                        .filter(t -> t.getName().equalsIgnoreCase(newTagName))
+                        .findFirst()
+                        .orElse(null);
+                if (newTag != null) {
+                    sel.add(newTag);
+                    tagsCombo.setItems(tagService.getAllTags());
+                    tagsCombo.setValue(sel);
+                }
+                newTagField.clear();
+            }
         });
+        addNewTagBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
+        HorizontalLayout tagsRow = new HorizontalLayout(tagsCombo, newTagField, addNewTagBtn);
+        tagsRow.setWidthFull();
+        tagsRow.setSpacing(false);
+        tagsRow.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.END);
+        tagsRow.getStyle().set("gap", "var(--lumo-space-s)");
+        tagsCombo.getStyle().set("flex", "1 1 0");
+        newTagField.getStyle().set("flex", "1 1 0");
+        addNewTagBtn.getStyle().set("flex-shrink", "0");
 
         TextArea memoField = new TextArea(getTranslation("dialog.memo"));
         memoField.setValue(currentFormTransaction[0].getMemo() != null ? currentFormTransaction[0].getMemo() : "");
@@ -1053,8 +1085,8 @@ public class TransactionHistoryView extends VerticalLayout {
         HorizontalLayout row3 = new HorizontalLayout(toAccountCombo, paymentCombo);
         row3.setWidthFull(); row3.setSpacing(false);
         row3.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
-        row3.getChildren().forEach(c -> c.getElement().getStyle().set("flex", "1 1 200px").set("min-width", "0"));
-        coreSection.add(row1, row2, row3, tagsCombo, memoField, splitSection, assetSection, hiddenTabs);
+         row3.getChildren().forEach(c -> c.getElement().getStyle().set("flex", "1 1 200px").set("min-width", "0"));
+         coreSection.add(row1, row2, row3, tagsRow, memoField, splitSection, assetSection, hiddenTabs);
 
         // Secondary: payment details (number)
         Div extraSection = createFormSection(null);

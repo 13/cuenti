@@ -15,7 +15,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 
@@ -29,9 +29,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Route(value = "statistics", layout = MainLayout.class)
-@PageTitle("Statistics | Cuenti")
 @PermitAll
-public class StatisticsView extends VerticalLayout {
+public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("statistics.title") + " | " + getTranslation("app.name");
+    }
+
 
     private final TransactionService transactionService;
     private final AccountService accountService;

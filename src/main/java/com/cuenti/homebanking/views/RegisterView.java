@@ -32,10 +32,14 @@ import java.util.ResourceBundle;
  * Default language set to English.
  */
 @Route("register")
-@PageTitle("Register | Cuenti")
 @AnonymousAllowed
 @Slf4j
-public class RegisterView extends VerticalLayout implements BeforeEnterObserver {
+public class RegisterView extends VerticalLayout implements BeforeEnterObserver, HasDynamicTitle {
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("register.title") + " | " + getTranslation("app.name");
+    }
 
     private final UserService userService;
     private final GlobalSettingService globalSettingService;
@@ -59,7 +63,10 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver 
         configureLayout();
         configureForm();
 
-        H2 title = new H2(t("register.title", "Register"));
+        com.vaadin.flow.component.html.Span pageTitle = new com.vaadin.flow.component.html.Span(t("register.title", "Register"));
+        pageTitle.getStyle()
+                .set("font-size", "var(--lumo-font-size-xxl)").set("font-weight", "800")
+                .set("color", "var(--lumo-header-text-color)");
 
         RouterLink loginLink = new RouterLink(
                 t("register.already_registered", "Already registered? Login"),
@@ -70,17 +77,16 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver 
         footer.setWidthFull();
         footer.setJustifyContentMode(JustifyContentMode.CENTER);
 
-        add(title, createFormLayout(), footer);
+        add(pageTitle, createFormLayout(), footer);
     }
 
     private void configureLayout() {
         setSizeFull();
         setAlignItems(Alignment.CENTER);
-        setJustifyContentMode(JustifyContentMode.START);
-
+        setJustifyContentMode(JustifyContentMode.CENTER);
         setPadding(true);
-        setSpacing(true);
-        //getStyle().set("overflow-y", "auto");
+        setSpacing(false);
+        getStyle().set("overflow-y", "auto");
     }
 
     private void configureForm() {
@@ -177,8 +183,11 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver 
         );
 
         form.setColspan(submit, 2);
-        form.setWidth("min(720px, 90%)");
+        form.setWidth("min(680px, 96vw)");
         form.getStyle().set("margin", "0 auto");
+        form.getStyle().set("background","var(--lumo-base-color)")
+                .set("border-radius","20px").set("box-shadow","0 4px 24px rgba(0,0,0,0.18)")
+                .set("padding","var(--lumo-space-xl)").set("box-sizing","border-box");
 
         return form;
     }

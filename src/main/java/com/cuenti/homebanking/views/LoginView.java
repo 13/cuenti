@@ -9,7 +9,7 @@ import com.vaadin.flow.component.login.LoginI18n;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.server.VaadinSession;
@@ -19,9 +19,13 @@ import java.util.Locale;
 
 /** Login view for user authentication. Default language set to English. */
 @Route("login")
-@PageTitle("Login | Cuenti")
 @AnonymousAllowed
-public class LoginView extends VerticalLayout implements BeforeEnterObserver {
+public class LoginView extends VerticalLayout implements BeforeEnterObserver, HasDynamicTitle {
+
+  @Override
+  public String getPageTitle() {
+    return getTranslation("login.title") + " | " + getTranslation("app.name");
+  }
 
   private final LoginForm loginForm = new LoginForm();
   private final RouterLink registerLink = new RouterLink();
@@ -36,24 +40,41 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
 
     Image logo = createLogo();
 
-    Span logoText = new Span("Cuenti");
+    Span logoText = new Span(getTranslation("app.name"));
     logoText.getStyle()
             .set("font-size", "var(--lumo-font-size-xxl)")
-            .set("font-weight", "700")
+            .set("font-weight", "800")
             .set("color", "var(--lumo-header-text-color)")
-            .set("margin-top", "-20px");
+            .set("margin-top", "-8px");
 
-    add(logo, logoText, loginForm, registerLink);
+    Span tagline = new Span(getTranslation("about.tagline", "Personal Finance, Simplified"));
+    tagline.getStyle()
+            .set("font-size", "var(--lumo-font-size-s)")
+            .set("color", "var(--lumo-secondary-text-color)")
+            .set("margin-bottom", "var(--lumo-space-m)");
+
+    // Wrap in a centered card
+    com.vaadin.flow.component.html.Div card = new com.vaadin.flow.component.html.Div();
+    card.getStyle()
+            .set("display","flex").set("flex-direction","column").set("align-items","center")
+            .set("gap","var(--lumo-space-m)")
+            .set("background","var(--lumo-base-color)")
+            .set("border-radius","20px")
+            .set("box-shadow","0 4px 24px rgba(0,0,0,0.18)")
+            .set("padding","var(--lumo-space-xl)")
+            .set("width","min(420px, 96vw)")
+            .set("box-sizing","border-box");
+
+    card.add(logo, logoText, tagline, loginForm, registerLink);
+    add(card);
   }
 
   private void configureLayout() {
     setSizeFull();
     setAlignItems(Alignment.CENTER);
-    setJustifyContentMode(JustifyContentMode.START);
+    setJustifyContentMode(JustifyContentMode.CENTER);
     setPadding(true);
-    setSpacing(true);
-
-    // Allow scrolling on small screens
+    setSpacing(false);
     getStyle().set("overflow-y", "auto");
   }
 
@@ -82,7 +103,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
   }
 
   private Image createLogo() {
-    Image logo = new Image("images/Cuenti.png", "Cuenti");
+    Image logo = new Image("images/Cuenti.png", getTranslation("app.name"));
     logo.getElement().setAttribute("srcset",
             "images/Cuenti.png 120w, images/Cuenti.png 800w");
     // When viewport is <=480px use ~120px image, otherwise use up to 200px.
@@ -92,7 +113,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
     logo.getStyle().set("width", "clamp(56px, 40%, 200px)");
     logo.getStyle().set("max-width", "200px");
     logo.getStyle().set("margin", "40px 0 0 0");
-    logo.getElement().setAttribute("alt", "Cuenti");
+    logo.getElement().setAttribute("alt", getTranslation("app.name"));
     return logo;
   }
 

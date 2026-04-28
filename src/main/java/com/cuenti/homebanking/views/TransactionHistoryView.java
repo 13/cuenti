@@ -32,7 +32,7 @@ import com.vaadin.flow.data.provider.ListDataProvider;
 import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.data.value.ValueChangeMode;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 
@@ -48,9 +48,14 @@ import java.util.stream.Stream;
 import java.util.stream.Collectors;
 
 @Route(value = "transactions", layout = MainLayout.class)
-@PageTitle("Transactions | Cuenti")
 @PermitAll
-public class TransactionHistoryView extends VerticalLayout {
+public class TransactionHistoryView extends VerticalLayout implements HasDynamicTitle {
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("transactions.title") + " | " + getTranslation("app.name");
+    }
+
 
     private final TransactionService transactionService;
     private final AccountService accountService;

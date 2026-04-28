@@ -29,7 +29,7 @@ import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
 import jakarta.annotation.security.PermitAll;
@@ -38,9 +38,13 @@ import java.io.ByteArrayInputStream;
 import java.util.List;
 
 @Route(value = "settings", layout = MainLayout.class)
-@PageTitle("Settings | Cuenti")
 @PermitAll
-public class SettingsView extends VerticalLayout implements BeforeEnterObserver {
+public class SettingsView extends VerticalLayout implements BeforeEnterObserver, HasDynamicTitle {
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("settings.title") + " | " + getTranslation("app.name");
+    }
 
     private final UserService userService;
     private final CurrencyService currencyService;
@@ -120,10 +124,10 @@ public class SettingsView extends VerticalLayout implements BeforeEnterObserver 
     }
 
     private void showAdministration() {
-        // ── Global toggles card ───────────────────────────────────────
-        Div toggleCard = createCard();
-        toggleCard.add(cardHeader(VaadinIcon.COG, getTranslation("settings.administration"),
-                getTranslation("settings.administration_desc", "Global application settings"), "var(--lumo-primary-color)"));
+         // ── Global toggles card ───────────────────────────────────────
+         Div toggleCard = createCard();
+         toggleCard.add(cardHeader(VaadinIcon.COG, getTranslation("settings.administration"),
+                 getTranslation("settings.administration_desc"), "var(--lumo-primary-color)"));
 
         Checkbox registrationToggle = new Checkbox(getTranslation("settings.enable_registration"));
         registrationToggle.setValue(globalSettingService.isRegistrationEnabled());
@@ -253,9 +257,9 @@ public class SettingsView extends VerticalLayout implements BeforeEnterObserver 
         card.add(nameRow, email, updateInfo);
 
         // ── Localization card ──────────────────────────────────────────
-        Div localizationCard = createCard();
-        localizationCard.add(cardHeader(VaadinIcon.GLOBE, getTranslation("settings.localization_title"),
-                getTranslation("settings.localization_desc", "Language and currency preferences"), "var(--lumo-success-color)"));
+         Div localizationCard = createCard();
+         localizationCard.add(cardHeader(VaadinIcon.GLOBE, getTranslation("settings.localization_title"),
+                 getTranslation("settings.localization_desc"), "var(--lumo-success-color)"));
 
         ComboBox<Currency> currencyComboBox = new ComboBox<>(getTranslation("settings.default_currency"));
         currencyComboBox.setItems(currencyService.getAllCurrencies());
@@ -267,7 +271,14 @@ public class SettingsView extends VerticalLayout implements BeforeEnterObserver 
 
         ComboBox<String> localeComboBox = new ComboBox<>(getTranslation("settings.localization"));
         localeComboBox.setItems("de-DE", "en-US", "en-GB");
-        localeComboBox.setItemLabelGenerator(l -> l.equals("de-DE") ? "Deutsch (DE)" : l.equals("en-GB") ? "English (UK)" : "English (US)");
+        localeComboBox.setItemLabelGenerator(l -> {
+            switch(l) {
+                case "de-DE": return "Deutsch (DE)";
+                case "en-GB": return "English (UK)";
+                case "en-US": return "English (US)";
+                default: return l;
+            }
+        });
         localeComboBox.setValue(currentUser.getLocale());
         localeComboBox.setWidthFull();
 
@@ -324,20 +335,20 @@ public class SettingsView extends VerticalLayout implements BeforeEnterObserver 
         passCard.add(oldPass, newPassRow, changePass);
 
         // ── Danger zone card ───────────────────────────────────────────
-        Div dangerCard = createCard();
-        dangerCard.getStyle().set("border-left", "4px solid var(--lumo-error-color)");
-        dangerCard.add(cardHeader(VaadinIcon.WARNING, getTranslation("settings.danger_zone", "Danger Zone"),
-                getTranslation("settings.danger_desc", "Permanently deletes all your accounts, transactions, scheduled entries and holdings. Cannot be undone."),
-                "var(--lumo-error-color)"));
+         Div dangerCard = createCard();
+         dangerCard.getStyle().set("border-left", "4px solid var(--lumo-error-color)");
+         dangerCard.add(cardHeader(VaadinIcon.WARNING, getTranslation("settings.danger_zone"),
+                 getTranslation("settings.danger_desc"),
+                 "var(--lumo-error-color)"));
 
-        Button cleanupButton = new Button(getTranslation("settings.clean_profile", "Clean All Profile Data"), VaadinIcon.TRASH.create(), e -> {
-            Dialog confirmDialog = new Dialog();
-            confirmDialog.setHeaderTitle(getTranslation("settings.confirm_wipe", "Confirm Data Wipe"));
-            confirmDialog.add(new Span(getTranslation("settings.wipe_confirm_msg", "Are you sure? This will leave you with a fresh empty profile.")));
-            Button delBtn = new Button(getTranslation("settings.delete_everything", "Yes, Delete Everything"), VaadinIcon.TRASH.create(), ev -> {
-                profileCleanupService.cleanupUserData(currentUser);
-                confirmDialog.close();
-                Notification.show(getTranslation("settings.wiped", "Profile data wiped"), 3000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+         Button cleanupButton = new Button(getTranslation("settings.clean_profile"), VaadinIcon.TRASH.create(), e -> {
+             Dialog confirmDialog = new Dialog();
+             confirmDialog.setHeaderTitle(getTranslation("settings.confirm_wipe"));
+             confirmDialog.add(new Span(getTranslation("settings.wipe_confirm_msg")));
+             Button delBtn = new Button(getTranslation("settings.delete_everything"), VaadinIcon.TRASH.create(), ev -> {
+                 profileCleanupService.cleanupUserData(currentUser);
+                 confirmDialog.close();
+                 Notification.show(getTranslation("settings.wiped"), 3000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 UI.getCurrent().navigate(DashboardView.class);
             });
             delBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
@@ -386,21 +397,21 @@ public class SettingsView extends VerticalLayout implements BeforeEnterObserver 
         card.add(xhbActions);
         container.add(card);
 
-        // ── Trade Republic ────────────────────────────────────────────
-        Div trCard = createCard();
-        trCard.add(cardHeader(VaadinIcon.STOCK, "Trade Republic Import",
-                getTranslation("settings.tr_desc", "Import your Trade Republic CSV statement. Select target accounts for cash and assets."),
-                "var(--lumo-success-color)"));
+         // ── Trade Republic ────────────────────────────────────────────
+         Div trCard = createCard();
+         trCard.add(cardHeader(VaadinIcon.STOCK, getTranslation("settings.tr_import_title"),
+                 getTranslation("settings.tr_desc"),
+                 "var(--lumo-success-color)"));
 
-        ComboBox<Account> cashAccountCombo = new ComboBox<>(getTranslation("settings.tr_cash_account", "Target Cash Account"));
-        cashAccountCombo.setItems(accountService.getAccountsByUser(currentUser));
-        cashAccountCombo.setItemLabelGenerator(Account::getAccountName);
-        cashAccountCombo.setWidthFull();
+         ComboBox<Account> cashAccountCombo = new ComboBox<>(getTranslation("settings.tr_cash_account"));
+         cashAccountCombo.setItems(accountService.getAccountsByUser(currentUser));
+         cashAccountCombo.setItemLabelGenerator(Account::getAccountName);
+         cashAccountCombo.setWidthFull();
 
-        ComboBox<Account> assetAccountCombo = new ComboBox<>(getTranslation("settings.tr_asset_account", "Target Asset Account"));
-        assetAccountCombo.setItems(accountService.getAccountsByUser(currentUser));
-        assetAccountCombo.setItemLabelGenerator(Account::getAccountName);
-        assetAccountCombo.setWidthFull();
+         ComboBox<Account> assetAccountCombo = new ComboBox<>(getTranslation("settings.tr_asset_account"));
+         assetAccountCombo.setItems(accountService.getAccountsByUser(currentUser));
+         assetAccountCombo.setItemLabelGenerator(Account::getAccountName);
+         assetAccountCombo.setWidthFull();
 
         HorizontalLayout trAccounts = new HorizontalLayout(cashAccountCombo, assetAccountCombo);
         trAccounts.setWidthFull(); trAccounts.setSpacing(false);
@@ -408,18 +419,18 @@ public class SettingsView extends VerticalLayout implements BeforeEnterObserver 
         cashAccountCombo.getStyle().set("flex", "1 1 200px");
         assetAccountCombo.getStyle().set("flex", "1 1 200px");
 
-        MemoryBuffer trBuffer = new MemoryBuffer();
-        Upload trUpload = new Upload(trBuffer);
-        trUpload.setAcceptedFileTypes(".csv");
-        trUpload.setUploadButton(new Button(getTranslation("settings.tr_import_btn", "Import Trade Republic CSV"), VaadinIcon.FILE_TEXT.create()));
-        trUpload.addSucceededListener(e -> {
-            if (cashAccountCombo.isEmpty() || assetAccountCombo.isEmpty()) {
-                Notification.show(getTranslation("settings.tr_select_accounts", "Please select both target accounts first"), 3000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
-                return;
-            }
-            try {
-                tradeRepublicImportService.importCsv(trBuffer.getInputStream(), cashAccountCombo.getValue(), assetAccountCombo.getValue());
-                Notification.show(getTranslation("settings.tr_success", "Trade Republic import successful!"), 2000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+         MemoryBuffer trBuffer = new MemoryBuffer();
+         Upload trUpload = new Upload(trBuffer);
+         trUpload.setAcceptedFileTypes(".csv");
+         trUpload.setUploadButton(new Button(getTranslation("settings.tr_import_btn"), VaadinIcon.FILE_TEXT.create()));
+         trUpload.addSucceededListener(e -> {
+             if (cashAccountCombo.isEmpty() || assetAccountCombo.isEmpty()) {
+                 Notification.show(getTranslation("settings.tr_select_accounts"), 3000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                 return;
+             }
+             try {
+                 tradeRepublicImportService.importCsv(trBuffer.getInputStream(), cashAccountCombo.getValue(), assetAccountCombo.getValue());
+                 Notification.show(getTranslation("settings.tr_success"), 2000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } catch (Exception ex) {
                 Notification.show(getTranslation("settings.import_failed", ex.getMessage()), 5000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
             }
@@ -481,8 +492,8 @@ public class SettingsView extends VerticalLayout implements BeforeEnterObserver 
         dialog.setHeaderTitle(getTranslation("settings.add_new_user"));
         dialog.setWidth("min(600px, 96vw)");
 
-        TextField username = new TextField(getTranslation("login.username")); username.setWidthFull();
-        EmailField email = new EmailField("Email"); email.setWidthFull();
+         TextField username = new TextField(getTranslation("login.username")); username.setWidthFull();
+         EmailField email = new EmailField(getTranslation("settings.email")); email.setWidthFull();
         TextField firstName = new TextField(getTranslation("settings.first_name")); firstName.setWidthFull();
         TextField lastName = new TextField(getTranslation("settings.last_name")); lastName.setWidthFull();
         PasswordField password = new PasswordField(getTranslation("login.password")); password.setWidthFull();

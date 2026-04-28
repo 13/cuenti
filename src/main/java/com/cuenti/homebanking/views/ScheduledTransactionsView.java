@@ -32,7 +32,7 @@ import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.Binder;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 
@@ -49,9 +49,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Route(value = "scheduled", layout = MainLayout.class)
-@PageTitle("Scheduled Transactions | Cuenti")
 @PermitAll
-public class ScheduledTransactionsView extends VerticalLayout {
+public class ScheduledTransactionsView extends VerticalLayout implements HasDynamicTitle {
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("scheduled.title") + " | " + getTranslation("app.name");
+    }
+
 
     private final ScheduledTransactionService scheduledService;
     private final AccountService accountService;
@@ -515,6 +520,7 @@ public class ScheduledTransactionsView extends VerticalLayout {
         // ── Recurrence section ────────────────────────────────────────
         ComboBox<ScheduledTransaction.RecurrencePattern> pattern = new ComboBox<>(getTranslation("scheduled.recurrence"));
         pattern.setItems(ScheduledTransaction.RecurrencePattern.values());
+        pattern.setItemLabelGenerator(this::getRecurrenceLabel);
         pattern.setWidthFull();
 
         IntegerField recValue = new IntegerField(getTranslation("scheduled.every_x"));
@@ -742,9 +748,9 @@ public class ScheduledTransactionsView extends VerticalLayout {
         return span;
     }
 
-    /** Friendly recurrence pill: e.g. "Monthly", "Every 2 weeks". */
+    /** Friendly recurrence pill using localized recurrence labels. */
     private Span createRecurrenceBadge(ScheduledTransaction.RecurrencePattern pattern, Integer value) {
-        String text = pattern.name().charAt(0) + pattern.name().substring(1).toLowerCase();
+        String text = getRecurrenceLabel(pattern);
         if (value != null && value > 1) text = getTranslation("scheduled.every_n").replace("{0}", String.valueOf(value)) + " " + text.toLowerCase();
         Span badge = new Span(text);
         badge.getStyle()
@@ -754,6 +760,23 @@ public class ScheduledTransactionsView extends VerticalLayout {
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("white-space", "nowrap");
         return badge;
+    }
+
+    private String getRecurrenceLabel(ScheduledTransaction.RecurrencePattern pattern) {
+        if (pattern == null) {
+            return "";
+        }
+        return switch (pattern) {
+            case DAILY -> getTranslation("scheduled.recurrence.daily");
+            case WEEKLY -> getTranslation("scheduled.recurrence.weekly");
+            case MONTHLY -> getTranslation("scheduled.recurrence.monthly");
+            case MONTHLY_LAST_DAY -> getTranslation("scheduled.recurrence.monthly_last_day");
+            case YEARLY -> getTranslation("scheduled.recurrence.yearly");
+            case EVERY_FRIDAY -> getTranslation("scheduled.recurrence.every_friday");
+            case EVERY_SATURDAY -> getTranslation("scheduled.recurrence.every_saturday");
+            case EVERY_WEEKDAY -> getTranslation("scheduled.recurrence.every_weekday");
+            case BI_WEEKLY -> getTranslation("scheduled.recurrence.bi_weekly");
+        };
     }
 
     private void refreshGrids() {

@@ -10,7 +10,6 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
-import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -25,7 +24,7 @@ import com.vaadin.flow.component.radiobutton.RadioGroupVariant;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.data.value.ValueChangeMode;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 
@@ -35,9 +34,14 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Route(value = "categories", layout = MainLayout.class)
-@PageTitle("Manage Categories | Cuenti")
 @PermitAll
-public class CategoryManagementView extends VerticalLayout {
+public class CategoryManagementView extends VerticalLayout implements HasDynamicTitle {
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("categories.title") + " | " + getTranslation("app.name");
+    }
+
 
     private final CategoryService categoryService;
     private final UserService userService;
@@ -57,18 +61,23 @@ public class CategoryManagementView extends VerticalLayout {
         this.currentUser = userService.findByUsername(username);
 
         setSizeFull();
-        setPadding(true);
-        setSpacing(true);
-        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
-        getStyle().set("overflow", "hidden");
+        setPadding(false);
+        setSpacing(false);
+        getStyle()
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("padding", "var(--lumo-space-m)")
+                .set("overflow", "hidden");
 
         setupUI();
         refreshGrid();
     }
 
     private void setupUI() {
-        H2 title = new H2(getTranslation("categories.title"));
-        title.getStyle().set("margin-top", "0").set("color", "var(--lumo-primary-text-color)");
+        Span title = new Span(getTranslation("categories.title"));
+        title.getStyle()
+                .set("font-size", "var(--lumo-font-size-xxl)")
+                .set("font-weight", "700")
+                .set("color", "var(--lumo-header-text-color)");
 
         searchField.setPlaceholder(getTranslation("transactions.search"));
         searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
@@ -83,18 +92,23 @@ public class CategoryManagementView extends VerticalLayout {
         toolbar.setWidthFull();
         toolbar.setAlignItems(Alignment.CENTER);
         toolbar.expand(searchField);
+        toolbar.setSpacing(false);
+        toolbar.getStyle()
+                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("border-radius", "12px")
+                .set("gap", "var(--lumo-space-s)");
 
-        grid.addThemeVariants(GridVariant.LUMO_NO_BORDER, GridVariant.LUMO_ROW_STRIPES);
+        grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
         grid.addColumn(Category::getFullName).setHeader(getTranslation("categories.name")).setSortable(true).setAutoWidth(true);
         
         grid.addComponentColumn(category -> {
-            Span span = new Span(category.getType().name());
-            span.getElement().getThemeList().add("badge");
-            if (category.getType() == Category.CategoryType.EXPENSE) {
-                span.getElement().getThemeList().add("error");
-            } else {
-                span.getElement().getThemeList().add("success");
-            }
+            boolean isExpense = category.getType() == Category.CategoryType.EXPENSE;
+            String color = isExpense ? "var(--lumo-error-color)" : "var(--lumo-success-color)";
+            Span span = new Span(getTranslation("category.type." + category.getType().name().toLowerCase()));
+            span.getStyle().set("font-size","10px").set("font-weight","700").set("letter-spacing","0.05em")
+                    .set("padding","2px 8px").set("border-radius","99px")
+                    .set("background", color + "1a").set("color", color);
             return span;
         }).setHeader(getTranslation("categories.type")).setAutoWidth(true).setSortable(true);
 
@@ -102,23 +116,23 @@ public class CategoryManagementView extends VerticalLayout {
             Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> openCategoryDialog(category));
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
-            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
-                ConfirmDialog dialog = new ConfirmDialog();
-                dialog.setHeader(getTranslation("categories.confirm_delete"));
-                dialog.setText(getTranslation("categories.confirm_delete_text", category.getFullName()));
-                dialog.setConfirmText(getTranslation("dialog.delete"));
-                dialog.setCancelText(getTranslation("dialog.cancel"));
-                dialog.addConfirmListener(event -> {
-                    try {
-                        categoryService.deleteCategory(category);
-                        refreshGrid();
-                        Notification.show(getTranslation("categories.deleted"));
-                    } catch (Exception ex) {
-                        Notification.show(getTranslation("categories.delete_error"), 5000, Notification.Position.MIDDLE);
-                    }
-                });
-                dialog.open();
-            });
+             Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
+                 ConfirmDialog dialog = new ConfirmDialog();
+                 dialog.setHeader(getTranslation("dialog.confirm_delete"));
+                 dialog.setText(getTranslation("categories.confirm_delete_message", category.getFullName()));
+                 dialog.setConfirmText(getTranslation("dialog.confirm"));
+                 dialog.setCancelText(getTranslation("dialog.cancel"));
+                 dialog.addConfirmListener(event -> {
+                     try {
+                         categoryService.deleteCategory(category);
+                         refreshGrid();
+                         Notification.show(getTranslation("categories.deleted"));
+                     } catch (Exception ex) {
+                         Notification.show(getTranslation("error.delete_failed"), 5000, Notification.Position.MIDDLE);
+                     }
+                 });
+                 dialog.open();
+             });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
 
             return new HorizontalLayout(editBtn, deleteBtn);
@@ -128,11 +142,12 @@ public class CategoryManagementView extends VerticalLayout {
         card.setSizeFull();
         card.getStyle()
                 .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "16px")
+                .set("border-radius", "20px")
                 .set("padding", "var(--lumo-space-l)")
-                .set("box-shadow", "var(--lumo-box-shadow-m)")
+                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
                 .set("display", "flex")
                 .set("flex-direction", "column")
+                .set("gap", "var(--lumo-space-s)")
                 .set("box-sizing", "border-box");
         card.add(toolbar, grid);
         add(title, card);
@@ -141,20 +156,25 @@ public class CategoryManagementView extends VerticalLayout {
 
     private void openCategoryDialog(Category category) {
         Dialog dialog = new Dialog();
+        dialog.setWidth("min(460px, 96vw)");
+        dialog.setResizable(false);
+        dialog.getElement().getStyle()
+                .set("--lumo-border-radius-l", "20px")
+                .set("overflow-x", "hidden");
         dialog.setHeaderTitle(category.getId() == null ? getTranslation("categories.add") : getTranslation("categories.edit"));
 
-        FormLayout formLayout = new FormLayout();
         TextField nameField = new TextField(getTranslation("categories.name"));
-        
+        nameField.setWidthFull();
+
         RadioButtonGroup<Category.CategoryType> typeGroup = new RadioButtonGroup<>(getTranslation("categories.type"));
         typeGroup.setItems(Category.CategoryType.values());
         typeGroup.addThemeVariants(RadioGroupVariant.LUMO_HELPER_ABOVE_FIELD);
-        
+
         ComboBox<Category> parentCombo = new ComboBox<>(getTranslation("categories.parent"));
         parentCombo.setItemLabelGenerator(Category::getFullName);
         parentCombo.setClearButtonVisible(true);
+        parentCombo.setWidthFull();
 
-        // Load all available categories for the parent selection
         final List<Category> allAvailableCategories = new ArrayList<>(categoryService.getAllCategories());
 
         Binder<Category> binder = new Binder<>(Category.class);
@@ -164,31 +184,23 @@ public class CategoryManagementView extends VerticalLayout {
 
         Runnable updateParentItems = () -> {
             Category.CategoryType selectedType = typeGroup.getValue();
-            
             List<Category> filtered = allAvailableCategories.stream()
-                    .filter(c -> !Objects.equals(c.getId(), category.getId()))
+                    .filter(c -> !java.util.Objects.equals(c.getId(), category.getId()))
                     .filter(c -> selectedType == null || c.getType() == selectedType)
                     .filter(c -> !isDescendant(c, category))
                     .collect(Collectors.toList());
-            
             parentCombo.setItems(filtered);
         };
 
         typeGroup.addValueChangeListener(e -> {
             updateParentItems.run();
-            if (e.isFromClient() && parentCombo.getValue() != null &&
-                parentCombo.getValue().getType() != e.getValue()) {
+            if (e.isFromClient() && parentCombo.getValue() != null && parentCombo.getValue().getType() != e.getValue())
                 parentCombo.clear();
-            }
         });
 
         parentCombo.addValueChangeListener(e -> {
-            if (e.getValue() != null) {
-                typeGroup.setValue(e.getValue().getType());
-                typeGroup.setReadOnly(true);
-            } else {
-                typeGroup.setReadOnly(false);
-            }
+            if (e.getValue() != null) { typeGroup.setValue(e.getValue().getType()); typeGroup.setReadOnly(true); }
+            else typeGroup.setReadOnly(false);
         });
 
         nameField.addValueChangeListener(e -> {
@@ -197,78 +209,54 @@ public class CategoryManagementView extends VerticalLayout {
             if (value != null && value.contains(":")) {
                 String[] parts = value.split(":", 2);
                 if (parts.length == 2) {
-                    String parentName = parts[0].trim();
-                    String childName = parts[1].trim();
-
-                    Category.CategoryType categoryType = typeGroup.getValue();
-                    if (categoryType == null) {
-                        categoryType = Category.CategoryType.EXPENSE;
-                        typeGroup.setValue(categoryType);
-                    }
-
-                    Category.CategoryType finalCategoryType = categoryType;
-                    Category parentCategory = allAvailableCategories.stream()
-                            .filter(c -> c.getName().equalsIgnoreCase(parentName) && c.getParent() == null && c.getType() == finalCategoryType)
-                            .findFirst()
-                            .orElse(null);
-
-                    if (parentCategory == null) {
-                        parentCategory = new Category();
-                        parentCategory.setName(parentName);
-                        parentCategory.setType(finalCategoryType);
-                        parentCategory.setUser(currentUser);
-                        parentCategory.setParent(null);
-                        parentCategory = categoryService.saveCategory(parentCategory);
-                        allAvailableCategories.add(parentCategory);
+                    String parentName = parts[0].trim(); String childName = parts[1].trim();
+                    Category.CategoryType ct = typeGroup.getValue() != null ? typeGroup.getValue() : Category.CategoryType.EXPENSE;
+                    typeGroup.setValue(ct);
+                    Category parentCat = allAvailableCategories.stream()
+                            .filter(c -> c.getName().equalsIgnoreCase(parentName) && c.getParent() == null && c.getType() == ct)
+                            .findFirst().orElse(null);
+                    if (parentCat == null) {
+                        parentCat = categoryService.saveCategory(Category.builder().name(parentName).type(ct).user(currentUser).parent(null).build());
+                        allAvailableCategories.add(parentCat);
                         updateParentItems.run();
                         Notification.show(getTranslation("categories.parent_created") + ": " + parentName, 3000, Notification.Position.MIDDLE);
                     }
-
-                    nameField.setValue(childName);
-                    parentCombo.setValue(parentCategory);
+                    nameField.setValue(childName); parentCombo.setValue(parentCat);
                 }
             }
         });
 
-        // Initialize items based on current type (if any)
-        if (category.getType() != null) {
-            typeGroup.setValue(category.getType());
-        }
+        if (category.getType() != null) typeGroup.setValue(category.getType());
         updateParentItems.run();
-        
-        // Then bind the bean
         binder.setBean(category);
 
-        // Ensure parent is correctly selected if instance came from grid
         if (category.getParent() != null) {
             final Long parentId = category.getParent().getId();
-            allAvailableCategories.stream()
-                .filter(c -> c.getId().equals(parentId))
-                .findFirst()
-                .ifPresent(parentCombo::setValue);
+            allAvailableCategories.stream().filter(c -> c.getId().equals(parentId)).findFirst().ifPresent(parentCombo::setValue);
             typeGroup.setReadOnly(true);
         }
 
-        formLayout.add(nameField, typeGroup, parentCombo);
-        formLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
+        Div body = new Div();
+        body.setWidthFull();
+        body.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--lumo-space-s)")
+                .set("padding","var(--lumo-space-m) var(--lumo-space-l)").set("box-sizing","border-box");
+        body.add(nameField, typeGroup, parentCombo);
+        dialog.add(body);
 
-        Button saveButton = new Button(getTranslation("dialog.save"), e -> {
+        Button saveButton = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
             if (binder.validate().isOk()) {
                 try {
-                    categoryService.saveCategory(category);
-                    refreshGrid();
-                    dialog.close();
-                    Notification.show(getTranslation("categories.saved"));
+                    categoryService.saveCategory(category); refreshGrid(); dialog.close();
+                    Notification.show(getTranslation("categories.saved"), 2000, Notification.Position.BOTTOM_END)
+                    .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_SUCCESS);
                 } catch (IllegalArgumentException ex) {
                     Notification.show(ex.getMessage(), 5000, Notification.Position.MIDDLE);
                 }
             }
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-
         Button cancelButton = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
-
-        dialog.add(formLayout);
+        cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }

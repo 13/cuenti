@@ -156,7 +156,7 @@ public class MainLayout extends AppLayout {
         Icon themeIcon = new Icon(isDark ? VaadinIcon.SUN_O : VaadinIcon.MOON);
         Button themeBtn = new Button(themeIcon);
         themeBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-        themeBtn.getElement().setProperty("title", "Toggle Dark / Light Mode");
+        themeBtn.getElement().setProperty("title", getTranslation("layout.toggle_theme"));
         themeBtn.getStyle().set("color", "var(--lumo-secondary-text-color)");
         themeBtn.addClickListener(e -> {
             toggleTheme();
@@ -209,11 +209,11 @@ public class MainLayout extends AppLayout {
 
     private void createDrawer() {
         // Logo at the top of the drawer
-        Image logo = new Image("images/Cuenti.png", "Cuenti");
+        Image logo = new Image("images/Cuenti.png", getTranslation("app.name"));
         logo.setHeight("53px");
         logo.setWidth("auto");
 
-        Span logoText = new Span("Cuenti");
+        Span logoText = new Span(getTranslation("app.name"));
         logoText.getStyle()
                 .set("font-size", "var(--lumo-font-size-xxl)")
                 .set("font-weight", "700")
@@ -276,9 +276,9 @@ public class MainLayout extends AppLayout {
         nav.add(navDivider());
 
         // ── Info ────────────────────────────────────────────────────
-        nav.add(sectionLabel(getTranslation("nav.info", "Information")));
-        nav.add(navItem(VaadinIcon.QUESTION_CIRCLE, getTranslation("nav.help",  "Help"),  HelpView.class));
-        nav.add(navItem(VaadinIcon.INFO_CIRCLE,     getTranslation("nav.about", "About"), AboutView.class));
+        nav.add(sectionLabel(getTranslation("nav.info")));
+        nav.add(navItem(VaadinIcon.QUESTION_CIRCLE, getTranslation("nav.help"),  HelpView.class));
+        nav.add(navItem(VaadinIcon.INFO_CIRCLE,     getTranslation("nav.about"), AboutView.class));
 
         Div drawer = new Div(logoSection, nav);
         drawer.setHeightFull();

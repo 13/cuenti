@@ -12,10 +12,10 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
-import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
@@ -53,10 +53,12 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         this.currentUser = userService.findByUsername(username);
 
         setSizeFull();
-        setPadding(true);
-        setSpacing(true);
-        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
-        getStyle().set("overflow", "hidden");
+        setPadding(false);
+        setSpacing(false);
+        getStyle()
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("padding", "var(--lumo-space-m)")
+                .set("overflow", "hidden");
 
         setupUI();
         refreshGrid();
@@ -64,12 +66,15 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
 
     @Override
     public String getPageTitle() {
-        return getTranslation("payees.title") + " | Cuenti";
+        return getTranslation("payees.title") + " | " + getTranslation("app.name");
     }
 
     private void setupUI() {
-        H2 title = new H2(getTranslation("payees.title"));
-        title.getStyle().set("margin-top", "0").set("color", "var(--lumo-primary-text-color)");
+        Span title = new Span(getTranslation("payees.title"));
+        title.getStyle()
+                .set("font-size", "var(--lumo-font-size-xxl)")
+                .set("font-weight", "700")
+                .set("color", "var(--lumo-header-text-color)");
 
         searchField.setPlaceholder(getTranslation("payees.search"));
         searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
@@ -84,8 +89,14 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         toolbar.setWidthFull();
         toolbar.setAlignItems(Alignment.CENTER);
         toolbar.expand(searchField);
+        toolbar.setSpacing(false);
+        toolbar.getStyle()
+                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("border-radius", "12px")
+                .set("gap", "var(--lumo-space-s)");
 
-        grid.addThemeVariants(GridVariant.LUMO_NO_BORDER, GridVariant.LUMO_ROW_STRIPES);
+        grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
         grid.addColumn(Payee::getName).setHeader(getTranslation("payees.name")).setSortable(true).setAutoWidth(true);
         grid.addColumn(Payee::getNotes).setHeader(getTranslation("payees.notes")).setAutoWidth(true).setSortable(true);
         grid.addColumn(p -> p.getDefaultCategory() != null ? p.getDefaultCategory().getFullName() : "").setHeader(getTranslation("payees.default_category")).setAutoWidth(true).setSortable(true);
@@ -112,11 +123,12 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         card.setSizeFull();
         card.getStyle()
                 .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "16px")
+                .set("border-radius", "20px")
                 .set("padding", "var(--lumo-space-l)")
-                .set("box-shadow", "var(--lumo-box-shadow-m)")
+                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
                 .set("display", "flex")
                 .set("flex-direction", "column")
+                .set("gap", "var(--lumo-space-s)")
                 .set("box-sizing", "border-box");
         card.add(toolbar, grid);
         add(title, card);
@@ -125,28 +137,28 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
 
     private void openPayeeDialog(Payee payee) {
         Dialog dialog = new Dialog();
+        dialog.setWidth("min(500px, 96vw)");
+        dialog.setResizable(false);
+        dialog.getElement().getStyle()
+                .set("--lumo-border-radius-l", "20px")
+                .set("overflow-x", "hidden");
         dialog.setHeaderTitle(payee.getId() == null ? getTranslation("payees.add") : getTranslation("payees.edit"));
 
-        FormLayout formLayout = new FormLayout();
         TextField name = new TextField(getTranslation("payees.name"));
-        name.setPrefixComponent(VaadinIcon.USER.create());
+        name.setPrefixComponent(VaadinIcon.USER.create()); name.setWidthFull();
 
         TextField notes = new TextField(getTranslation("payees.notes"));
+        notes.setWidthFull();
 
         ComboBox<Category> defaultCategory = new ComboBox<>(getTranslation("payees.default_category"));
         defaultCategory.setItems(categoryService.getAllCategories());
         defaultCategory.setItemLabelGenerator(Category::getFullName);
-
-        // Add new category button - using prefix since setSuffixComponent isn't available in this Vaadin version
-        Button addCategoryBtn = new Button(VaadinIcon.PLUS.create(), e -> {
-            Notification.show("Navigate to Categories to add new ones");
-        });
-        addCategoryBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        defaultCategory.setPrefixComponent(addCategoryBtn);
+        defaultCategory.setWidthFull();
 
         ComboBox<Transaction.PaymentMethod> paymentMethodCombo = new ComboBox<>(getTranslation("payees.default_payment"));
         paymentMethodCombo.setItems(Transaction.PaymentMethod.values());
         paymentMethodCombo.setItemLabelGenerator(Transaction.PaymentMethod::getLabel);
+        paymentMethodCombo.setWidthFull();
 
         Binder<Payee> binder = new Binder<>(Payee.class);
         binder.forField(name).asRequired(getTranslation("accounts.name_required")).bind(Payee::getName, Payee::setName);
@@ -155,22 +167,29 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         binder.bind(paymentMethodCombo, Payee::getDefaultPaymentMethod, Payee::setDefaultPaymentMethod);
         binder.setBean(payee);
 
-        formLayout.add(name, notes, defaultCategory, paymentMethodCombo);
-        formLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
+        HorizontalLayout catRow = new HorizontalLayout(defaultCategory, paymentMethodCombo);
+        catRow.setWidthFull(); catRow.setSpacing(false);
+        catRow.getStyle().set("gap","var(--lumo-space-m)").set("flex-wrap","wrap");
+        defaultCategory.getElement().getStyle().set("flex","2 1 180px").set("min-width","0");
+        paymentMethodCombo.getElement().getStyle().set("flex","1 1 140px").set("min-width","0");
 
-        Button saveButton = new Button(getTranslation("dialog.save"), e -> {
+        Div body = new Div();
+        body.setWidthFull();
+        body.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--lumo-space-s)")
+                .set("padding","var(--lumo-space-m) var(--lumo-space-l)").set("box-sizing","border-box");
+        body.add(name, notes, catRow);
+        dialog.add(body);
+
+        Button saveButton = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
             if (binder.validate().isOk()) {
-                payeeService.savePayee(payee);
-                refreshGrid();
-                dialog.close();
-                Notification.show(getTranslation("payees.saved"));
+                payeeService.savePayee(payee); refreshGrid(); dialog.close();
+                Notification.show(getTranslation("payees.saved"), 2000, Notification.Position.BOTTOM_END)
+                    .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_SUCCESS);
             }
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-
         Button cancelButton = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
-
-        dialog.add(formLayout);
+        cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }

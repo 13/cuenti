@@ -10,7 +10,6 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
-import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -24,7 +23,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.data.value.ValueChangeMode;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 
@@ -34,9 +33,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 @Route(value = "assets", layout = MainLayout.class)
-@PageTitle("Manage Assets | Cuenti")
 @PermitAll
-public class AssetManagementView extends VerticalLayout {
+public class AssetManagementView extends VerticalLayout implements HasDynamicTitle {
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("assets.title") + " | " + getTranslation("app.name");
+    }
+
 
     private final AssetService assetService;
     private final UserService userService;
@@ -58,18 +62,23 @@ public class AssetManagementView extends VerticalLayout {
         this.currentUser = userService.findByUsername(username);
 
         setSizeFull();
-        setPadding(true);
-        setSpacing(true);
-        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
-        getStyle().set("overflow", "hidden");
+        setPadding(false);
+        setSpacing(false);
+        getStyle()
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("padding", "var(--lumo-space-m)")
+                .set("overflow", "hidden");
 
         setupUI();
         refreshGrid();
     }
 
     private void setupUI() {
-        H2 title = new H2(getTranslation("assets.title"));
-        title.getStyle().set("margin-top", "0").set("color", "var(--lumo-primary-text-color)");
+        Span title = new Span(getTranslation("assets.title"));
+        title.getStyle()
+                .set("font-size", "var(--lumo-font-size-xxl)")
+                .set("font-weight", "700")
+                .set("color", "var(--lumo-header-text-color)");
         
         searchField.setPlaceholder(getTranslation("transactions.search"));
         searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
@@ -91,30 +100,39 @@ public class AssetManagementView extends VerticalLayout {
         toolbar.setWidthFull();
         toolbar.setAlignItems(Alignment.CENTER);
         toolbar.expand(searchField);
+        toolbar.setSpacing(false);
+        toolbar.getStyle()
+                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("border-radius", "12px")
+                .set("gap", "var(--lumo-space-s)");
 
-        grid.addThemeVariants(GridVariant.LUMO_NO_BORDER, GridVariant.LUMO_ROW_STRIPES);
+        grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
         grid.setSizeFull();
         
         grid.addColumn(Asset::getSymbol).setHeader(getTranslation("assets.symbol")).setSortable(true).setAutoWidth(true);
         grid.addColumn(Asset::getName).setHeader(getTranslation("assets.name")).setSortable(true).setAutoWidth(true);
         
         grid.addComponentColumn(asset -> {
+            String color = switch (asset.getType()) {
+                case STOCK  -> "var(--lumo-primary-color)";
+                case ETF    -> "var(--lumo-success-color)";
+                case CRYPTO -> "#f39c12";
+                default     -> "var(--lumo-secondary-text-color)";
+            };
             Span span = new Span(asset.getType().name());
-            span.getElement().getThemeList().add("badge pill");
-            switch (asset.getType()) {
-                case STOCK -> span.getElement().getThemeList().add("contrast");
-                case ETF -> span.getElement().getThemeList().add("success");
-                case CRYPTO -> span.getStyle().set("background-color", "#f39c12").set("color", "white");
-            }
+            span.getStyle().set("font-size","10px").set("font-weight","700").set("letter-spacing","0.05em")
+                    .set("padding","2px 8px").set("border-radius","99px")
+                    .set("background", color + "1a").set("color", color);
             return span;
         }).setHeader(getTranslation("assets.type")).setSortable(true).setAutoWidth(true);
 
         grid.addComponentColumn(asset -> {
-            if (asset.getCurrentPrice() == null) return new Span("-");
-            BigDecimal displayPrice = exchangeRateService.convert(asset.getCurrentPrice(), 
+            if (asset.getCurrentPrice() == null) { Span s = new Span("—"); s.getStyle().set("color","var(--lumo-disabled-text-color)"); return s; }
+            BigDecimal displayPrice = exchangeRateService.convert(asset.getCurrentPrice(),
                     asset.getCurrency(), currentUser.getDefaultCurrency());
             Span price = new Span(formatCurrency(displayPrice, currentUser.getDefaultCurrency()));
-            price.getStyle().set("font-weight", "bold");
+            price.getStyle().set("font-weight","700").set("font-size","var(--lumo-font-size-s)").set("color","var(--lumo-primary-color)");
             return price;
         }).setHeader(getTranslation("assets.price") + " (" + currentUser.getDefaultCurrency() + ")").setSortable(true).setAutoWidth(true);
 
@@ -150,11 +168,12 @@ public class AssetManagementView extends VerticalLayout {
         card.setSizeFull();
         card.getStyle()
                 .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "16px")
+                .set("border-radius", "20px")
                 .set("padding", "var(--lumo-space-l)")
-                .set("box-shadow", "var(--lumo-box-shadow-m)")
+                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
                 .set("display", "flex")
                 .set("flex-direction", "column")
+                .set("gap", "var(--lumo-space-s)")
                 .set("box-sizing", "border-box");
         card.add(toolbar, grid);
         add(title, card);
@@ -163,13 +182,19 @@ public class AssetManagementView extends VerticalLayout {
 
     private void openAssetDialog(Asset asset) {
         Dialog dialog = new Dialog();
+        dialog.setWidth("min(440px, 96vw)");
+        dialog.setResizable(false);
+        dialog.getElement().getStyle()
+                .set("--lumo-border-radius-l", "20px")
+                .set("overflow-x", "hidden");
         dialog.setHeaderTitle(asset.getId() == null ? getTranslation("assets.add") : getTranslation("assets.edit"));
 
-        FormLayout formLayout = new FormLayout();
         TextField symbol = new TextField(getTranslation("assets.symbol"));
+        symbol.setPrefixComponent(VaadinIcon.STOCK.create()); symbol.setWidthFull();
         TextField name = new TextField(getTranslation("assets.name"));
+        name.setWidthFull();
         ComboBox<Asset.AssetType> type = new ComboBox<>(getTranslation("assets.type"));
-        type.setItems(Asset.AssetType.values());
+        type.setItems(Asset.AssetType.values()); type.setWidthFull();
 
         Binder<Asset> binder = new Binder<>(Asset.class);
         binder.forField(symbol).asRequired().bind(Asset::getSymbol, Asset::setSymbol);
@@ -177,22 +202,29 @@ public class AssetManagementView extends VerticalLayout {
         binder.forField(type).asRequired().bind(Asset::getType, Asset::setType);
         binder.setBean(asset);
 
-        formLayout.add(symbol, name, type);
-        formLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
+        HorizontalLayout symRow = new HorizontalLayout(symbol, type);
+        symRow.setWidthFull(); symRow.setSpacing(false);
+        symRow.getStyle().set("gap","var(--lumo-space-m)").set("flex-wrap","wrap");
+        symbol.getElement().getStyle().set("flex","1 1 100px").set("min-width","0");
+        type.getElement().getStyle().set("flex","2 1 160px").set("min-width","0");
 
-        Button saveButton = new Button(getTranslation("dialog.save"), e -> {
+        Div body = new Div();
+        body.setWidthFull();
+        body.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--lumo-space-s)")
+                .set("padding","var(--lumo-space-m) var(--lumo-space-l)").set("box-sizing","border-box");
+        body.add(symRow, name);
+        dialog.add(body);
+
+        Button saveButton = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
             if (binder.validate().isOk()) {
-                assetService.saveAsset(asset);
-                refreshGrid();
-                dialog.close();
-                Notification.show(getTranslation("assets.saved"));
+                assetService.saveAsset(asset); refreshGrid(); dialog.close();
+                Notification.show(getTranslation("assets.saved"), 2000, Notification.Position.BOTTOM_END)
+                    .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_SUCCESS);
             }
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-
         Button cancelButton = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
-
-        dialog.add(formLayout);
+        cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
     }
@@ -211,13 +243,21 @@ public class AssetManagementView extends VerticalLayout {
         return Locale.forLanguageTag(currentUser.getLocale());
     }
 
-    private String formatCurrency(BigDecimal amount, String currencyCode) {
-        if (amount == null) return "";
-        NumberFormat formatter = NumberFormat.getCurrencyInstance(getLocale());
-        try {
-            java.util.Currency currency = java.util.Currency.getInstance(currencyCode);
-            formatter.setCurrency(currency);
-        } catch (Exception e) {}
-        return formatter.format(amount);
-    }
-}
+     private String formatCurrency(BigDecimal amount, String currencyCode) {
+         if (amount == null) return "";
+         NumberFormat formatter = NumberFormat.getCurrencyInstance(getLocale());
+         try {
+             java.util.Currency currency = java.util.Currency.getInstance(currencyCode);
+             formatter.setCurrency(currency);
+         } catch (Exception e) {}
+         return formatter.format(amount);
+     }
+
+     private String getAssetTypeLabel(Asset.AssetType type) {
+         return switch (type) {
+             case STOCK -> getTranslation("asset.type.stock");
+             case ETF -> getTranslation("asset.type.etf");
+             case CRYPTO -> getTranslation("asset.type.crypto");
+         };
+     }
+ }

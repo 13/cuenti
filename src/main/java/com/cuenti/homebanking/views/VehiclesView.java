@@ -23,7 +23,7 @@ import com.vaadin.flow.component.orderedlayout.FlexLayout;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 
@@ -42,9 +42,14 @@ import java.util.stream.Collectors;
  * Vehicle fuel tracking and consumption statistics view.
  */
 @Route(value = "vehicles", layout = MainLayout.class)
-@PageTitle("Vehicles | Cuenti")
 @PermitAll
-public class VehiclesView extends VerticalLayout {
+public class VehiclesView extends VerticalLayout implements HasDynamicTitle {
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("vehicles.title") + " | " + getTranslation("app.name");
+    }
+
 
     private final TransactionService transactionService;
     private final CategoryService categoryService;

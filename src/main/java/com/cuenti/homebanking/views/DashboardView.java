@@ -16,7 +16,7 @@ import com.vaadin.flow.component.orderedlayout.FlexLayout;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
-import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.PermitAll;
@@ -34,9 +34,14 @@ import java.util.stream.Collectors;
  * Enhanced Dashboard with metrics, asset performance, accounts overview, and charts.
  */
 @Route(value = "", layout = MainLayout.class)
-@PageTitle("Dashboard | Cuenti")
 @PermitAll
-public class DashboardView extends VerticalLayout {
+public class DashboardView extends VerticalLayout implements HasDynamicTitle {
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("dashboard.title") + " | " + getTranslation("app.name");
+    }
+
 
     private final AccountService accountService;
     private final TransactionService transactionService;
@@ -356,8 +361,9 @@ public class DashboardView extends VerticalLayout {
 
         // Range selector + legend in one toolbar row
         Select<String> timeRange = new Select<>();
-        timeRange.setItems("Daily", "Weekly", "Monthly", "Yearly");
-        timeRange.setValue("Monthly");
+        timeRange.setItems("daily", "weekly", "monthly", "yearly");
+        timeRange.setItemLabelGenerator(this::getTimeRangeLabel);
+        timeRange.setValue("monthly");
         timeRange.getStyle().set("min-width", "130px");
 
         HorizontalLayout chartToolbar = new HorizontalLayout();
@@ -414,21 +420,21 @@ public class DashboardView extends VerticalLayout {
         // Build ordered bucket labels covering the last N periods
         Map<String, BigDecimal[]> chartData = new LinkedHashMap<>();
         int buckets = switch (range) {
-            case "Daily"   -> 30;
-            case "Weekly"  -> 12;
-            case "Yearly"  -> 5;
-            default        -> 12; // Monthly
+            case "daily"   -> 30;
+            case "weekly"  -> 12;
+            case "yearly"  -> 5;
+            default         -> 12; // monthly
         };
 
         for (int i = buckets - 1; i >= 0; i--) {
             String label = switch (range) {
-                case "Daily"  -> today.minusDays(i).format(DateTimeFormatter.ofPattern("dd.MM"));
-                case "Weekly" -> {
+                case "daily"  -> today.minusDays(i).format(DateTimeFormatter.ofPattern("dd.MM"));
+                case "weekly" -> {
                     LocalDate w = today.minusWeeks(i);
                     yield "W" + w.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR)
                             + "’" + String.valueOf(w.getYear()).substring(2);
                 }
-                case "Yearly" -> String.valueOf(today.minusYears(i).getYear());
+                case "yearly" -> String.valueOf(today.minusYears(i).getYear());
                 default -> today.minusMonths(i).getMonth().getDisplayName(TextStyle.SHORT, userLocale)
                             + " ’" + String.valueOf(today.minusMonths(i).getYear()).substring(2);
             };
@@ -439,10 +445,10 @@ public class DashboardView extends VerticalLayout {
         for (Transaction t : transactions) {
             LocalDate td = t.getTransactionDate().toLocalDate();
             String label = switch (range) {
-                case "Daily"  -> td.format(DateTimeFormatter.ofPattern("dd.MM"));
-                case "Weekly" -> "W" + td.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR)
+                case "daily"  -> td.format(DateTimeFormatter.ofPattern("dd.MM"));
+                case "weekly" -> "W" + td.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR)
                                  + "’" + String.valueOf(td.getYear()).substring(2);
-                case "Yearly" -> String.valueOf(td.getYear());
+                case "yearly" -> String.valueOf(td.getYear());
                 default -> td.getMonth().getDisplayName(TextStyle.SHORT, userLocale)
                            + " ’" + String.valueOf(td.getYear()).substring(2);
             };
@@ -531,12 +537,12 @@ public class DashboardView extends VerticalLayout {
                 .filter(t -> t.getCategory() != null && t.getType() == Transaction.TransactionType.EXPENSE && t.getFromAccount() != null)
                 .filter(t -> {
                     LocalDate td = t.getTransactionDate().toLocalDate();
-                    if ("Daily".equals(range))  return td.isEqual(today);
-                    if ("Weekly".equals(range))
+                    if ("daily".equals(range))  return td.isEqual(today);
+                    if ("weekly".equals(range))
                         return td.getYear() == today.getYear()
                             && td.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR)
                                == today.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-                    if ("Monthly".equals(range))
+                    if ("monthly".equals(range))
                         return td.getYear() == today.getYear() && td.getMonth() == today.getMonth();
                     return td.getYear() == today.getYear();
                 })
@@ -823,6 +829,16 @@ public class DashboardView extends VerticalLayout {
         } catch (Exception e) {
         }
         return formatter.format(amount);
+    }
+
+    private String getTimeRangeLabel(String range) {
+        return switch (range) {
+            case "daily" -> getTranslation("dashboard.range.daily");
+            case "weekly" -> getTranslation("dashboard.range.weekly");
+            case "monthly" -> getTranslation("dashboard.range.monthly");
+            case "yearly" -> getTranslation("dashboard.range.yearly");
+            default -> range;
+        };
     }
 
     /**

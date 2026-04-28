@@ -3,6 +3,7 @@ package com.cuenti.homebanking.views;
 import com.cuenti.homebanking.service.GlobalSettingService;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.Image;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.login.LoginForm;
 import com.vaadin.flow.component.login.LoginI18n;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -35,7 +36,14 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
 
     Image logo = createLogo();
 
-    add(logo, loginForm, registerLink);
+    Span logoText = new Span("Cuenti");
+    logoText.getStyle()
+            .set("font-size", "var(--lumo-font-size-xxl)")
+            .set("font-weight", "700")
+            .set("color", "var(--lumo-header-text-color)")
+            .set("margin-top", "-20px");
+
+    add(logo, logoText, loginForm, registerLink);
   }
 
   private void configureLayout() {
@@ -83,7 +91,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
     // Keep responsive CSS as well
     logo.getStyle().set("width", "clamp(56px, 40%, 200px)");
     logo.getStyle().set("max-width", "200px");
-    logo.getStyle().set("margin", "40px 0 30px 0");
+    logo.getStyle().set("margin", "40px 0 0 0");
     logo.getElement().setAttribute("alt", "Cuenti");
     return logo;
   }

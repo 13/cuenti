@@ -213,7 +213,18 @@ public class MainLayout extends AppLayout {
         logo.setHeight("53px");
         logo.setWidth("auto");
 
-        Div logoSection = new Div(logo);
+        Span logoText = new Span("Cuenti");
+        logoText.getStyle()
+                .set("font-size", "var(--lumo-font-size-xxl)")
+                .set("font-weight", "700")
+                .set("color", "var(--lumo-header-text-color)");
+
+        HorizontalLayout logoContent = new HorizontalLayout(logo, logoText);
+        logoContent.setAlignItems(FlexComponent.Alignment.CENTER);
+        logoContent.setSpacing(false);
+        logoContent.getStyle().set("gap", "var(--lumo-space-s)");
+
+        Div logoSection = new Div(logoContent);
         logoSection.getStyle()
                 .set("padding", "0 var(--lumo-space-xs)")
                 .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")

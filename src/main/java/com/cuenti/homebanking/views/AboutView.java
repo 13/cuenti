@@ -39,14 +39,15 @@ public class AboutView extends VerticalLayout {
         // Logo
         Image logo = new Image("images/Cuenti.png", "Cuenti");
         logo.setMaxWidth("200px");
-        logo.getStyle().set("margin-bottom", "var(--lumo-space-l)");
         add(logo);
 
         // Application Name
-        H2 appName = new H2("Cuenti Homebanking");
+        H2 appName = new H2("Cuenti");
         appName.getStyle()
             .set("margin-top", "0")
-            .set("color", "var(--lumo-primary-text-color)");
+            .set("font-size", "var(--lumo-font-size-xxl)")
+            .set("font-weight", "700")
+            .set("color", "var(--lumo-header-text-color)");
         add(appName);
 
         // Version information from pom.xml

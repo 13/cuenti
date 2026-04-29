@@ -14,8 +14,9 @@
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0px 1000px var(--lumo-base-color) inset !important;
-  -webkit-text-fill-color: var(--lumo-body-text-color) !important;
+  -webkit-box-shadow: none !important;
+  box-shadow: none !important;
+  -webkit-text-fill-color: inherit !important;
+  background-color: transparent !important;
   transition: background-color 5000s ease-in-out 0s;
 }
- 

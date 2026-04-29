@@ -22,6 +22,7 @@ import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.theme.lumo.Lumo;
+import com.cuenti.homebanking.views.ThemePreference;
 import jakarta.annotation.security.PermitAll;
 import lombok.extern.slf4j.Slf4j;
 
@@ -185,7 +186,16 @@ public class MainLayout extends AppLayout {
         logoutBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
         logoutBtn.getElement().setProperty("title", getTranslation("nav.logout"));
         logoutBtn.getStyle().set("color", "var(--lumo-secondary-text-color)");
-        logoutBtn.addClickListener(e -> securityUtils.logout());
+        logoutBtn.addClickListener(e -> {
+            // Persist current theme and locale to cookies so the login page can apply the same settings after logout
+            boolean isDarkNow = currentUser == null || currentUser.isDarkMode();
+            ThemePreference.persistThemeCookie(UI.getCurrent(), isDarkNow);
+            String localeTag = UI.getCurrent().getLocale() != null
+                    ? UI.getCurrent().getLocale().toLanguageTag()
+                    : (currentUser != null && currentUser.getLocale() != null ? currentUser.getLocale() : "en");
+            ThemePreference.persistLocaleCookie(UI.getCurrent(), localeTag);
+            securityUtils.logout();
+        });
 
         HorizontalLayout right = new HorizontalLayout(themeBtn, avatar, userSpan, logoutBtn);
         right.setAlignItems(FlexComponent.Alignment.CENTER);

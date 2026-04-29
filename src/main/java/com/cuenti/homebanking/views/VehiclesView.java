@@ -28,6 +28,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.router.HasDynamicTitle;
+import com.vaadin.flow.router.AfterNavigationObserver;
+import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 
@@ -47,7 +49,7 @@ import java.util.stream.Collectors;
  */
 @Route(value = "vehicles", layout = MainLayout.class)
 @PermitAll
-public class VehiclesView extends VerticalLayout implements HasDynamicTitle {
+public class VehiclesView extends VerticalLayout implements HasDynamicTitle, AfterNavigationObserver {
 
     @Override
     public String getPageTitle() {
@@ -101,6 +103,32 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle {
                 .set("overflow", "hidden");
 
         setupUI();
+        // Initial load is deferred to afterNavigation to ensure the view is fully attached
+        // and that listeners (time range/category) have settled. afterNavigation() will
+        // perform an initial selection if needed and call loadVehicleData().
+    }
+
+    @Override
+    public void afterNavigation(AfterNavigationEvent event) {
+        // Ensure a category is selected (try saved default, otherwise pick first expense category)
+        if (categorySelect != null && categorySelect.getValue() == null) {
+            List<Category> expenseCategories = categoryService.getAllCategories().stream()
+                    .filter(c -> c.getType() == Category.CategoryType.EXPENSE)
+                    .sorted(Comparator.comparing(Category::getFullName))
+                    .collect(Collectors.toList());
+            if (!expenseCategories.isEmpty()) {
+                // Try to preselect saved category first
+                Long saved = currentUser.getDefaultVehicleCategoryId();
+                if (saved != null) {
+                    expenseCategories.stream().filter(c -> saved.equals(c.getId())).findFirst()
+                            .ifPresentOrElse(categorySelect::setValue, () -> categorySelect.setValue(expenseCategories.get(0)));
+                } else {
+                    categorySelect.setValue(expenseCategories.get(0));
+                }
+            }
+        }
+
+        // Finally load data for the current selection/date range
         loadVehicleData();
     }
 

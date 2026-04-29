@@ -231,8 +231,8 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
     public void beforeEnter(BeforeEnterEvent event) {
         UI ui = event.getUI();
 
-        ui.setLocale(Locale.ENGLISH);
-        VaadinSession.getCurrent().setLocale(Locale.ENGLISH);
+        // Apply last used locale (fallbacks to English) and theme from cookie
+        ThemePreference.applyLocaleFromCookie(ui);
         ThemePreference.applyThemeFromCookie(ui);
 
         if (!globalSettingService.isRegistrationEnabled()) {

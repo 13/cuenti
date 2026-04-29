@@ -103,11 +103,8 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
   public void beforeEnter(BeforeEnterEvent event) {
     UI ui = event.getUI();
 
-    // Force English for unauthenticated users
-    ui.setLocale(Locale.ENGLISH);
-    VaadinSession.getCurrent().setLocale(Locale.ENGLISH);
-
-
+    // Apply last used locale (fallbacks to English) and theme from cookie
+    ThemePreference.applyLocaleFromCookie(ui);
     ThemePreference.applyThemeFromCookie(ui);
 
     // Handle login error (?error)

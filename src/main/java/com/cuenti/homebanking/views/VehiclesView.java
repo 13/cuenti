@@ -90,8 +90,11 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
 
-        this.startDate = LocalDate.now().withDayOfMonth(1);
-        this.endDate = LocalDate.now().with(TemporalAdjusters.lastDayOfMonth());
+        // Default timeframe should match the preselected timeRangeSelect value ("this_year")
+        LocalDate now = LocalDate.now();
+        // set default to "this_year"
+        this.startDate = now.withDayOfYear(1);
+        this.endDate = now.with(TemporalAdjusters.lastDayOfYear());
 
         addClassName("vehicles-view");
         setSizeFull();

@@ -10,3 +10,12 @@
   background-color: var(--tag-bg, var(--lumo-primary-color));
   color: var(--tag-fg, var(--lumo-base-color));
 }
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px var(--lumo-base-color) inset !important;
+  -webkit-text-fill-color: var(--lumo-body-text-color) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+ 

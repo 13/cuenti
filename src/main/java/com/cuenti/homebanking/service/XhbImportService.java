@@ -84,30 +84,89 @@ public class XhbImportService {
 
         // 3. Import Categories (Hierarchy)
         NodeList catList = doc.getElementsByTagName("cat");
+
+        // Build a DTO map first: key -> (name, parentKey, type)
+        class CatDTO { String key; String name; String parent; Category.CategoryType type; }
+        java.util.Map<String, CatDTO> remaining = new java.util.LinkedHashMap<>();
         for (int i = 0; i < catList.getLength(); i++) {
             Element el = (Element) catList.item(i);
             String key = el.getAttribute("key");
             int flags = 0;
-            try {
-                String flagsStr = el.getAttribute("flags");
-                flags = flagsStr.isEmpty() ? 0 : Integer.parseInt(flagsStr);
-            } catch (NumberFormatException e) {}
-            
-            Category cat = Category.builder()
-                    .name(el.getAttribute("name"))
-                    .type((flags & 2) != 0 ? Category.CategoryType.INCOME : Category.CategoryType.EXPENSE)
-                    .build();
-            categoryMap.put(key, cat);
+            try { String flagsStr = el.getAttribute("flags"); flags = flagsStr.isEmpty() ? 0 : Integer.parseInt(flagsStr); } catch (NumberFormatException e) {}
+            CatDTO dto = new CatDTO();
+            dto.key = key;
+            dto.name = el.getAttribute("name");
+            dto.parent = el.getAttribute("parent");
+            dto.type = (flags & 2) != 0 ? Category.CategoryType.INCOME : Category.CategoryType.EXPENSE;
+            remaining.put(key, dto);
         }
-        for (int i = 0; i < catList.getLength(); i++) {
-            Element el = (Element) catList.item(i);
-            String key = el.getAttribute("key");
-            String parentKey = el.getAttribute("parent");
-            Category cat = categoryMap.get(key);
-            if (parentKey != null && !parentKey.isEmpty()) {
-                cat.setParent(categoryMap.get(parentKey));
+
+        // Parent-first creation loop
+        boolean progress = true;
+        while (!remaining.isEmpty() && progress) {
+            progress = false;
+            java.util.Iterator<java.util.Map.Entry<String, CatDTO>> it = remaining.entrySet().iterator();
+            while (it.hasNext()) {
+                java.util.Map.Entry<String, CatDTO> entry = it.next();
+                CatDTO dto = entry.getValue();
+                if (dto.parent == null || dto.parent.isEmpty() || categoryMap.containsKey(dto.parent)) {
+                    Category cat = Category.builder().name(dto.name).type(dto.type).build();
+                    if (dto.parent != null && !dto.parent.isEmpty()) {
+                        cat.setParent(categoryMap.get(dto.parent));
+                    }
+                    try {
+                        categoryMap.put(dto.key, categoryService.saveCategory(cat));
+                    } catch (IllegalArgumentException ex) {
+                        // try to disambiguate name and retry
+                        String base = cat.getName();
+                        String suffix = " (import)";
+                        String newName = base + suffix;
+                        int attempt = 1;
+                        boolean saved = false;
+                        while (attempt < 10 && !saved) {
+                            try {
+                                cat.setName(newName);
+                                categoryMap.put(dto.key, categoryService.saveCategory(cat));
+                                saved = true;
+                            } catch (IllegalArgumentException ex2) {
+                                attempt++;
+                                newName = base + suffix.replace(")", " " + attempt + ")");
+                            }
+                        }
+                        if (!saved) throw ex;
+                    }
+                    it.remove();
+                    progress = true;
+                }
             }
-            categoryMap.put(key, categoryService.saveCategory(cat));
+        }
+
+        // Fallback: create any remaining categories without parents to avoid blocking the import
+        if (!remaining.isEmpty()) {
+            for (CatDTO dto : remaining.values()) {
+                Category cat = Category.builder().name(dto.name).type(dto.type).build();
+                try {
+                    categoryMap.put(dto.key, categoryService.saveCategory(cat));
+                } catch (IllegalArgumentException ex) {
+                    String base = cat.getName();
+                    String suffix = " (import)";
+                    String newName = base + suffix;
+                    int attempt = 1;
+                    boolean saved = false;
+                    while (attempt < 10 && !saved) {
+                        try {
+                            cat.setName(newName);
+                            categoryMap.put(dto.key, categoryService.saveCategory(cat));
+                            saved = true;
+                        } catch (IllegalArgumentException ex2) {
+                            attempt++;
+                            newName = base + suffix.replace(")", " " + attempt + ")");
+                        }
+                    }
+                    if (!saved) throw ex;
+                }
+            }
+            remaining.clear();
         }
 
         // 4. Import Tags from Tag Definitions

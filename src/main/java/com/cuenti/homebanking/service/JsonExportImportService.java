@@ -117,24 +117,45 @@ public class JsonExportImportService {
 
         // 2. Import categories (handle hierarchy)
         if (data.categories != null) {
-            // First pass: create all categories without parent
-            for (CategoryDTO dto : data.categories) {
-                Category cat = Category.builder()
-                        .name(dto.name)
-                        .type(Category.CategoryType.valueOf(dto.type))
-                        .build();
-                categoryMap.put(dto.id, categoryService.saveCategory(cat));
+            // Create categories in parent-first order to preserve uniqueness constraints
+            // Some exports may list children before parents; iterate until all are created
+            Map<String, CategoryDTO> remaining = new LinkedHashMap<>();
+            for (CategoryDTO dto : data.categories) remaining.put(dto.id, dto);
+
+            boolean progress = true;
+            while (!remaining.isEmpty() && progress) {
+                progress = false;
+                Iterator<Map.Entry<String, CategoryDTO>> it = remaining.entrySet().iterator();
+                while (it.hasNext()) {
+                    Map.Entry<String, CategoryDTO> entry = it.next();
+                    CategoryDTO dto = entry.getValue();
+
+                    // If parent is null/empty or parent already created, we can create this category
+                    if (dto.parentId == null || dto.parentId.isEmpty() || categoryMap.containsKey(dto.parentId)) {
+                        Category cat = Category.builder()
+                                .name(dto.name)
+                                .type(Category.CategoryType.valueOf(dto.type))
+                                .build();
+
+                        if (dto.parentId != null && !dto.parentId.isEmpty()) {
+                            cat.setParent(categoryMap.get(dto.parentId));
+                        }
+
+                        categoryMap.put(dto.id, saveCategoryWithDisambiguation(cat));
+                        it.remove();
+                        progress = true;
+                    }
+                }
             }
 
-            // Second pass: set parent relationships
-            for (CategoryDTO dto : data.categories) {
-                if (dto.parentId != null && !dto.parentId.isEmpty()) {
-                    Category cat = categoryMap.get(dto.id);
-                    Category parent = categoryMap.get(dto.parentId);
-                    if (parent != null) {
-                        cat.setParent(parent);
-                        categoryService.saveCategory(cat);
-                    }
+            // If there are still remaining categories (due to missing parents or cycles), create them without parents
+            if (!remaining.isEmpty()) {
+                for (CategoryDTO dto : remaining.values()) {
+                    Category cat = Category.builder()
+                            .name(dto.name)
+                            .type(Category.CategoryType.valueOf(dto.type))
+                            .build();
+                    categoryMap.put(dto.id, saveCategoryWithDisambiguation(cat));
                 }
             }
         }
@@ -289,6 +310,32 @@ public class JsonExportImportService {
         if (tagName == null || tagName.isEmpty()) return;
         if (tagService.searchTags(tagName).stream().noneMatch(t -> t.getName().equalsIgnoreCase(tagName))) {
             tagService.saveTag(Tag.builder().name(tagName).build());
+        }
+    }
+
+    /**
+     * Save category, and if a uniqueness conflict occurs, retry with a disambiguated name.
+     */
+    private Category saveCategoryWithDisambiguation(Category cat) {
+        try {
+            return categoryService.saveCategory(cat);
+        } catch (IllegalArgumentException ex) {
+            if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("same name")) {
+                String base = cat.getName();
+                String suffix = " (import)";
+                String newName = base + suffix;
+                int attempt = 1;
+                while (attempt < 10) {
+                    try {
+                        cat.setName(newName);
+                        return categoryService.saveCategory(cat);
+                    } catch (IllegalArgumentException ex2) {
+                        attempt++;
+                        newName = base + suffix.replace(")", " " + attempt + ")");
+                    }
+                }
+            }
+            throw ex;
         }
     }
 

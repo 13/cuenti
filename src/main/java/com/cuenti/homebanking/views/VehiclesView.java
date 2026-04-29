@@ -8,6 +8,8 @@ import com.cuenti.homebanking.service.CategoryService;
 import com.cuenti.homebanking.service.ExchangeRateService;
 import com.cuenti.homebanking.service.TransactionService;
 import com.cuenti.homebanking.service.UserService;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.grid.Grid;
@@ -18,6 +20,8 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.FlexLayout;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -54,9 +58,11 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle {
     private final TransactionService transactionService;
     private final CategoryService categoryService;
     private final ExchangeRateService exchangeRateService;
+    private final UserService userService;
     private final User currentUser;
 
     private ComboBox<Category> categorySelect;
+    private Button saveDefaultCategoryButton;
     private Select<String> timeRangeSelect;
     private DatePicker startDatePicker;
     private DatePicker endDatePicker;
@@ -77,6 +83,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle {
         this.transactionService = transactionService;
         this.categoryService = categoryService;
         this.exchangeRateService = exchangeRateService;
+        this.userService = userService;
 
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
@@ -94,7 +101,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle {
                 .set("overflow", "hidden");
 
         setupUI();
-        renderEmptyState();
+        loadVehicleData();
     }
 
     private void setupUI() {
@@ -157,7 +164,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle {
         timeRangeSelect.setItems("today", "this_week", "this_month", "this_quarter", "this_year",
                                  "last_month", "last_quarter", "last_year", "all_time", "custom");
         timeRangeSelect.setItemLabelGenerator(item -> getTranslation("statistics.range_" + item));
-        timeRangeSelect.setValue("this_month");
+        timeRangeSelect.setValue("this_year");
         timeRangeSelect.addValueChangeListener(e -> {
             updateDateRange(e.getValue());
             loadVehicleData();
@@ -231,6 +238,10 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle {
         categorySelect.setPlaceholder(getTranslation("vehicles.select_placeholder"));
         categorySelect.setItemLabelGenerator(Category::getFullName);
 
+        saveDefaultCategoryButton = new Button(getTranslation("vehicles.save_default"), e -> saveDefaultCategory());
+        saveDefaultCategoryButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        saveDefaultCategoryButton.setEnabled(false);
+
         List<Category> expenseCategories = categoryService.getAllCategories().stream()
                 .filter(c -> c.getType() == Category.CategoryType.EXPENSE)
                 .sorted(Comparator.comparing(Category::getFullName))
@@ -238,10 +249,55 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle {
 
         categorySelect.setItems(expenseCategories);
         categorySelect.setClearButtonVisible(true);
-        categorySelect.addValueChangeListener(e -> loadVehicleData());
+        categorySelect.addValueChangeListener(e -> {
+            refreshDefaultButtonState();
+            loadVehicleData();
+        });
 
-        selectorLayout.add(categorySelect);
+        preselectSavedCategory(expenseCategories);
+        refreshDefaultButtonState();
+
+        selectorLayout.add(categorySelect, saveDefaultCategoryButton);
         return selectorLayout;
+    }
+
+    private void preselectSavedCategory(List<Category> expenseCategories) {
+        Long savedCategoryId = currentUser.getDefaultVehicleCategoryId();
+        if (savedCategoryId == null) {
+            return;
+        }
+
+        expenseCategories.stream()
+                .filter(c -> savedCategoryId.equals(c.getId()))
+                .findFirst()
+                .ifPresent(categorySelect::setValue);
+    }
+
+    private void saveDefaultCategory() {
+        Category selected = categorySelect.getValue();
+        if (selected == null) {
+            Notification n = Notification.show(getTranslation("vehicles.save_default_none"), 2500, Notification.Position.BOTTOM_END);
+            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+
+        userService.updateDefaultVehicleCategory(currentUser, selected.getId());
+        currentUser.setDefaultVehicleCategoryId(selected.getId());
+        refreshDefaultButtonState();
+
+        Notification n = Notification.show(getTranslation("vehicles.save_default_success"), 2000, Notification.Position.BOTTOM_END);
+        n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+    }
+
+    private void refreshDefaultButtonState() {
+        if (saveDefaultCategoryButton == null) {
+            return;
+        }
+
+        Category selected = categorySelect.getValue();
+        Long currentDefault = currentUser.getDefaultVehicleCategoryId();
+        boolean isAlreadyDefault = selected != null && selected.getId() != null && selected.getId().equals(currentDefault);
+        saveDefaultCategoryButton.setEnabled(selected != null && !isAlreadyDefault);
     }
 
     private void configureGrid() {

@@ -305,6 +305,15 @@ public class UserService implements UserDetailsService {
     }
 
     /**
+     * Update user's default vehicle category preference.
+     */
+    @Transactional
+    public void updateDefaultVehicleCategory(User user, Long categoryId) {
+        user.setDefaultVehicleCategoryId(categoryId);
+        userRepository.save(user);
+    }
+
+    /**
      * Update user enabled state (Admin action).
      */
     @Transactional

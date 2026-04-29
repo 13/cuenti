@@ -4,14 +4,13 @@ import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.server.AppShellSettings;
 import com.vaadin.flow.server.PWA;
 import com.vaadin.flow.theme.Theme;
-import com.vaadin.flow.theme.lumo.Lumo;
 
 /**
  * Application Shell configuration for Cuenti.
  * Configures icons, manifest, and PWA settings for all devices.
  */
 @PWA(name = "Cuenti Homebanking", shortName = "Cuenti", offlinePath = "offline.html")
-@Theme(value = "cuenti", variant = Lumo.DARK)
+@Theme("cuenti")
 public class AppShell implements AppShellConfigurator {
 
     @Override

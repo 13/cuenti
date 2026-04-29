@@ -79,4 +79,6 @@ public class User {
 
     @Builder.Default
     private boolean apiEnabled = false;
+
+    private Long defaultVehicleCategoryId;
 }

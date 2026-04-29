@@ -14,7 +14,6 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
-import com.vaadin.flow.theme.lumo.Lumo;
 import java.util.Locale;
 
 /** Login view for user authentication. Default language set to English. */
@@ -43,38 +42,21 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
     Span logoText = new Span(getTranslation("app.name"));
     logoText.getStyle()
             .set("font-size", "var(--lumo-font-size-xxl)")
-            .set("font-weight", "800")
+            .set("font-weight", "700")
             .set("color", "var(--lumo-header-text-color)")
-            .set("margin-top", "-8px");
+            .set("margin-top", "-20px");
 
-    Span tagline = new Span(getTranslation("about.tagline", "Personal Finance, Simplified"));
-    tagline.getStyle()
-            .set("font-size", "var(--lumo-font-size-s)")
-            .set("color", "var(--lumo-secondary-text-color)")
-            .set("margin-bottom", "var(--lumo-space-m)");
-
-    // Wrap in a centered card
-    com.vaadin.flow.component.html.Div card = new com.vaadin.flow.component.html.Div();
-    card.getStyle()
-            .set("display","flex").set("flex-direction","column").set("align-items","center")
-            .set("gap","var(--lumo-space-m)")
-            .set("background","var(--lumo-base-color)")
-            .set("border-radius","20px")
-            .set("box-shadow","0 4px 24px rgba(0,0,0,0.18)")
-            .set("padding","var(--lumo-space-xl)")
-            .set("width","min(420px, 96vw)")
-            .set("box-sizing","border-box");
-
-    card.add(logo, logoText, tagline, loginForm, registerLink);
-    add(card);
+    add(logo, logoText, loginForm, registerLink);
   }
 
   private void configureLayout() {
     setSizeFull();
     setAlignItems(Alignment.CENTER);
-    setJustifyContentMode(JustifyContentMode.CENTER);
+    setJustifyContentMode(JustifyContentMode.START);
     setPadding(true);
-    setSpacing(false);
+    setSpacing(true);
+
+    // Allow scrolling on small screens
     getStyle().set("overflow-y", "auto");
   }
 
@@ -125,8 +107,8 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
     ui.setLocale(Locale.ENGLISH);
     VaadinSession.getCurrent().setLocale(Locale.ENGLISH);
 
-    // Apply dark theme globally
-    ui.getElement().setAttribute("theme", Lumo.DARK);
+
+    ThemePreference.applyThemeFromCookie(ui);
 
     // Handle login error (?error)
     boolean error = event.getLocation().getQueryParameters().getParameters().containsKey("error");

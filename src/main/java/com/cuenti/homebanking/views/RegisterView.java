@@ -20,7 +20,6 @@ import com.vaadin.flow.data.validator.StringLengthValidator;
 import com.vaadin.flow.router.*;
 import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
-import com.vaadin.flow.theme.lumo.Lumo;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Locale;
@@ -63,10 +62,7 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
         configureLayout();
         configureForm();
 
-        com.vaadin.flow.component.html.Span pageTitle = new com.vaadin.flow.component.html.Span(t("register.title", "Register"));
-        pageTitle.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)").set("font-weight", "800")
-                .set("color", "var(--lumo-header-text-color)");
+        H2 title = new H2(t("register.title", "Register"));
 
         RouterLink loginLink = new RouterLink(
                 t("register.already_registered", "Already registered? Login"),
@@ -77,16 +73,17 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
         footer.setWidthFull();
         footer.setJustifyContentMode(JustifyContentMode.CENTER);
 
-        add(pageTitle, createFormLayout(), footer);
+        add(title, createFormLayout(), footer);
     }
 
     private void configureLayout() {
         setSizeFull();
         setAlignItems(Alignment.CENTER);
-        setJustifyContentMode(JustifyContentMode.CENTER);
+        setJustifyContentMode(JustifyContentMode.START);
+
         setPadding(true);
-        setSpacing(false);
-        getStyle().set("overflow-y", "auto");
+        setSpacing(true);
+        //getStyle().set("overflow-y", "auto");
     }
 
     private void configureForm() {
@@ -183,11 +180,8 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
         );
 
         form.setColspan(submit, 2);
-        form.setWidth("min(680px, 96vw)");
+        form.setWidth("min(720px, 90%)");
         form.getStyle().set("margin", "0 auto");
-        form.getStyle().set("background","var(--lumo-base-color)")
-                .set("border-radius","20px").set("box-shadow","0 4px 24px rgba(0,0,0,0.18)")
-                .set("padding","var(--lumo-space-xl)").set("box-sizing","border-box");
 
         return form;
     }
@@ -239,7 +233,7 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
 
         ui.setLocale(Locale.ENGLISH);
         VaadinSession.getCurrent().setLocale(Locale.ENGLISH);
-        ui.getElement().setAttribute("theme", Lumo.DARK);
+        ThemePreference.applyThemeFromCookie(ui);
 
         if (!globalSettingService.isRegistrationEnabled()) {
             event.forwardTo(LoginView.class);

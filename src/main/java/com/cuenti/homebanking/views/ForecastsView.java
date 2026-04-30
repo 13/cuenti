@@ -473,7 +473,7 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
 
             Span lbl = new Span(monthLabel);
             lbl.getStyle()
-                    .set("font-size", "10px").set("font-weight", isCurrent ? "700" : "500")
+                    .set("font-size", "10px").set("font-weight", isCurrent ? "900" : "500")
                     .set("color", isCurrent ? "var(--lumo-secondary-text-color)" : "var(--lumo-secondary-text-color)")
                     .set("white-space", "nowrap");
 

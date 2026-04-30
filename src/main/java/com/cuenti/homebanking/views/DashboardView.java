@@ -500,7 +500,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
             lbl.getStyle()
                     .set("font-size", "9px")
                     .set("font-weight", isCurrent ? "700" : "400")
-                    .set("color", isCurrent ? "var(--lumo-primary-color)" : "var(--lumo-secondary-text-color)")
+                    .set("color", isCurrent ? "var(--lumo-secondary-text-color)" : "var(--lumo-secondary-text-color)")
                     .set("white-space", "nowrap");
             group.add(barsRow, lbl);
             chartArea.add(group);
@@ -639,7 +639,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
     private void createAccountList(List<Account> accounts) {
         accountsLayout.setWidthFull();
         Div card = createCardContainer();
-        card.add(createSectionHeader("dashboard.accounts_overview", VaadinIcon.CREDIT_CARD));
+        card.add(createSectionHeader("dashboard.accounts_overview", VaadinIcon.CREDIT_CARD, currentUser.getDefaultCurrency()));
 
         Map<String, List<Account>> grouped = accounts.stream()
                 .collect(Collectors.groupingBy(a -> a.getAccountGroup() != null ? a.getAccountGroup() : "Other"));

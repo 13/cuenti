@@ -474,15 +474,11 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
             Span lbl = new Span(monthLabel);
             lbl.getStyle()
                     .set("font-size", "10px").set("font-weight", isCurrent ? "700" : "500")
-                    .set("color", isCurrent ? "var(--lumo-primary-color)" : "var(--lumo-secondary-text-color)")
+                    .set("color", isCurrent ? "var(--lumo-secondary-text-color)" : "var(--lumo-secondary-text-color)")
                     .set("white-space", "nowrap");
 
             if (isCurrent) {
-                Div dot = new Div();
-                dot.getStyle()
-                        .set("width", "5px").set("height", "5px").set("border-radius", "50%")
-                        .set("background", "var(--lumo-primary-color)").set("margin", "0 auto");
-                group.add(bars, dot, lbl);
+                group.add(bars, lbl);
             } else {
                 group.add(bars, lbl);
             }

@@ -19,6 +19,7 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.QueryParameters;
+import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.theme.lumo.Lumo;
@@ -342,19 +343,24 @@ public class MainLayout extends AppLayout {
         link.getElement().getStyle().set("width", "100%");
         link.setTabIndex(-1);
 
-        // Highlight active item based on current URL
+        // Compute expected path server-side to avoid relying on href attribute timing
+        Route routeAnnotation = target.getAnnotation(Route.class);
+        String routeValue = routeAnnotation != null ? routeAnnotation.value() : "";
+        String expectedPath = routeValue.isEmpty() ? "/" : "/" + routeValue;
+
         link.addAttachListener(e -> link.getElement().executeJs(
+            "const expected = $0;" +
             "const check = () => {" +
-            "  const href = this.getAttribute('href') || '';" +
             "  const path = window.location.pathname;" +
-            "  if (href && (path === href || path.startsWith(href + '?'))) {" +
+            "  if (path === expected || path.startsWith(expected + '/') || path.startsWith(expected + '?')) {" +
             "    this.setAttribute('highlight', '');" +
             "  } else {" +
             "    this.removeAttribute('highlight');" +
             "  }" +
             "};" +
             "check();" +
-            "window.addEventListener('vaadin-router-location-changed', check);"
+            "window.addEventListener('vaadin-router-location-changed', check);",
+            expectedPath
         ));
 
         return link;

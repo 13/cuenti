@@ -108,11 +108,12 @@ public class MainLayout extends AppLayout {
             "      display: flex; align-items: center; gap: 10px;" +
             "      width: 100%; box-sizing: border-box;" +
             "      padding: 9px 16px; margin: 1px 0; border-radius: 10px;" +
-            "      text-decoration: none; color: var(--lumo-secondary-text-color);" +
+            "      text-decoration: none !important; color: var(--lumo-secondary-text-color);" +
             "      font-size: var(--lumo-font-size-s); font-weight: 500;" +
             "      transition: background 0.12s, color 0.12s;" +
             "    }" +
-            "    .nav-item:hover {" +
+            "    .nav-item:hover, .nav-item:visited, .nav-item:focus {" +
+            "      text-decoration: none !important;" +
             "      background: var(--lumo-contrast-5pct);" +
             "      color: var(--lumo-body-text-color);" +
             "    }" +
@@ -121,14 +122,28 @@ public class MainLayout extends AppLayout {
             "      color: var(--lumo-primary-color);" +
             "      font-weight: 600;" +
             "    }" +
+            "    [theme~=dark] .nav-item[highlight] {" +
+            "      color: white;" +
+            "    }" +
             "    .nav-item vaadin-icon {" +
             "      width: 18px; height: 18px; flex-shrink: 0; color: currentColor;" +
             "    }" +
+            "    .nav-section-header {" +
+            "      display: flex; align-items: center;" +
+            "      padding: 16px 16px 4px; cursor: pointer; user-select: none;" +
+            "    }" +
+            "    .nav-section-header:hover .nav-section-label {" +
+            "      color: var(--lumo-secondary-text-color);" +
+            "    }" +
             "    .nav-section-label {" +
-            "      display: block; font-size: 10px; font-weight: 700;" +
+            "      font-size: 10px; font-weight: 700;" +
             "      letter-spacing: 0.09em; text-transform: uppercase;" +
-            "      color: var(--lumo-tertiary-text-color);" +
-            "      padding: 16px 16px 4px;" +
+            "      color: var(--lumo-tertiary-text-color); flex-grow: 1;" +
+            "    }" +
+            "    .nav-section-chevron {" +
+            "      width: 14px !important; height: 14px !important;" +
+            "      flex-shrink: 0; color: var(--lumo-tertiary-text-color);" +
+            "      transition: transform 0.2s ease;" +
             "    }" +
             "    .nav-divider {" +
             "      height: 1px; background: var(--lumo-contrast-10pct); margin: 6px 16px;" +
@@ -239,7 +254,7 @@ public class MainLayout extends AppLayout {
                 .set("padding", "0 var(--lumo-space-xs)")
                 .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
                 .set("display", "flex").set("align-items", "center")
-                .set("height", "54px").set("flex-shrink", "0")
+                .set("height", "53px").set("flex-shrink", "0")
                 .set("box-sizing", "border-box");
 
         // Scrollable nav area
@@ -250,45 +265,46 @@ public class MainLayout extends AppLayout {
                 .set("overflow-y", "auto").set("flex-grow", "1")
                 .set("padding-bottom", "var(--lumo-space-l)");
 
-        // ── General ────────────────────────────────────────────────
-        nav.add(sectionLabel(getTranslation("nav.general")));
-        nav.add(navItem(VaadinIcon.DASHBOARD,     getTranslation("nav.dashboard"),    DashboardView.class));
-        nav.add(navItem(VaadinIcon.LIST,           getTranslation("nav.transactions"), TransactionHistoryView.class));
-        nav.add(navItem(VaadinIcon.CALENDAR_CLOCK, getTranslation("nav.scheduled"),   ScheduledTransactionsView.class));
-        nav.add(navItem(VaadinIcon.CHART,          getTranslation("nav.statistics"),  StatisticsView.class));
-        nav.add(navItem(VaadinIcon.TRENDING_UP,    getTranslation("nav.forecasts"),   ForecastsView.class));
-        nav.add(navItem(VaadinIcon.CAR,            getTranslation("nav.vehicles"),    VehiclesView.class));
+        // ── General (default open) ──────────────────────────────────
+        Div generalItems = new Div(
+            navItem(VaadinIcon.DASHBOARD,      getTranslation("nav.dashboard"),    DashboardView.class),
+            navItem(VaadinIcon.LIST,           getTranslation("nav.transactions"), TransactionHistoryView.class),
+            navItem(VaadinIcon.CALENDAR_CLOCK, getTranslation("nav.scheduled"),   ScheduledTransactionsView.class),
+            navItem(VaadinIcon.CHART,          getTranslation("nav.statistics"),  StatisticsView.class),
+            navItem(VaadinIcon.TRENDING_UP,    getTranslation("nav.forecasts"),   ForecastsView.class),
+            navItem(VaadinIcon.CAR,            getTranslation("nav.vehicles"),    VehiclesView.class)
+        );
+        nav.add(collapsibleSection(getTranslation("nav.general"), generalItems, true));
 
-        nav.add(navDivider());
+        // ── Management (default closed) ─────────────────────────────
+        Div managementItems = new Div(
+            navItem(VaadinIcon.WALLET,   getTranslation("nav.manage_accounts"), AccountManagementView.class),
+            navItem(VaadinIcon.USERS,    getTranslation("nav.payees"),          PayeeManagementView.class),
+            navItem(VaadinIcon.SITEMAP,  getTranslation("nav.categories"),      CategoryManagementView.class),
+            navItem(VaadinIcon.TAGS,     getTranslation("nav.tags"),            TagManagementView.class),
+            navItem(VaadinIcon.MONEY,    getTranslation("nav.currencies"),      CurrencyManagementView.class),
+            navItem(VaadinIcon.CHART_3D, getTranslation("nav.assets"),          AssetManagementView.class)
+        );
+        nav.add(collapsibleSection(getTranslation("nav.management"), managementItems, false));
 
-        // ── Management ─────────────────────────────────────────────
-        nav.add(sectionLabel(getTranslation("nav.management")));
-        nav.add(navItem(VaadinIcon.WALLET,   getTranslation("nav.manage_accounts"), AccountManagementView.class));
-        nav.add(navItem(VaadinIcon.USERS,    getTranslation("nav.payees"),          PayeeManagementView.class));
-        nav.add(navItem(VaadinIcon.SITEMAP,  getTranslation("nav.categories"),      CategoryManagementView.class));
-        nav.add(navItem(VaadinIcon.TAGS,     getTranslation("nav.tags"),            TagManagementView.class));
-        nav.add(navItem(VaadinIcon.MONEY,    getTranslation("nav.currencies"),      CurrencyManagementView.class));
-        nav.add(navItem(VaadinIcon.CHART_3D, getTranslation("nav.assets"),          AssetManagementView.class));
-
-        nav.add(navDivider());
-
-        // ── Settings ───────────────────────────────────────────────
-        nav.add(sectionLabel(getTranslation("nav.settings")));
+        // ── Settings (default closed) ───────────────────────────────
+        Div settingsItems = new Div();
         if (currentUser != null && currentUser.getRoles().contains("ROLE_ADMIN")) {
-            nav.add(navItem(VaadinIcon.KEY, getTranslation("settings.administration"),
+            settingsItems.add(navItem(VaadinIcon.KEY, getTranslation("settings.administration"),
                     SettingsView.class, Map.of("section", "admin")));
         }
-        nav.add(navItem(VaadinIcon.USER,     getTranslation("settings.user_title"),
+        settingsItems.add(navItem(VaadinIcon.USER,     getTranslation("settings.user_title"),
                 SettingsView.class, Map.of("section", "user")));
-        nav.add(navItem(VaadinIcon.EXCHANGE, getTranslation("settings.import_export_title"),
+        settingsItems.add(navItem(VaadinIcon.EXCHANGE, getTranslation("settings.import_export_title"),
                 SettingsView.class, Map.of("section", "import-export")));
+        nav.add(collapsibleSection(getTranslation("nav.settings"), settingsItems, false));
 
-        nav.add(navDivider());
-
-        // ── Info ────────────────────────────────────────────────────
-        nav.add(sectionLabel(getTranslation("nav.info")));
-        nav.add(navItem(VaadinIcon.QUESTION_CIRCLE, getTranslation("nav.help"),  HelpView.class));
-        nav.add(navItem(VaadinIcon.INFO_CIRCLE,     getTranslation("nav.about"), AboutView.class));
+        // ── Info (default closed) ────────────────────────────────────
+        Div infoItems = new Div(
+            navItem(VaadinIcon.QUESTION_CIRCLE, getTranslation("nav.help"),  HelpView.class),
+            navItem(VaadinIcon.INFO_CIRCLE,     getTranslation("nav.about"), AboutView.class)
+        );
+        nav.add(collapsibleSection(getTranslation("nav.info"), infoItems, false));
 
         Div drawer = new Div(logoSection, nav);
         drawer.setHeightFull();
@@ -342,6 +358,31 @@ public class MainLayout extends AppLayout {
         ));
 
         return link;
+    }
+
+    private Div collapsibleSection(String title, Div items, boolean expanded) {
+        Icon chevron = VaadinIcon.ANGLE_DOWN.create();
+        chevron.addClassName("nav-section-chevron");
+        chevron.getStyle().set("transform", expanded ? "rotate(0deg)" : "rotate(-90deg)");
+
+        Span label = new Span(title);
+        label.addClassName("nav-section-label");
+
+        Div header = new Div(label, chevron);
+        header.addClassName("nav-section-header");
+
+        items.setWidthFull();
+        items.setVisible(expanded);
+
+        header.addClickListener(e -> {
+            boolean nowVisible = !items.isVisible();
+            items.setVisible(nowVisible);
+            chevron.getStyle().set("transform", nowVisible ? "rotate(0deg)" : "rotate(-90deg)");
+        });
+
+        Div section = new Div(header, items);
+        section.setWidthFull();
+        return section;
     }
 
     private Span sectionLabel(String title) {

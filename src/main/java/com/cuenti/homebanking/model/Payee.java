@@ -38,4 +38,7 @@ public class Payee {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private Transaction.PaymentMethod defaultPaymentMethod = Transaction.PaymentMethod.NONE;
+
+    private String defaultMemo;
+    private String defaultTags;
 }

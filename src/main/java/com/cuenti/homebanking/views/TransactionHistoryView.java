@@ -821,7 +821,8 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
         // ── Payee + Category ──────────────────────────────────────────
         ComboBox<String> payeeCombo = new ComboBox<>(getTranslation("transactions.payee"));
-        List<String> existingPayees = payeeService.getAllPayees().stream().map(Payee::getName).distinct().toList();
+        List<Payee> allPayeesForAutofill = payeeService.getAllPayees();
+        List<String> existingPayees = allPayeesForAutofill.stream().map(Payee::getName).distinct().toList();
         payeeCombo.setItems(existingPayees);
         payeeCombo.setAllowCustomValue(true);
         payeeCombo.setValue(currentFormTransaction[0].getPayee());
@@ -928,6 +929,35 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         memoField.setWidthFull();
         memoField.setMinHeight("60px");
         memoField.setMaxHeight("100px");
+
+        // Autofill fields from payee defaults when a payee is selected
+        payeeCombo.addValueChangeListener(e -> {
+            if (!e.isFromClient()) return;
+            String selectedName = e.getValue();
+            if (selectedName == null || selectedName.isEmpty()) return;
+            allPayeesForAutofill.stream()
+                    .filter(p -> p.getName().equalsIgnoreCase(selectedName))
+                    .findFirst()
+                    .ifPresent(payee -> {
+                        if (payee.getDefaultCategory() != null) {
+                            categoryCombo.setItems(categoryService.getCategoriesByType(payee.getDefaultCategory().getType()));
+                            categoryCombo.setValue(payee.getDefaultCategory());
+                        }
+                        if (payee.getDefaultPaymentMethod() != null
+                                && payee.getDefaultPaymentMethod() != Transaction.PaymentMethod.NONE) {
+                            paymentCombo.setValue(payee.getDefaultPaymentMethod());
+                        }
+                        if (payee.getDefaultMemo() != null && !payee.getDefaultMemo().isEmpty()) {
+                            memoField.setValue(payee.getDefaultMemo());
+                        }
+                        if (payee.getDefaultTags() != null && !payee.getDefaultTags().isEmpty()) {
+                            Set<String> tagNames = new HashSet<>(Arrays.asList(payee.getDefaultTags().split(",")));
+                            tagsCombo.setValue(tagService.getAllTags().stream()
+                                    .filter(t -> tagNames.contains(t.getName().trim()))
+                                    .collect(Collectors.toSet()));
+                        }
+                    });
+        });
 
         // ── Asset section (conditional) ───────────────────────────────
         ComboBox<Asset> assetCombo = new ComboBox<>(getTranslation("dialog.asset"));

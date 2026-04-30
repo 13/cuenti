@@ -2,15 +2,18 @@ package com.cuenti.homebanking.views;
 
 import com.cuenti.homebanking.model.Category;
 import com.cuenti.homebanking.model.Payee;
+import com.cuenti.homebanking.model.Tag;
 import com.cuenti.homebanking.model.Transaction;
 import com.cuenti.homebanking.model.User;
 import com.cuenti.homebanking.security.SecurityUtils;
 import com.cuenti.homebanking.service.CategoryService;
 import com.cuenti.homebanking.service.PayeeService;
+import com.cuenti.homebanking.service.TagService;
 import com.cuenti.homebanking.service.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
@@ -19,6 +22,7 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
@@ -28,12 +32,18 @@ import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @Route(value = "payees", layout = MainLayout.class)
 @PermitAll
 public class PayeeManagementView extends VerticalLayout implements HasDynamicTitle {
 
     private final PayeeService payeeService;
     private final CategoryService categoryService;
+    private final TagService tagService;
     private final UserService userService;
     private final SecurityUtils securityUtils;
     private final User currentUser;
@@ -42,9 +52,10 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
     private final TextField searchField = new TextField();
 
     public PayeeManagementView(PayeeService payeeService, CategoryService categoryService,
-                               UserService userService, SecurityUtils securityUtils) {
+                               TagService tagService, UserService userService, SecurityUtils securityUtils) {
         this.payeeService = payeeService;
         this.categoryService = categoryService;
+        this.tagService = tagService;
         this.userService = userService;
         this.securityUtils = securityUtils;
 
@@ -101,6 +112,8 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         grid.addColumn(Payee::getNotes).setHeader(getTranslation("payees.notes")).setAutoWidth(true).setSortable(true);
         grid.addColumn(p -> p.getDefaultCategory() != null ? p.getDefaultCategory().getFullName() : "").setHeader(getTranslation("payees.default_category")).setAutoWidth(true).setSortable(true);
         grid.addColumn(p -> p.getDefaultPaymentMethod() != null ? p.getDefaultPaymentMethod().getLabel() : "").setHeader(getTranslation("payees.default_payment")).setAutoWidth(true).setSortable(true);
+        grid.addColumn(p -> p.getDefaultMemo() != null ? p.getDefaultMemo() : "").setHeader(getTranslation("payees.default_memo")).setAutoWidth(true).setSortable(true);
+        grid.addColumn(p -> p.getDefaultTags() != null ? p.getDefaultTags() : "").setHeader(getTranslation("payees.default_tags")).setAutoWidth(true).setSortable(true);
 
         grid.addComponentColumn(payee -> {
             Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> openPayeeDialog(payee));
@@ -137,7 +150,7 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
 
     private void openPayeeDialog(Payee payee) {
         Dialog dialog = new Dialog();
-        dialog.setWidth("min(500px, 96vw)");
+        dialog.setWidth("min(560px, 96vw)");
         dialog.setResizable(false);
         dialog.getElement().getStyle()
                 .set("--lumo-border-radius-l", "20px")
@@ -153,18 +166,96 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         ComboBox<Category> defaultCategory = new ComboBox<>(getTranslation("payees.default_category"));
         defaultCategory.setItems(categoryService.getAllCategories());
         defaultCategory.setItemLabelGenerator(Category::getFullName);
+        defaultCategory.setClearButtonVisible(true);
+        defaultCategory.setAllowCustomValue(true);
         defaultCategory.setWidthFull();
+        defaultCategory.addCustomValueSetListener(e -> {
+            String newCatName = e.getDetail();
+            if (newCatName == null || newCatName.isEmpty()) return;
+            Category saved;
+            if (newCatName.contains(":")) {
+                String[] parts = newCatName.split(":", 2);
+                String parentName = parts[0].trim();
+                String childName = parts[1].trim();
+                Category parentCat = categoryService.getAllCategories().stream()
+                        .filter(c -> c.getName().equals(parentName) && c.getParent() == null)
+                        .findFirst().orElse(null);
+                if (parentCat == null) {
+                    parentCat = categoryService.saveCategory(Category.builder()
+                            .name(parentName).type(Category.CategoryType.EXPENSE).user(currentUser).parent(null).build());
+                    Notification.show(getTranslation("categories.parent_created") + ": " + parentName, 3000, Notification.Position.MIDDLE);
+                }
+                saved = categoryService.saveCategory(Category.builder()
+                        .name(childName).type(parentCat.getType()).parent(parentCat).user(currentUser).build());
+            } else {
+                saved = categoryService.saveCategory(Category.builder()
+                        .name(newCatName).type(Category.CategoryType.EXPENSE).user(currentUser).build());
+            }
+            defaultCategory.setItems(categoryService.getAllCategories());
+            defaultCategory.setValue(saved);
+        });
 
         ComboBox<Transaction.PaymentMethod> paymentMethodCombo = new ComboBox<>(getTranslation("payees.default_payment"));
         paymentMethodCombo.setItems(Transaction.PaymentMethod.values());
         paymentMethodCombo.setItemLabelGenerator(Transaction.PaymentMethod::getLabel);
         paymentMethodCombo.setWidthFull();
 
+        TextField defaultMemoField = new TextField(getTranslation("payees.default_memo"));
+        defaultMemoField.setWidthFull();
+
+        MultiSelectComboBox<Tag> defaultTagsCombo = new MultiSelectComboBox<>(getTranslation("payees.default_tags"));
+        defaultTagsCombo.setItems(tagService.getAllTags());
+        defaultTagsCombo.setItemLabelGenerator(Tag::getName);
+        defaultTagsCombo.setWidthFull();
+        if (payee.getDefaultTags() != null && !payee.getDefaultTags().isEmpty()) {
+            Set<String> tagNames = new HashSet<>(Arrays.asList(payee.getDefaultTags().split(",")));
+            defaultTagsCombo.setValue(tagService.getAllTags().stream()
+                    .filter(t -> tagNames.contains(t.getName().trim()))
+                    .collect(Collectors.toSet()));
+        }
+
+        TextField newTagField = new TextField();
+        newTagField.setPlaceholder(getTranslation("payees.default_tags"));
+        newTagField.setWidth("100%");
+
+        Button addNewTagBtn = new Button(VaadinIcon.PLUS.create(), ev -> {
+            String newTagName = newTagField.getValue().trim();
+            if (!newTagName.isEmpty()) {
+                boolean tagExists = tagService.getAllTags().stream()
+                        .anyMatch(t -> t.getName().equalsIgnoreCase(newTagName));
+                if (!tagExists) {
+                    Tag newTag = Tag.builder().name(newTagName).build();
+                    tagService.saveTag(newTag);
+                }
+                Set<Tag> sel = new HashSet<>(defaultTagsCombo.getValue());
+                Tag newTag = tagService.getAllTags().stream()
+                        .filter(t -> t.getName().equalsIgnoreCase(newTagName))
+                        .findFirst().orElse(null);
+                if (newTag != null) {
+                    sel.add(newTag);
+                    defaultTagsCombo.setItems(tagService.getAllTags());
+                    defaultTagsCombo.setValue(sel);
+                }
+                newTagField.clear();
+            }
+        });
+        addNewTagBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
+        HorizontalLayout tagsRow = new HorizontalLayout(defaultTagsCombo, newTagField, addNewTagBtn);
+        tagsRow.setWidthFull();
+        tagsRow.setSpacing(false);
+        tagsRow.setAlignItems(FlexComponent.Alignment.END);
+        tagsRow.getStyle().set("gap", "var(--lumo-space-s)");
+        defaultTagsCombo.getStyle().set("flex", "1 1 0");
+        newTagField.getStyle().set("flex", "1 1 0");
+        addNewTagBtn.getStyle().set("flex-shrink", "0");
+
         Binder<Payee> binder = new Binder<>(Payee.class);
         binder.forField(name).asRequired(getTranslation("accounts.name_required")).bind(Payee::getName, Payee::setName);
         binder.bind(notes, Payee::getNotes, Payee::setNotes);
         binder.bind(defaultCategory, Payee::getDefaultCategory, Payee::setDefaultCategory);
         binder.bind(paymentMethodCombo, Payee::getDefaultPaymentMethod, Payee::setDefaultPaymentMethod);
+        binder.bind(defaultMemoField, Payee::getDefaultMemo, Payee::setDefaultMemo);
         binder.setBean(payee);
 
         HorizontalLayout catRow = new HorizontalLayout(defaultCategory, paymentMethodCombo);
@@ -177,11 +268,13 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         body.setWidthFull();
         body.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--lumo-space-s)")
                 .set("padding","var(--lumo-space-m) var(--lumo-space-l)").set("box-sizing","border-box");
-        body.add(name, notes, catRow);
+        body.add(name, notes, catRow, defaultMemoField, tagsRow);
         dialog.add(body);
 
         Button saveButton = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
             if (binder.validate().isOk()) {
+                String tags = defaultTagsCombo.getValue().stream().map(Tag::getName).collect(Collectors.joining(","));
+                payee.setDefaultTags(tags.isEmpty() ? null : tags);
                 payeeService.savePayee(payee); refreshGrid(); dialog.close();
                 Notification.show(getTranslation("payees.saved"), 2000, Notification.Position.BOTTOM_END)
                     .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_SUCCESS);

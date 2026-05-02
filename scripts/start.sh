@@ -8,7 +8,7 @@ command_exists() {
 }
 
 echo "========================================"
-echo "Starting Cuenti Homebanking Application"
+echo "Starting Cuenti Application"
 echo "Production Mode (PostgreSQL Database)"
 echo "========================================"
 echo

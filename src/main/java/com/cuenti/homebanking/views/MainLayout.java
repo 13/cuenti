@@ -236,8 +236,9 @@ public class MainLayout extends AppLayout {
     private void createDrawer() {
         // Logo at the top of the drawer
         Image logo = new Image("images/Cuenti.png", getTranslation("app.name"));
-        logo.setHeight("53px");
+        logo.setHeight("32px");
         logo.setWidth("auto");
+        logo.getStyle().set("margin", "0 2px 0 6px");
 
         Span logoText = new Span(getTranslation("app.name"));
         logoText.getStyle()

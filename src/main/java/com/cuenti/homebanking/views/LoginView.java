@@ -93,8 +93,8 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
             "(max-width: 480px) 120px, 200px");
     // Keep responsive CSS as well
     logo.getStyle().set("width", "clamp(56px, 40%, 200px)");
-    logo.getStyle().set("max-width", "200px");
-    logo.getStyle().set("margin", "40px 0 0 0");
+    logo.getStyle().set("max-width", "120px");
+    logo.getStyle().set("margin", "40px 0 15px 0");
     logo.getElement().setAttribute("alt", getTranslation("app.name"));
     return logo;
   }

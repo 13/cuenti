@@ -12,7 +12,7 @@ if [[ $JAVA_VERSION != 17* && $JAVA_VERSION != 21* && $JAVA_VERSION != 25* ]]; t
 fi
 
 echo "========================================"
-echo "Starting Cuenti Application"
+echo "Starting Cuenti Homebanking Application"
 echo "Test Mode (H2 In-Memory Database)"
 echo "========================================"
 echo

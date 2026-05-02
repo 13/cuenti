@@ -29,14 +29,15 @@
     img.insertAdjacentHTML('afterend', svg);
     img.remove();
   })(this);" />
-    <h1 id="offline-title" aria-live="polite">You are offline</h1>
-    <p id="offline-text">Cuenti requires an internet connection to work. You do not seem to have access to the server right now. Check your internet connection and try reloading the page to use the application.</p>
+    <h1 id="offline-title">You are offline</h1>
+    <p id="offline-text">Cuenti Homebanking requires an internet connection to work. You do not seem to have access to the server right now. Check your internet connection and try reloading the page to use the application.</p>
     <div class="actions">
       <button id="reload">Reload</button>
+      <button class="secondary" id="open-help">Open help</button>
     </div>
   </div>
 
-  <link rel="icon" href="images/favicon.ico" />
+  <link rel="icon" href="images/favicon.svg" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'%3E%3Cpath fill='%23ff5000' d='M476.206 683.009c-29.676-7.526-56.686-19.625-80.132-38.987-29.726-24.548-50.926-55.148-64.486-91.149-8.226-21.839-12.989-44.432-13.608-67.73-1.337-50.371 14.734-94.871 46.272-133.954 14.405-17.851 30.809-33.656 48.938-47.688.92-.712 1.84-1.431 2.703-2.209.346-.311.54-.79.972-1.451-2.029-1.22-3.579.163-5.046.797-21.746 9.397-40.642 22.978-56.293 40.621-6.007 6.772-11.324 8.844-20.115 6-12.796-4.14-26.09-6.736-39.162-10.027-5.544-1.396-5.936-2.451-3.023-7.462 13.605-23.41 31.315-42.701 55.906-54.839 18.35-9.058 37.792-12.235 58.235-10.555 14.002 1.15 27.73 3.502 41.325 6.852 4.958 1.222 9.286.383 13.801-2.237 25.41-14.745 51.285-28.558 80.43-34.585 29.148-6.028 58.152-6.729 86.663 3.499 9.653 3.463 18.521 8.374 26.231 15.191 20.242 17.897 24.801 40.217 14.952 64.38-16.34 40.088-45.505 67.465-88.231 76.813-31.82 6.962-53.808-10.844-60.789-40.396-.379-1.605-.303-3.317-2.325-5.174-1.751 4.269-2.316 8.404-1.9 12.541 1.348 13.425 6.262 25.445 14.794 35.957 3.64 4.484 3.541 5.367-1.31 8.55-19.509 12.804-38.943 25.724-56.555 41.114-25.876 22.612-45.237 49.421-51.519 83.949-8.99 49.41 15.921 99.11 66.582 114.75 34.409 10.623 67.259 2.094 90.399-30.893 6.41-9.137 12.392-18.582 18.982-27.584 21.406-29.241 48.312-50.964 84.211-59.693 29.33-7.131 58.113-6.021 85.751 7.338 6.8 3.286 6.853 4.024.914 8.972-17.083 14.232-29.812 31.726-39.057 51.859-7.166 15.605-14.388 31.125-26.156 44.065-18.048 19.847-40.474 31.021-66.838 34.66-5.889.813-11.833 1.229-19.123 1.966 7.727 3.081 14.261 5.357 20.587 8.179 14.341 6.396 26.623 15.65 37.379 27.098 10.386 11.055 20.858 22.07 34.963 28.664 2.787 1.303 6.18 1.531 8.237 4.088 0 2.037-1.525 2.718-2.714 3.496-36.79 24.049-76.184 31.693-118.565 17.862-18.6-6.07-32.956-18.525-45.347-33.328-3.635-4.343-7.224-8.742-10.561-13.315-13.774-18.878-32.246-29.925-55.244-33.637-3.609-.583-7.158-1.54-11.127-2.442zM579.798 299.525c-.306.946-.66 1.879-.91 2.84-1.786 6.858.805 13.945 6.553 17.985 6.014 4.227 13.587 4.315 19.596.227 5.945-4.044 8.676-11.36 6.835-18.306-1.861-7.019-7.332-12.049-14.934-12.669-7.392-.603-13.201 2.524-17.14 9.923z'/%3E%3Cpath fill='%23ff5000' d='M306.623 647.396c-17.429-15.717-29.722-34.12-34.008-57.187-4.518-24.315 1.08-46.928 12.188-68.469 3.67-7.117 8.228-13.708 13.477-19.786 1.051-1.218 1.897-2.759 4.268-3.026 2.222 6.118 2.331 12.616 3.436 18.864 4.557 25.763 14.054 49.57 27.961 71.621 2.615 4.146 3.312 7.538 1.639 12.401-6.034 17.545-7.383 35.766-6.288 54.21.098 1.658.102 3.323.097 4.985 0 .295-.263.589-.802 1.707-8.299-3.528-14.938-9.405-21.968-15.321z'/%3E%3Cpath fill='%23ff5000' d='M496.665 501.06c-.093-14.539-3.307-27.87-10.118-40.175-2.161-3.904-1.173-5.689 2.254-7.944 19.042-12.53 38.156-24.963 56.437-38.611 5.027-3.753 6.085-3.406 7.635 2.535 5.246 20.103 7.192 40.275.446 60.441-8.294 24.791-24.948 40.77-50.502 47.03-7.876 1.929-9.612.138-7.882-7.483 1.146-5.047 1.854-10.138 1.73-15.793z'/%3E%3C/svg%3E">
   <script>
     // Simple language selection: if browser language starts with 'de', show German text
@@ -46,20 +47,19 @@
       var text = document.getElementById('offline-text');
       if(lang.startsWith('de')){
         title.textContent = 'Sie sind offline';
-        text.textContent = 'Cuenti benötigt eine Internetverbindung, um zu funktionieren. Sie scheinen derzeit keinen Zugriff auf den Server zu haben. Prüfen Sie Ihre Internetverbindung und laden Sie die Seite neu, um die Anwendung zu verwenden.';
+        text.textContent = 'Cuenti Homebanking benötigt eine Internetverbindung, um zu funktionieren. Sie scheinen derzeit keinen Zugriff auf den Server zu haben. Prüfen Sie Ihre Internetverbindung und laden Sie die Seite neu, um die Anwendung zu verwenden.';
       } else {
         title.textContent = 'You are offline';
-        text.textContent = 'Cuenti requires an internet connection to work. You do not seem to have access to the server right now. Check your internet connection and try reloading the page to use the application.';
+        text.textContent = 'Cuenti Homebanking requires an internet connection to work. You do not seem to have access to the server right now. Check your internet connection and try reloading the page to use the application.';
       }
     })();
 
     document.getElementById('reload').addEventListener('click', function(){
-      location.reload();
+      location.reload(true);
     });
-    self.addEventListener('fetch', event => {
-      event.respondWith(
-        fetch(event.request).catch(() => caches.match('/offline.html'))
-      );
+    document.getElementById('open-help').addEventListener('click', function(){
+      // When offline the SPA router won't work — open the help page in a new tab where possible
+      window.open('/', '_self');
     });
   </script>
 </body>

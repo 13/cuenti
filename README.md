@@ -1,4 +1,4 @@
-# <img src="assets/logo/CuentiKoi.png" width="30" height="30" /> Cuenti Housekeeping Book 
+# <img src="assets/logo/CuentiKoi.png" width="30" height="30" /> Cuenti Homebanking
 
 A comprehensive personal finance management application that helps you track your income, expenses, assets, and investments all in one place.
 

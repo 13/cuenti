@@ -78,6 +78,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
 
     private static final Pattern ODOMETER_PATTERN = Pattern.compile("d[=:]\\s*(\\d+(?:[.,]\\d+)?)");
     private static final Pattern LITERS_PATTERN = Pattern.compile("[vl][~=:]\\s*(\\d+(?:[.,]\\d+)?)");
+    private static final Pattern FULL_TANK_PATTERN = Pattern.compile("\\b(full)\\b", Pattern.CASE_INSENSITIVE);
 
     public VehiclesView(TransactionService transactionService, CategoryService categoryService,
                        UserService userService, ExchangeRateService exchangeRateService,
@@ -406,6 +407,25 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         }).setHeader(getTranslation("vehicles.consumption")).setAutoWidth(true).setSortable(true)
                 .setComparator(java.util.Comparator.comparing(e -> e.consumption != null ? e.consumption : BigDecimal.ZERO));
 
+        // fullTank
+        grid.addComponentColumn(e -> {
+            if (e.fullTank) {
+                Icon icon = VaadinIcon.CHECK.create();
+                icon.setColor("var(--lumo-success-color)");
+                return icon;
+            } else {
+                Span dash = new Span("—");
+                dash.getStyle().set("color", "var(--lumo-disabled-text-color)");
+                return dash;
+            }
+        })
+        .setHeader(getTranslation("vehicles.full_tank"))
+        //.setAutoWidth(true)
+        .setWidth("80px")
+        .setFlexGrow(0)
+        .setSortable(true)
+        .setComparator(e -> e.fullTank);
+
         // Station
         grid.addComponentColumn(e -> {
                     Span s = new Span(e.station != null ? e.station : "—");
@@ -450,10 +470,18 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
     private FuelEntry parseFuelEntry(Transaction t) {
         BigDecimal odometer = extractValue(t.getMemo(), ODOMETER_PATTERN, "(\\d{4,})\\s*km");
         BigDecimal liters = extractValue(t.getMemo(), LITERS_PATTERN, "(\\d+(?:[.,]\\d+)?)\\s*[Ll](?:\\s|$|\\))");
-
-        return new FuelEntry(t.getTransactionDate().toLocalDate(), odometer, liters, t.getAmount(),
+        boolean fullTank = extractFullTank(t.getMemo());
+        FuelEntry entry = new FuelEntry(
+                t.getTransactionDate().toLocalDate(),
+                odometer,
+                liters,
+                t.getAmount(),
                 t.getFromAccount() != null ? t.getFromAccount().getCurrency() : currentUser.getDefaultCurrency(),
-                t.getPayee(), t.getMemo());
+                t.getPayee(),
+                t.getMemo()
+        );
+        entry.fullTank = fullTank;
+        return entry;
     }
 
     private BigDecimal extractValue(String memo, Pattern primary, String secondaryRegex) {
@@ -463,6 +491,11 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         Matcher m2 = Pattern.compile(secondaryRegex).matcher(memo);
         if (m2.find()) return new BigDecimal(m2.group(1).replace(",", "."));
         return null;
+    }
+
+    private boolean extractFullTank(String memo) {
+        if (memo == null || memo.isEmpty()) return false;
+        return FULL_TANK_PATTERN.matcher(memo).find();
     }
 
     private void calculateDerivedValues() {
@@ -658,6 +691,8 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         BigDecimal distance;
         BigDecimal consumption;
         BigDecimal pricePerLiter;
+        boolean fullTank;
+        boolean valid;
 
         FuelEntry(java.time.LocalDate date, BigDecimal odometer, BigDecimal liters, BigDecimal amount, String currency, String station, String memo) {
             this.date = date; this.odometer = odometer; this.liters = liters; this.amount = amount; this.currency = currency; this.station = station; this.memo = memo;

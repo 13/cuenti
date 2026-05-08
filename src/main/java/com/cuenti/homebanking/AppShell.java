@@ -9,7 +9,12 @@ import com.vaadin.flow.theme.Theme;
  * Application Shell configuration for Cuenti.
  * Configures icons, manifest, and PWA settings for all devices.
  */
-@PWA(name = "Cuenti Homebanking", shortName = "Cuenti", offlinePath = "offline.html")
+@PWA(
+  name = "Cuenti Homebanking",
+  shortName = "Cuenti",
+  offlinePath = "offline.html",
+  iconPath = "images/icon.png"
+)
 @Theme("cuenti")
 public class AppShell implements AppShellConfigurator {
 

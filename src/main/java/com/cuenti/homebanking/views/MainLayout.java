@@ -293,12 +293,12 @@ public class MainLayout extends AppLayout {
         Div settingsItems = new Div();
         if (currentUser != null && currentUser.getRoles().contains("ROLE_ADMIN")) {
             settingsItems.add(navItem(VaadinIcon.KEY, getTranslation("settings.administration"),
-                    SettingsView.class, Map.of("section", "admin")));
+                    SettingsAdminView.class));
         }
         settingsItems.add(navItem(VaadinIcon.USER,     getTranslation("settings.user_title"),
-                SettingsView.class, Map.of("section", "user")));
+                SettingsUserView.class));
         settingsItems.add(navItem(VaadinIcon.EXCHANGE, getTranslation("settings.import_export_title"),
-                SettingsView.class, Map.of("section", "import-export")));
+                SettingsImportExportView.class));
         nav.add(collapsibleSection(getTranslation("nav.settings"), settingsItems, false));
 
         // ── Info (default closed) ────────────────────────────────────

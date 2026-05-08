@@ -1,7 +1,7 @@
 package com.cuenti.homebanking.security;
 
 import com.cuenti.homebanking.views.LoginView;
-import com.vaadin.flow.spring.security.VaadinWebSecurity;
+import com.vaadin.flow.spring.security.VaadinSecurityConfigurer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,20 +12,16 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.firewall.HttpFirewall;
 import org.springframework.security.web.firewall.StrictHttpFirewall;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
-/**
- * Security configuration for the application.
- * Configures Spring Security with Vaadin integration, API support with JWT and Basic Auth.
- */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
-public class SecurityConfig extends VaadinWebSecurity {
+public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
@@ -34,9 +30,6 @@ public class SecurityConfig extends VaadinWebSecurity {
         return authConfig.getAuthenticationManager();
     }
 
-    /**
-     * Custom HttpFirewall to allow URLs containing double slashes "//".
-     */
     @Bean
     public HttpFirewall allowDoubleSlashFirewall() {
         StrictHttpFirewall firewall = new StrictHttpFirewall();
@@ -45,34 +38,26 @@ public class SecurityConfig extends VaadinWebSecurity {
         return firewall;
     }
 
-    /**
-     * Apply the custom firewall to Spring Security.
-     */
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer(HttpFirewall allowDoubleSlashFirewall) {
         return web -> web.httpFirewall(allowDoubleSlashFirewall);
     }
 
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        // Allow public access to the images directory
-        http.authorizeHttpRequests(auth ->
-                auth.requestMatchers(new AntPathRequestMatcher("/images/**")).permitAll()
-        );
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http.authorizeHttpRequests(auth -> auth.requestMatchers("/images/**").permitAll());
 
-        // API Security: allow /api/auth/** without authentication, require auth for the rest
         http.authorizeHttpRequests(auth ->
-                        auth.requestMatchers(new AntPathRequestMatcher("/api/auth/**")).permitAll()
-                            .requestMatchers(new AntPathRequestMatcher("/api/**")).authenticated()
+                        auth.requestMatchers("/api/auth/**").permitAll()
+                            .requestMatchers("/api/**").authenticated()
                 )
                 .httpBasic(Customizer.withDefaults())
-                .csrf(csrf -> csrf.ignoringRequestMatchers(new AntPathRequestMatcher("/api/**")));
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"));
 
-        // Add JWT filter before UsernamePasswordAuthenticationFilter
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // Configure Vaadin-specific security
-        super.configure(http);
-        setLoginView(http, LoginView.class);
+        http.with(VaadinSecurityConfigurer.vaadin(), c -> c.loginView(LoginView.class));
+
+        return http.build();
     }
 }

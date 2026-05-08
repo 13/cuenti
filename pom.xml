@@ -14,11 +14,11 @@
     </parent>
 
     <groupId>com.cuenti</groupId>
-    <artifactId>homebanking</artifactId>
+    <artifactId>cuenti</artifactId>
     <version>0.1.0</version>
 
-    <name>Cuenti Homebanking</name>
-    <description>Personal Homebanking</description>
+    <name>Cuenti</name>
+    <description>Personal Finance</description>
 
     <!-- ===================== -->
     <!-- Properties -->

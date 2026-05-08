@@ -167,6 +167,7 @@ public class TradeRepublicImportService {
         String symbol = getColumn(columns, headerMap, "symbol");
         String shares = getColumn(columns, headerMap, "shares");
         String counterparty = getColumn(columns, headerMap, "counterparty_name");
+        String transactionId = getColumn(columns, headerMap, "transaction_id");
 
         BigDecimal amount = parsePlainAmount(getColumn(columns, headerMap, "amount"));
         BigDecimal fee = parsePlainAmount(getColumn(columns, headerMap, "fee"));
@@ -185,17 +186,23 @@ public class TradeRepublicImportService {
                 || description.startsWith("Buy trade")
                 || description.startsWith("Savings plan execution");
 
-        // Deduplication: Skip if transaction already exists (date + amount)
-        Account contextAccount = isAssetTrade ? assetAccount : cashAccount;
+        // Deduplication: prefer transaction_id if present, fall back to date+amount
         BigDecimal absoluteAmount = netAmount.abs();
-        List<Transaction> existing = transactionRepository.findByAccount(contextAccount).stream()
-                .filter(t -> t.getTransactionDate().toLocalDate().equals(transactionDateTime.toLocalDate()))
-                .filter(t -> t.getAmount().compareTo(absoluteAmount) == 0)
-                .toList();
-
-        if (!existing.isEmpty()) {
-            log.debug("Skipping duplicate transaction: {} on {} for €{}", description, transactionDateTime, absoluteAmount);
-            return;
+        if (!transactionId.isEmpty()) {
+            if (transactionRepository.findByNumber(transactionId).isPresent()) {
+                log.debug("Skipping duplicate transaction_id: {}", transactionId);
+                return;
+            }
+        } else {
+            Account contextAccount = isAssetTrade ? assetAccount : cashAccount;
+            List<Transaction> existing = transactionRepository.findByAccount(contextAccount).stream()
+                    .filter(t -> t.getTransactionDate().toLocalDate().equals(transactionDateTime.toLocalDate()))
+                    .filter(t -> t.getAmount().compareTo(absoluteAmount) == 0)
+                    .toList();
+            if (!existing.isEmpty()) {
+                log.debug("Skipping duplicate transaction: {} on {} for €{}", description, transactionDateTime, absoluteAmount);
+                return;
+            }
         }
 
         Transaction transaction = new Transaction();
@@ -204,6 +211,9 @@ public class TradeRepublicImportService {
         transaction.setSortOrder(rowNumber);
         transaction.setPaymentMethod(mapPaymentMethod(type));
         transaction.setTransactionDate(transactionDateTime);
+        if (!transactionId.isEmpty()) {
+            transaction.setNumber(transactionId);
+        }
 
         if (isAssetTrade) {
             transaction.setType(Transaction.TransactionType.TRANSFER);

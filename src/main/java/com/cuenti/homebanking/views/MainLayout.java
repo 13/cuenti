@@ -213,7 +213,19 @@ public class MainLayout extends AppLayout {
             securityUtils.logout();
         });
 
-        HorizontalLayout right = new HorizontalLayout(themeBtn, avatar, userSpan, logoutBtn);
+        RouterLink userLink = new RouterLink();
+        userLink.setRoute(SettingsUserView.class);
+        userLink.getStyle()
+                .set("display", "flex").set("align-items", "center")
+                .set("gap", "var(--lumo-space-xs)")
+                .set("text-decoration", "none")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("padding", "2px 4px")
+                .set("cursor", "pointer");
+        userLink.getElement().getStyle().set("color", "inherit");
+        userLink.add(avatar, userSpan);
+
+        HorizontalLayout right = new HorizontalLayout(themeBtn, userLink, logoutBtn);
         right.setAlignItems(FlexComponent.Alignment.CENTER);
         right.setSpacing(false);
         right.getStyle().set("gap", "var(--lumo-space-xs)");

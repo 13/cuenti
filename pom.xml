@@ -15,10 +15,10 @@
 
     <groupId>com.cuenti</groupId>
     <artifactId>homebanking</artifactId>
-    <version>0.0.2</version>
+    <version>0.1.0</version>
 
     <name>Cuenti Homebanking</name>
-    <description>Homebanking Application with Spring Boot and Vaadin</description>
+    <description>Personal Homebanking</description>
 
     <!-- ===================== -->
     <!-- Properties -->

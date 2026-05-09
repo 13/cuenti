@@ -214,6 +214,8 @@ public class JsonExportImportService {
                         .startBalance(dto.startBalance)
                         .balance(dto.startBalance) // Will be updated by transactions
                         .sortOrder(dto.sortOrder != null ? dto.sortOrder : 0)
+                        .excludeFromSummary(dto.excludeFromSummary)
+                        .excludeFromReports(dto.excludeFromReports)
                         .build();
 
                 accountMap.put(dto.id, accountService.saveAccount(account));
@@ -353,6 +355,8 @@ public class JsonExportImportService {
         dto.startBalance = account.getStartBalance();
         dto.balance = account.getBalance();
         dto.sortOrder = account.getSortOrder();
+        dto.excludeFromSummary = account.isExcludeFromSummary();
+        dto.excludeFromReports = account.isExcludeFromReports();
         return dto;
     }
 
@@ -458,6 +462,8 @@ public class JsonExportImportService {
         public java.math.BigDecimal startBalance;
         public java.math.BigDecimal balance;
         public Integer sortOrder;
+        public boolean excludeFromSummary;
+        public boolean excludeFromReports;
     }
 
     public static class TransactionDTO {

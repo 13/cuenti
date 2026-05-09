@@ -126,7 +126,8 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
                      try {
                          categoryService.deleteCategory(category);
                          refreshGrid();
-                         Notification.show(getTranslation("categories.deleted"));
+                         Notification.show(getTranslation("categories.deleted"), 2000, Notification.Position.BOTTOM_END)
+                                 .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_ERROR);
                      } catch (Exception ex) {
                          Notification.show(getTranslation("error.delete_failed"), 5000, Notification.Position.MIDDLE);
                      }

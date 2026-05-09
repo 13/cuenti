@@ -57,44 +57,53 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
     }
 
     private void buildContent() {
-        // ── Homebank XHB ──────────────────────────────────────────────
-        Div card = createCard();
-        card.add(cardHeader(VaadinIcon.DATABASE, getTranslation("settings.import_export_title"),
-                getTranslation("settings.data_desc"), "var(--lumo-primary-color)"));
+        // ── JSON Backup / Restore ─────────────────────────────────────
+        Div jsonCard = createCard();
+        jsonCard.add(cardHeader(VaadinIcon.ARCHIVE, getTranslation("settings.json_backup_restore"),
+                getTranslation("settings.json_desc"), "var(--lumo-warning-color, #e8a000)"));
 
-        AtomicReference<byte[]> xhbData = new AtomicReference<>();
-        Upload upload = new Upload(new InMemoryUploadHandler((meta, bytes) -> xhbData.set(bytes)));
-        upload.setAcceptedFileTypes(".xhb");
-        upload.setUploadButton(new Button(getTranslation("settings.import"), VaadinIcon.UPLOAD.create()));
-        upload.addAllFinishedListener(e -> {
-            byte[] bytes = xhbData.getAndSet(null);
-            if (bytes == null) return;
-            try {
-                xhbImportService.importXhb(new ByteArrayInputStream(bytes), currentUser);
-                Notification.show(getTranslation("settings.import_success"), 2000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            } catch (Exception ex) {
-                Notification.show(getTranslation("settings.import_failed", ex.getMessage()), 5000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
+        String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        String filename = String.format("cuenti_export_%s_%s.json", currentUser.getUsername(), timestamp);
 
-        Button exportBtn = new Button(getTranslation("settings.export"), VaadinIcon.DOWNLOAD.create());
-        exportBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        Anchor anchor = new Anchor(DownloadHandler.fromInputStream(event -> {
+        Button jsonExportBtn = new Button(getTranslation("settings.export_json"), VaadinIcon.DOWNLOAD.create());
+        jsonExportBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        Anchor jsonAnchor = new Anchor(DownloadHandler.fromInputStream(event -> {
             try {
-                byte[] data = xhbExportService.exportXhb(currentUser);
-                return new DownloadResponse(new ByteArrayInputStream(data), "export.xhb", "application/xml", data.length);
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                jsonExportImportService.exportUserData(currentUser, out);
+                byte[] data = out.toByteArray();
+                return new DownloadResponse(new ByteArrayInputStream(data), filename, "application/json", data.length);
             } catch (Exception ex) {
                 return DownloadResponse.error(500, ex.getMessage());
             }
         }), "");
-        anchor.add(exportBtn);
+        jsonAnchor.add(jsonExportBtn);
 
-        HorizontalLayout xhbActions = new HorizontalLayout(upload, anchor);
-        xhbActions.setAlignItems(FlexComponent.Alignment.CENTER);
-        xhbActions.setSpacing(false);
-        xhbActions.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
-        card.add(xhbActions);
-        container.add(card);
+        AtomicReference<byte[]> jsonData = new AtomicReference<>();
+        Upload jsonUpload = new Upload(new InMemoryUploadHandler((meta, bytes) -> jsonData.set(bytes)));
+        jsonUpload.setAcceptedFileTypes("application/json", ".json");
+        jsonUpload.setUploadButton(new Button(getTranslation("settings.import_json"), VaadinIcon.UPLOAD.create()));
+        jsonUpload.setMaxFiles(1);
+        jsonUpload.setMaxFileSize(50 * 1024 * 1024);
+        jsonUpload.addAllFinishedListener(e -> {
+            byte[] bytes = jsonData.getAndSet(null);
+            if (bytes == null) return;
+            try {
+                jsonExportImportService.importUserData(currentUser, new ByteArrayInputStream(bytes));
+                Notification.show(getTranslation("settings.json_import_success"), 3000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                com.vaadin.flow.component.UI.getCurrent().getPage().executeJs("setTimeout(() => location.reload(), 2000)");
+            } catch (Exception ex) {
+                Notification.show(getTranslation("settings.json_import_failed", ex.getMessage()), 5000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+
+        HorizontalLayout jsonActions = new HorizontalLayout(jsonAnchor, jsonUpload);
+        jsonActions.setAlignItems(FlexComponent.Alignment.CENTER);
+        jsonActions.setSpacing(false);
+        jsonActions.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+
+        jsonCard.add(jsonActions, infoBanner(getTranslation("settings.json_warning"), true));
+        container.add(jsonCard);
 
         // ── Trade Republic ────────────────────────────────────────────
         Div trCard = createCard();
@@ -139,52 +148,43 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
         trCard.add(trAccounts, trUpload);
         container.add(trCard);
 
-        // ── JSON Backup / Restore ─────────────────────────────────────
-        Div jsonCard = createCard();
-        jsonCard.add(cardHeader(VaadinIcon.ARCHIVE, getTranslation("settings.json_backup_restore"),
-                getTranslation("settings.json_desc"), "var(--lumo-warning-color, #e8a000)"));
+        // ── Homebank XHB ──────────────────────────────────────────────
+        Div card = createCard();
+        card.add(cardHeader(VaadinIcon.DATABASE, getTranslation("settings.import_export_title"),
+                getTranslation("settings.data_desc"), "var(--lumo-primary-color)"));
 
-        String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        String filename = String.format("cuenti_export_%s_%s.json", currentUser.getUsername(), timestamp);
-
-        Button jsonExportBtn = new Button(getTranslation("settings.export_json"), VaadinIcon.DOWNLOAD.create());
-        jsonExportBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        Anchor jsonAnchor = new Anchor(DownloadHandler.fromInputStream(event -> {
+        AtomicReference<byte[]> xhbData = new AtomicReference<>();
+        Upload upload = new Upload(new InMemoryUploadHandler((meta, bytes) -> xhbData.set(bytes)));
+        upload.setAcceptedFileTypes(".xhb");
+        upload.setUploadButton(new Button(getTranslation("settings.import"), VaadinIcon.UPLOAD.create()));
+        upload.addAllFinishedListener(e -> {
+            byte[] bytes = xhbData.getAndSet(null);
+            if (bytes == null) return;
             try {
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                jsonExportImportService.exportUserData(currentUser, out);
-                byte[] data = out.toByteArray();
-                return new DownloadResponse(new ByteArrayInputStream(data), filename, "application/json", data.length);
+                xhbImportService.importXhb(new ByteArrayInputStream(bytes), currentUser);
+                Notification.show(getTranslation("settings.import_success"), 2000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (Exception ex) {
+                Notification.show(getTranslation("settings.import_failed", ex.getMessage()), 5000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+
+        Button exportBtn = new Button(getTranslation("settings.export"), VaadinIcon.DOWNLOAD.create());
+        exportBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        Anchor anchor = new Anchor(DownloadHandler.fromInputStream(event -> {
+            try {
+                byte[] data = xhbExportService.exportXhb(currentUser);
+                return new DownloadResponse(new ByteArrayInputStream(data), "export.xhb", "application/xml", data.length);
             } catch (Exception ex) {
                 return DownloadResponse.error(500, ex.getMessage());
             }
         }), "");
-        jsonAnchor.add(jsonExportBtn);
+        anchor.add(exportBtn);
 
-        AtomicReference<byte[]> jsonData = new AtomicReference<>();
-        Upload jsonUpload = new Upload(new InMemoryUploadHandler((meta, bytes) -> jsonData.set(bytes)));
-        jsonUpload.setAcceptedFileTypes("application/json", ".json");
-        jsonUpload.setUploadButton(new Button(getTranslation("settings.import_json"), VaadinIcon.UPLOAD.create()));
-        jsonUpload.setMaxFiles(1);
-        jsonUpload.setMaxFileSize(50 * 1024 * 1024);
-        jsonUpload.addAllFinishedListener(e -> {
-            byte[] bytes = jsonData.getAndSet(null);
-            if (bytes == null) return;
-            try {
-                jsonExportImportService.importUserData(currentUser, new ByteArrayInputStream(bytes));
-                Notification.show(getTranslation("settings.json_import_success"), 3000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                com.vaadin.flow.component.UI.getCurrent().getPage().reload();
-            } catch (Exception ex) {
-                Notification.show(getTranslation("settings.json_import_failed", ex.getMessage()), 5000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
-
-        HorizontalLayout jsonActions = new HorizontalLayout(jsonAnchor, jsonUpload);
-        jsonActions.setAlignItems(FlexComponent.Alignment.CENTER);
-        jsonActions.setSpacing(false);
-        jsonActions.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
-
-        jsonCard.add(jsonActions, infoBanner(getTranslation("settings.json_warning"), true));
-        container.add(jsonCard);
+        HorizontalLayout xhbActions = new HorizontalLayout(upload, anchor);
+        xhbActions.setAlignItems(FlexComponent.Alignment.CENTER);
+        xhbActions.setSpacing(false);
+        xhbActions.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        card.add(xhbActions);
+        container.add(card);
     }
 }

@@ -91,7 +91,8 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
             Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
                 currencyService.deleteCurrency(currency);
                 refreshGrid();
-                Notification.show(getTranslation("currencies.deleted"));
+                Notification.show(getTranslation("currencies.deleted"), 2000, Notification.Position.BOTTOM_END)
+                        .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_ERROR);
             });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
 

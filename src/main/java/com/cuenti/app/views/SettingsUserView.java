@@ -19,6 +19,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
@@ -161,7 +162,16 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
         Button cleanupButton = new Button(getTranslation("settings.clean_profile"), VaadinIcon.TRASH.create(), e -> {
             Dialog confirmDialog = new Dialog();
             confirmDialog.setHeaderTitle(getTranslation("settings.confirm_wipe"));
-            confirmDialog.add(new Span(getTranslation("settings.wipe_confirm_msg")));
+            Span msg = new Span(getTranslation("settings.wipe_confirm_msg"));
+            Span typeHint = new Span(getTranslation("settings.delete_confirm_type"));
+            typeHint.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-secondary-text-color)");
+            TextField confirmField = new TextField();
+            confirmField.setPlaceholder("DELETE");
+            confirmField.setWidthFull();
+            confirmField.setValueChangeMode(ValueChangeMode.EAGER);
+            Div dialogBody = new Div(msg, typeHint, confirmField);
+            dialogBody.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "var(--lumo-space-s)");
+            confirmDialog.add(dialogBody);
             Button delBtn = new Button(getTranslation("settings.delete_everything"), VaadinIcon.TRASH.create(), ev -> {
                 profileCleanupService.cleanupUserData(currentUser);
                 confirmDialog.close();
@@ -169,6 +179,8 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
                 UI.getCurrent().navigate(DashboardView.class);
             });
             delBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+            delBtn.setEnabled(false);
+            confirmField.addValueChangeListener(ev -> delBtn.setEnabled("DELETE".equals(ev.getValue())));
             Button cancelBtn = new Button(getTranslation("dialog.cancel"), ev -> confirmDialog.close());
             cancelBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
             confirmDialog.getFooter().add(cancelBtn, delBtn);

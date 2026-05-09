@@ -372,6 +372,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
     private void deleteAccount(Account account) {
         accountService.deleteAccount(account);
         updateList();
-        Notification.show(getTranslation("accounts.deleted"));
+        Notification.show(getTranslation("accounts.deleted"), 2000, Notification.Position.BOTTOM_END)
+                .addThemeVariants(NotificationVariant.LUMO_ERROR);
     }
 }

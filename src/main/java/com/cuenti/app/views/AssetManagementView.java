@@ -92,7 +92,8 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         Button updatePricesButton = new Button(VaadinIcon.REFRESH.create(), e -> {
             assetService.updateCurrentUserAssetPrices();
             refreshGrid();
-            Notification.show(getTranslation("settings.saved"));
+            Notification.show(getTranslation("assets.prices_updated"), 2000, Notification.Position.BOTTOM_END)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         });
         updatePricesButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 

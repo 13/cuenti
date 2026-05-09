@@ -123,7 +123,8 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
             Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
                 payeeService.deletePayee(payee);
                 refreshGrid();
-                Notification.show(getTranslation("payees.deleted"));
+                Notification.show(getTranslation("payees.deleted"), 2000, Notification.Position.BOTTOM_END)
+                        .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_ERROR);
             });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
             deleteBtn.setTooltipText(getTranslation("transactions.delete"));

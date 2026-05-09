@@ -101,7 +101,8 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
             Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
                 tagService.deleteTag(tag);
                 refreshGrid();
-                Notification.show(getTranslation("tags.deleted"));
+                Notification.show(getTranslation("tags.deleted"), 2000, Notification.Position.BOTTOM_END)
+                        .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_ERROR);
             });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
 

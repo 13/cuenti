@@ -9,13 +9,13 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.14</version>
+        <version>4.0.6</version>
         <relativePath/>
     </parent>
 
     <groupId>com.cuenti</groupId>
     <artifactId>cuenti</artifactId>
-    <version>0.1.1</version>
+    <version>0.2.0</version>
 
     <name>Cuenti</name>
     <description>Personal Finance</description>
@@ -25,7 +25,7 @@
     <!-- ===================== -->
     <properties>
         <java.version>25</java.version>
-        <vaadin.version>24.10.1</vaadin.version>
+        <vaadin.version>25.1.5</vaadin.version>
         <lombok.version>1.18.46</lombok.version>
     </properties>
 
@@ -50,9 +50,16 @@
     <dependencies>
 
         <!-- Spring Boot -->
+        <!-- spring-boot-starter-web renamed to spring-boot-starter-webmvc in Boot 4 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+
+        <!-- Jackson is a separate module in Spring Boot 4 (no longer bundled in webmvc) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jackson</artifactId>
         </dependency>
 
         <dependency>
@@ -92,6 +99,11 @@
         <dependency>
             <groupId>com.vaadin</groupId>
             <artifactId>vaadin-lumo-theme</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.vaadin</groupId>
+            <artifactId>vaadin-dev-server</artifactId>
         </dependency>
 
         <!-- Databases -->
@@ -135,15 +147,16 @@
         </dependency>
 
         <!-- Tests -->
+        <!-- spring-boot-starter-test-classic includes all the test dependencies from Boot 3.x -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
+            <artifactId>spring-boot-starter-test-classic</artifactId>
             <scope>test</scope>
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-test</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -247,6 +260,18 @@
             <build>
                 <plugins>
                     <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <configuration combine.children="append">
+                            <excludes>
+                                <exclude>
+                                    <groupId>com.vaadin</groupId>
+                                    <artifactId>vaadin-dev-server</artifactId>
+                                </exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
                         <groupId>com.vaadin</groupId>
                         <artifactId>vaadin-maven-plugin</artifactId>
                         <version>${vaadin.version}</version>
@@ -278,4 +303,3 @@
     </repositories>
 
 </project>
-

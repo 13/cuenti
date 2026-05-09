@@ -3,9 +3,9 @@ package com.cuenti.app.service;
 import com.cuenti.app.model.*;
 import com.cuenti.app.repository.*;
 import com.cuenti.app.security.SecurityUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.cfg.DateTimeFeature;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,10 +33,10 @@ public class JsonExportImportService {
     private final TransactionRepository transactionRepository;
     private final SecurityUtils securityUtils;
 
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
+    private final ObjectMapper objectMapper = new ObjectMapper().rebuild()
             .enable(SerializationFeature.INDENT_OUTPUT)
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+            .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .build();
 
     /**
      * Export all user data to JSON format

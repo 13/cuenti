@@ -144,6 +144,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         });
 
         startDatePicker = new DatePicker(getTranslation("statistics.from"));
+        startDatePicker.setI18n(leadingZeroDateI18n());
         startDatePicker.setValue(startDate);
         startDatePicker.setVisible(false);
         startDatePicker.addValueChangeListener(e -> {
@@ -152,6 +153,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         });
 
         endDatePicker = new DatePicker(getTranslation("statistics.to"));
+        endDatePicker.setI18n(leadingZeroDateI18n());
         endDatePicker.setValue(endDate);
         endDatePicker.setVisible(false);
         endDatePicker.addValueChangeListener(e -> {
@@ -212,6 +214,13 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
             startDatePicker.setValue(startDate);
             endDatePicker.setValue(endDate);
         }
+    }
+
+    /** Date picker i18n that formats dates with leading zeros, e.g. "01.01.2026". */
+    private DatePicker.DatePickerI18n leadingZeroDateI18n() {
+        DatePicker.DatePickerI18n i18n = new DatePicker.DatePickerI18n();
+        i18n.setDateFormat("dd.MM.yyyy");
+        return i18n;
     }
 
     private Tabs createTabs() {
@@ -321,6 +330,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
 
         Div chartCard = createInnerCard(getTranslation("statistics.income_vs_expense"));
         renderIncomeExpenseChart(chartCard, totalIncome, totalExpense);
+        renderSavingsRateBar(chartCard, totalIncome, netFlow);
         contentContainer.add(chartCard);
 
         Div topCategoriesCard = createInnerCard(getTranslation("statistics.top_categories"));
@@ -797,6 +807,63 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         );
 
         container.add(chartContainer, legend);
+    }
+
+    private void renderSavingsRateBar(Div container, BigDecimal income, BigDecimal netFlow) {
+        if (income.compareTo(BigDecimal.ZERO) <= 0) return;
+
+        // Savings rate = net flow as a percentage of income (can be negative if overspending)
+        double rate = netFlow.divide(income, 4, RoundingMode.HALF_UP).doubleValue() * 100;
+        double fillPercent = Math.max(0, Math.min(100, rate));
+        boolean positive = rate >= 0;
+        String barColor = positive ? "var(--lumo-success-color)" : "var(--lumo-error-color)";
+        String gradientEnd = positive ? "#b7f5c8" : "#ffb3b3";
+
+        Div wrapper = new Div();
+        wrapper.setWidthFull();
+        wrapper.getStyle()
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("gap", "var(--lumo-space-m)")
+                .set("margin-top", "var(--lumo-space-m)");
+
+        Span label = new Span(getTranslation("statistics.savings_rate").toUpperCase());
+        label.getStyle()
+                .set("font-size", "10px")
+                .set("font-weight", "700")
+                .set("letter-spacing", "0.08em")
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("white-space", "nowrap");
+
+        Div barBg = new Div();
+        barBg.getStyle()
+                .set("flex", "1")
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("border-radius", "8px")
+                .set("height", "28px")
+                .set("position", "relative")
+                .set("overflow", "hidden");
+
+        Div bar = new Div();
+        bar.getStyle()
+                .set("position", "absolute")
+                .set("left", "0").set("top", "0").set("bottom", "0")
+                .set("width", fillPercent + "%")
+                .set("background", "linear-gradient(90deg, " + barColor + ", " + gradientEnd + ")")
+                .set("border-radius", "8px")
+                .set("transition", "width 0.3s ease");
+        barBg.add(bar);
+
+        Span value = new Span(String.format("%.0f%%", rate));
+        value.getStyle()
+                .set("min-width", "56px")
+                .set("text-align", "right")
+                .set("font-size", "var(--lumo-font-size-m)")
+                .set("font-weight", "700")
+                .set("color", barColor);
+
+        wrapper.add(label, barBg, value);
+        container.add(wrapper);
     }
 
     private void renderTopCategories(Div container, int limit) {

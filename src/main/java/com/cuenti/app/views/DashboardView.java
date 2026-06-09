@@ -719,6 +719,33 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
                 .set("margin-top", "var(--lumo-space-s)")
                 .set("border-top", "2px solid var(--lumo-contrast-10pct)");
         card.add(grandTotalRow);
+
+        // Total incl. investment gain/loss
+        BigDecimal totalInvestmentGain = assetPerformanceMap.values().stream()
+                .map(AssetPerformanceData::gainLoss)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (totalInvestmentGain.compareTo(BigDecimal.ZERO) != 0) {
+            BigDecimal grandTotalWithGain = grandTotal.add(totalInvestmentGain);
+            Span gtwgLabel = new Span(getTranslation("dashboard.grand_total_with_gain").toUpperCase());
+            gtwgLabel.getStyle()
+                    .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.07em")
+                    .set("color", "var(--lumo-secondary-text-color)");
+            Span gtwgValue = new Span(formatCurrency(grandTotalWithGain, currentUser.getDefaultCurrency()));
+            gtwgValue.getStyle()
+                    .set("font-size", "var(--lumo-font-size-xl)").set("font-weight", "800")
+                    .set("color", grandTotalWithGain.compareTo(BigDecimal.ZERO) >= 0 ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
+            HorizontalLayout gtwgRow = new HorizontalLayout(gtwgLabel, gtwgValue);
+            gtwgRow.setWidthFull();
+            gtwgRow.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+            gtwgRow.setAlignItems(Alignment.CENTER);
+            gtwgRow.getStyle()
+                    .set("padding", "var(--lumo-space-s) var(--lumo-space-s)")
+                    .set("border-top", "1px solid var(--lumo-contrast-10pct)")
+                    .set("background", "var(--lumo-contrast-5pct)")
+                    .set("border-radius", "0 0 8px 8px)");
+            card.add(gtwgRow);
+        }
+
         accountsLayout.add(card);
     }
 

@@ -1163,7 +1163,8 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                 });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        Button addKeepButton = new Button(getTranslation("dialog.add_keep"), e -> {
+        String addKeepLabel = transaction.getId() == null ? getTranslation("dialog.add_keep") : getTranslation("dialog.save_keep");
+        Button addKeepButton = new Button(addKeepLabel, e -> {
             if (accountCombo.isEmpty()) {
                 Notification.show(getTranslation("accounts.name_required"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
                 return;
@@ -1177,14 +1178,13 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
             for (TransactionSplit s : currentSplits) keepTx.addSplit(s);
             saveFromTabs(keepTx, hiddenTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsCombo);
             refreshGrid();
-            Notification n = Notification.show(getTranslation("transactions.added"), 2000, Notification.Position.BOTTOM_END);
+            Notification n = Notification.show(getTranslation("transactions.saved"), 2000, Notification.Position.BOTTOM_END);
             n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             currentFormTransaction[0] = new Transaction();
             currentSplits.clear();
             updateTotalAmount(currentSplits, amountField, categoryCombo);
         });
         addKeepButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        if (transaction.getId() != null) addKeepButton.setVisible(false);
 
         Button cancelButton = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
         cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);

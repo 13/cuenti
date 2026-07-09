@@ -97,7 +97,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         this.startDate = now.withDayOfYear(1);
         this.endDate = now.with(TemporalAdjusters.lastDayOfYear());
 
-        addClassNames("vehicles-view", "page-scroll");
+        addClassNames("vehicles-view", "page-scroll", "page-shell");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
@@ -138,6 +138,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
     private void setupUI() {
         // Page header
         Span title = new Span(getTranslation("vehicles.title"));
+        title.addComponentAsFirst(VaadinIcon.CAR.create());
         title.addClassName("page-title");
 
         summaryContainer.setWidthFull();

@@ -60,7 +60,7 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
                 .orElseThrow(() -> new IllegalStateException("User not authenticated"));
         this.currentUser = userService.findByUsername(username);
 
-        addClassName("page-scroll");
+        addClassNames("page-scroll", "page-shell");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
@@ -74,6 +74,7 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
 
     private void setupUI() {
         Span title = new Span(getTranslation("categories.title"));
+        title.addComponentAsFirst(VaadinIcon.SITEMAP.create());
         title.addClassName("page-title");
 
         searchField.setPlaceholder(getTranslation("transactions.search"));

@@ -54,7 +54,7 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
                 .orElseThrow(() -> new IllegalStateException("User not authenticated"));
         this.currentUser = userService.findByUsername(username);
 
-        addClassName("page-scroll");
+        addClassNames("page-scroll", "page-shell");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
@@ -68,6 +68,7 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
 
     private void setupUI() {
         Span title = new Span(getTranslation("tags.title"));
+        title.addComponentAsFirst(VaadinIcon.TAGS.create());
         title.addClassName("page-title");
 
         searchField.setPlaceholder(getTranslation("transactions.search"));

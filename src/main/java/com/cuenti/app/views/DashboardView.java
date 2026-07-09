@@ -363,8 +363,8 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         legend.setSpacing(false);
         legend.getStyle().set("gap", "var(--vaadin-gap-m)");
         legend.add(
-            createLegendItem(getTranslation("dashboard.revenue"), "var(--aura-green)"),
-            createLegendItem(getTranslation("dashboard.spending"), "var(--aura-red)")
+            createLegendItem(getTranslation("dashboard.revenue"), "var(--cuenti-chart-income)"),
+            createLegendItem(getTranslation("dashboard.spending"), "var(--cuenti-chart-expense)")
         );
         chartToolbar.add(legend, timeRange);
         timeChartCard.add(chartToolbar);
@@ -444,69 +444,8 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
             else if (t.getType() == Transaction.TransactionType.EXPENSE)  vals[1] = vals[1].add(converted);
         }
 
-        BigDecimal max = BigDecimal.ONE;
-        for (BigDecimal[] v : chartData.values()) max = max.max(v[0]).max(v[1]);
-
-        final int CHART_H = 160;
-
-        Div chartArea = new Div();
-        chartArea.getStyle()
-                .set("display", "flex").set("align-items", "flex-end").set("justify-content", "space-around")
-                .set("gap", "4px").set("height", (CHART_H + 24) + "px")
-                .set("border-bottom", "2px solid var(--vaadin-border-color-secondary)")
-                .set("padding", "0 var(--vaadin-gap-xs)").set("min-width", "min-content");
-
-        int idx = 0;
-        for (Map.Entry<String, BigDecimal[]> entry : chartData.entrySet()) {
-            boolean isCurrent = (idx == chartData.size() - 1);
-            BigDecimal inc = entry.getValue()[0];
-            BigDecimal exp = entry.getValue()[1];
-
-            double hInc = max.compareTo(BigDecimal.ZERO) > 0
-                    ? inc.divide(max, 4, RoundingMode.HALF_UP).doubleValue() * CHART_H : 0;
-            double hExp = max.compareTo(BigDecimal.ZERO) > 0
-                    ? exp.divide(max, 4, RoundingMode.HALF_UP).doubleValue() * CHART_H : 0;
-
-            Div group = new Div();
-            group.getStyle()
-                    .set("display", "flex").set("flex-direction", "column")
-                    .set("align-items", "center").set("gap", "3px")
-                    .set("min-width", "28px").set("flex", "1 1 0");
-
-            Div barsRow = new Div();
-            barsRow.getStyle().set("display", "flex").set("align-items", "flex-end")
-                    .set("gap", "2px").set("height", CHART_H + "px");
-            barsRow.add(createChartBar(hInc, "var(--aura-green)", "#b7f5c8", isCurrent));
-            barsRow.add(createChartBar(hExp, "var(--aura-red)",   "#ffb3b3", isCurrent));
-
-            Span lbl = new Span(entry.getKey());
-            lbl.getStyle()
-                    .set("font-size", "9px")
-                    .set("font-weight", isCurrent ? "700" : "400")
-                    .set("color", isCurrent ? "var(--vaadin-text-color-secondary)" : "var(--vaadin-text-color-secondary)")
-                    .set("white-space", "nowrap");
-            group.add(barsRow, lbl);
-            chartArea.add(group);
-            idx++;
-        }
-
-        Div scroll = new Div(chartArea);
-        scroll.setWidthFull();
-        scroll.getStyle().set("overflow-x", "auto").set("padding-bottom", "2px");
-        container.add(scroll);
-    }
-
-    private Div createChartBar(double heightPx, String colorTop, String colorBottom, boolean highlight) {
-        Div bar = new Div();
-        bar.addClassName("chart-bar");
-        bar.setWidth("12px");
-        bar.setHeight(Math.max(2, heightPx) + "px");
-        bar.getStyle()
-                .set("background", "linear-gradient(to top, " + colorBottom + ", " + colorTop + ")");
-        if (highlight) {
-            bar.getElement().setAttribute("highlight", "");
-        }
-        return bar;
+        container.add(new com.cuenti.app.views.components.charts.CashFlowChart(
+                chartData, amount -> formatCurrency(amount, currentUser.getDefaultCurrency())));
     }
 
     private void renderDistributionChart(Div container, List<Transaction> transactions, String range) {
@@ -547,13 +486,25 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
                 .limit(5)
                 .collect(Collectors.toList());
 
-        // Colour palette cycling through Lumo + accent colours
+        // Donut with the same validated categorical palette as the list dots
+        List<com.cuenti.app.views.components.charts.DonutChart.Slice> slices = top5.stream()
+                .map(e -> new com.cuenti.app.views.components.charts.DonutChart.Slice(e.getKey(), e.getValue()))
+                .collect(Collectors.toList());
+        com.cuenti.app.views.components.charts.DonutChart donut =
+                new com.cuenti.app.views.components.charts.DonutChart(slices, total,
+                        getTranslation("dashboard.top_spending"),
+                        amount -> formatCurrency(amount, currentUser.getDefaultCurrency()));
+        Div donutWrap = new Div(donut);
+        donutWrap.getStyle().set("display", "flex").set("justify-content", "center")
+                .set("padding", "var(--vaadin-gap-s) 0");
+        container.add(donutWrap);
+
         String[] COLORS = {
-            "var(--aura-accent-color)",
-            "var(--aura-red)",
-            "var(--aura-green)",
-            "#f5a623",
-            "#9b59b6"
+            "var(--cuenti-chart-cat-1)",
+            "var(--cuenti-chart-cat-2)",
+            "var(--cuenti-chart-cat-3)",
+            "var(--cuenti-chart-cat-4)",
+            "var(--cuenti-chart-cat-5)"
         };
 
         int[] ci = {0};
@@ -574,7 +525,12 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
 
                     Span amtSpan = new Span(formatCurrency(entry.getValue(), currentUser.getDefaultCurrency()));
                     amtSpan.getStyle().set("font-size", "var(--aura-font-size-s)").set("font-weight", "700")
-                            .set("color", color);
+                            .set("color", "var(--vaadin-text-color)");
+
+                    Div dot = new Div();
+                    dot.getStyle().set("width", "10px").set("height", "10px")
+                            .set("border-radius", "3px").set("background", color)
+                            .set("flex-shrink", "0").set("align-self", "center");
 
                     HorizontalLayout info = new HorizontalLayout();
                     info.setWidthFull();
@@ -582,7 +538,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
                     info.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
                     info.getStyle().set("gap", "var(--vaadin-gap-s)");
 
-                    HorizontalLayout left = new HorizontalLayout(catSpan, pctSpan);
+                    HorizontalLayout left = new HorizontalLayout(dot, catSpan, pctSpan);
                     left.setAlignItems(Alignment.BASELINE);
                     left.setSpacing(false);
                     left.getStyle().set("gap", "var(--vaadin-gap-xs)");

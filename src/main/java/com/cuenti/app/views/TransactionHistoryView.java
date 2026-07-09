@@ -97,7 +97,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
 
-        addClassName("page-scroll");
+        addClassNames("page-scroll", "page-shell");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
@@ -112,6 +112,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
     private void setupUI() {
         Span title = new Span(getTranslation("transactions.title"));
+        title.addComponentAsFirst(VaadinIcon.LIST.create());
         title.addClassName("page-title");
 
         accountSelector.setPlaceholder(getTranslation("dialog.account"));
@@ -361,6 +362,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                 .setAutoWidth(true);
 
         // 5. Tags
+        com.vaadin.flow.component.grid.Grid.Column<Transaction> tagsCol =
         grid.addComponentColumn(t -> {
             HorizontalLayout hl = new HorizontalLayout();
             hl.setSpacing(false);
@@ -397,6 +399,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                 .setAutoWidth(true).setFlexGrow(0);
 
         // 7. Balance
+        com.vaadin.flow.component.grid.Grid.Column<Transaction> balanceCol =
         grid.addComponentColumn(t -> {
             BigDecimal bal = balanceCache.getOrDefault(t.getId(), BigDecimal.ZERO);
             Span s = new Span(formatCurrency(bal));
@@ -410,6 +413,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                 .setSortable(true).setAutoWidth(true).setFlexGrow(0);
 
         // 8. Memo — truncated
+        com.vaadin.flow.component.grid.Grid.Column<Transaction> memoCol =
         grid.addComponentColumn(t -> {
             if (t.getMemo() == null || t.getMemo().isBlank()) return new Span();
             Span s = new Span(t.getMemo());
@@ -472,6 +476,10 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
             deleteBtn.getElement().setAttribute("aria-label", getTranslation("transactions.delete"));hl.add(editBtn, deleteBtn);
             return hl;
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
+
+        // Phones: keep date/payee/amount/actions, hide secondary columns
+        com.cuenti.app.views.components.ResponsiveGridColumns.hideBelow(768, grid,
+                java.util.List.of(tagsCol, balanceCol, memoCol));
 
         grid.setHeightFull();
     }

@@ -52,7 +52,7 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
 
-        addClassNames("forecasts-view", "page-scroll");
+        addClassNames("forecasts-view", "page-scroll", "page-shell");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
@@ -69,6 +69,7 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
     private void setupUI() {
         // Page header
         Span title = new Span(getTranslation("forecasts.title"));
+        title.addComponentAsFirst(VaadinIcon.TRENDING_UP.create());
         title.addClassName("page-title");
 
         // Year selector toolbar

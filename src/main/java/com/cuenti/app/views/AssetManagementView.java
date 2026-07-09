@@ -64,7 +64,7 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
 
-        addClassName("page-scroll");
+        addClassNames("page-scroll", "page-shell");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
@@ -78,6 +78,7 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
 
     private void setupUI() {
         Span title = new Span(getTranslation("assets.title"));
+        title.addComponentAsFirst(VaadinIcon.CHART_3D.create());
         title.addClassName("page-title");
         
         searchField.setPlaceholder(getTranslation("transactions.search"));

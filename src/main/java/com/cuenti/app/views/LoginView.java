@@ -41,14 +41,12 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
     Image logo = createLogo();
 
     Span logoText = new Span(getTranslation("app.name"));
-    logoText.getStyle()
-            .set("font-family", "var(--aura-font-family)")
-            .set("font-size", "var(--cuenti-font-size-xxl)")
-            .set("font-weight", "700")
-            .set("color", "var(--vaadin-text-color)")
-            .set("margin-top", "-20px");
+    logoText.addClassName("auth-brand-text");
 
-    Div card = new Div(logo, logoText, loginForm, registerLink);
+    Div brand = new Div(logo, logoText);
+    brand.addClassName("auth-brand");
+
+    Div card = new Div(brand, loginForm, registerLink);
     card.addClassName("auth-card");
 
     add(card);
@@ -97,7 +95,6 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
     // Keep responsive CSS as well
     logo.getStyle().set("width", "clamp(56px, 40%, 200px)");
     logo.getStyle().set("max-width", "120px");
-    logo.getStyle().set("margin", "8px 0 15px 0");
     logo.getElement().setAttribute("alt", getTranslation("app.name"));
     return logo;
   }

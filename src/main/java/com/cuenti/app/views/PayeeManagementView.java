@@ -66,7 +66,7 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
                 .orElseThrow(() -> new IllegalStateException("User not authenticated"));
         this.currentUser = userService.findByUsername(username);
 
-        addClassName("page-scroll");
+        addClassNames("page-scroll", "page-shell");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
@@ -85,6 +85,7 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
 
     private void setupUI() {
         Span title = new Span(getTranslation("payees.title"));
+        title.addComponentAsFirst(VaadinIcon.USERS.create());
         title.addClassName("page-title");
 
         searchField.setPlaceholder(getTranslation("payees.search"));

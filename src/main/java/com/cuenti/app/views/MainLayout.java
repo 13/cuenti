@@ -18,6 +18,8 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.sidenav.SideNav;
+import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
@@ -190,54 +192,38 @@ public class MainLayout extends AppLayout {
                 .set("height", "53px").set("flex-shrink", "0")
                 .set("box-sizing", "border-box");
 
-        // Scrollable nav area
-        VerticalLayout nav = new VerticalLayout();
-        nav.setPadding(false);
-        nav.setSpacing(false);
-        nav.getStyle()
-                .set("overflow-y", "auto").set("flex-grow", "1")
-                .set("padding-bottom", "var(--vaadin-gap-l)");
+        SideNav general = navSection(getTranslation("nav.general"), true,
+                new SideNavItem(getTranslation("nav.dashboard"),    DashboardView.class,             VaadinIcon.DASHBOARD.create()),
+                new SideNavItem(getTranslation("nav.transactions"), TransactionHistoryView.class,    VaadinIcon.LIST.create()),
+                new SideNavItem(getTranslation("nav.scheduled"),    ScheduledTransactionsView.class, VaadinIcon.CALENDAR_CLOCK.create()),
+                new SideNavItem(getTranslation("nav.statistics"),   StatisticsView.class,            VaadinIcon.CHART.create()),
+                new SideNavItem(getTranslation("nav.forecasts"),    ForecastsView.class,             VaadinIcon.TRENDING_UP.create()),
+                new SideNavItem(getTranslation("nav.vehicles"),     VehiclesView.class,              VaadinIcon.CAR.create()));
 
-        // ── General (default open) ──────────────────────────────────
-        Div generalItems = new Div(
-            navItem(VaadinIcon.DASHBOARD,      getTranslation("nav.dashboard"),    DashboardView.class),
-            navItem(VaadinIcon.LIST,           getTranslation("nav.transactions"), TransactionHistoryView.class),
-            navItem(VaadinIcon.CALENDAR_CLOCK, getTranslation("nav.scheduled"),   ScheduledTransactionsView.class),
-            navItem(VaadinIcon.CHART,          getTranslation("nav.statistics"),  StatisticsView.class),
-            navItem(VaadinIcon.TRENDING_UP,    getTranslation("nav.forecasts"),   ForecastsView.class),
-            navItem(VaadinIcon.CAR,            getTranslation("nav.vehicles"),    VehiclesView.class)
-        );
-        nav.add(collapsibleSection(getTranslation("nav.general"), generalItems, true));
+        SideNav management = navSection(getTranslation("nav.management"), false,
+                new SideNavItem(getTranslation("nav.manage_accounts"), AccountManagementView.class,  VaadinIcon.WALLET.create()),
+                new SideNavItem(getTranslation("nav.payees"),          PayeeManagementView.class,    VaadinIcon.USERS.create()),
+                new SideNavItem(getTranslation("nav.categories"),      CategoryManagementView.class, VaadinIcon.SITEMAP.create()),
+                new SideNavItem(getTranslation("nav.tags"),            TagManagementView.class,      VaadinIcon.TAGS.create()),
+                new SideNavItem(getTranslation("nav.currencies"),      CurrencyManagementView.class, VaadinIcon.MONEY.create()),
+                new SideNavItem(getTranslation("nav.assets"),          AssetManagementView.class,    VaadinIcon.CHART_3D.create()));
 
-        // ── Management (default closed) ─────────────────────────────
-        Div managementItems = new Div(
-            navItem(VaadinIcon.WALLET,   getTranslation("nav.manage_accounts"), AccountManagementView.class),
-            navItem(VaadinIcon.USERS,    getTranslation("nav.payees"),          PayeeManagementView.class),
-            navItem(VaadinIcon.SITEMAP,  getTranslation("nav.categories"),      CategoryManagementView.class),
-            navItem(VaadinIcon.TAGS,     getTranslation("nav.tags"),            TagManagementView.class),
-            navItem(VaadinIcon.MONEY,    getTranslation("nav.currencies"),      CurrencyManagementView.class),
-            navItem(VaadinIcon.CHART_3D, getTranslation("nav.assets"),          AssetManagementView.class)
-        );
-        nav.add(collapsibleSection(getTranslation("nav.management"), managementItems, false));
-
-        // ── Settings (default closed) ───────────────────────────────
-        Div settingsItems = new Div();
+        SideNav settings = navSection(getTranslation("nav.settings"), false);
         if (currentUser != null && currentUser.getRoles().contains("ROLE_ADMIN")) {
-            settingsItems.add(navItem(VaadinIcon.KEY, getTranslation("settings.administration"),
-                    SettingsAdminView.class));
+            settings.addItem(new SideNavItem(getTranslation("settings.administration"),
+                    SettingsAdminView.class, VaadinIcon.KEY.create()));
         }
-        settingsItems.add(navItem(VaadinIcon.USER,     getTranslation("settings.user_title"),
-                SettingsUserView.class));
-        settingsItems.add(navItem(VaadinIcon.EXCHANGE, getTranslation("settings.import_export_title"),
-                SettingsImportExportView.class));
-        nav.add(collapsibleSection(getTranslation("nav.settings"), settingsItems, false));
+        settings.addItem(new SideNavItem(getTranslation("settings.user_title"),
+                SettingsUserView.class, VaadinIcon.USER.create()));
+        settings.addItem(new SideNavItem(getTranslation("settings.import_export_title"),
+                SettingsImportExportView.class, VaadinIcon.EXCHANGE.create()));
 
-        // ── Info (default closed) ────────────────────────────────────
-        Div infoItems = new Div(
-            navItem(VaadinIcon.QUESTION_CIRCLE, getTranslation("nav.help"),  HelpView.class),
-            navItem(VaadinIcon.INFO_CIRCLE,     getTranslation("nav.about"), AboutView.class)
-        );
-        nav.add(collapsibleSection(getTranslation("nav.info"), infoItems, false));
+        SideNav info = navSection(getTranslation("nav.info"), false,
+                new SideNavItem(getTranslation("nav.help"),  HelpView.class,  VaadinIcon.QUESTION_CIRCLE.create()),
+                new SideNavItem(getTranslation("nav.about"), AboutView.class, VaadinIcon.INFO_CIRCLE.create()));
+
+        Div nav = new Div(general, management, settings, info);
+        nav.addClassName("drawer-nav");
 
         Div drawer = new Div(logoSection, nav);
         drawer.setHeightFull();
@@ -248,90 +234,14 @@ public class MainLayout extends AppLayout {
         addToDrawer(drawer);
     }
 
-    // ── Nav item helpers ───────────────────────────────────────────────────────
-
-    private RouterLink navItem(VaadinIcon icon, String label,
-                               Class<? extends Component> target) {
-        return navItem(icon, label, target, Collections.emptyMap());
-    }
-
-    private RouterLink navItem(VaadinIcon icon, String label,
-                               Class<? extends Component> target,
-                               Map<String, String> queryParams) {
-        Icon ico = icon.create();
-        ico.getStyle()
-                .set("width", "18px").set("height", "18px")
-                .set("flex-shrink", "0").set("color", "currentColor");
-
-        Span text = new Span(label);
-
-        RouterLink link = new RouterLink();
-        link.addClassName("nav-item");
-        link.add(ico, text);
-        link.setRoute(target);
-        if (!queryParams.isEmpty()) {
-            link.setQueryParameters(QueryParameters.simple(queryParams));
+    private SideNav navSection(String label, boolean expanded, SideNavItem... items) {
+        SideNav nav = new SideNav(label);
+        nav.setCollapsible(true);
+        nav.setExpanded(expanded);
+        nav.setWidthFull();
+        for (SideNavItem item : items) {
+            nav.addItem(item);
         }
-        link.getElement().getStyle().set("width", "100%");
-        link.setTabIndex(-1);
-
-        // Compute expected path server-side to avoid relying on href attribute timing
-        Route routeAnnotation = target.getAnnotation(Route.class);
-        String routeValue = routeAnnotation != null ? routeAnnotation.value() : "";
-        String expectedPath = routeValue.isEmpty() ? "/" : "/" + routeValue;
-
-        link.addAttachListener(e -> link.getElement().executeJs(
-            "const expected = $0;" +
-            "const check = () => {" +
-            "  const path = window.location.pathname;" +
-            "  if (path === expected || path.startsWith(expected + '/') || path.startsWith(expected + '?')) {" +
-            "    this.setAttribute('highlight', '');" +
-            "  } else {" +
-            "    this.removeAttribute('highlight');" +
-            "  }" +
-            "};" +
-            "check();" +
-            "window.addEventListener('vaadin-router-location-changed', check);",
-            expectedPath
-        ));
-
-        return link;
-    }
-
-    private Div collapsibleSection(String title, Div items, boolean expanded) {
-        Icon chevron = VaadinIcon.ANGLE_DOWN.create();
-        chevron.addClassName("nav-section-chevron");
-        chevron.getStyle().set("transform", expanded ? "rotate(0deg)" : "rotate(-90deg)");
-
-        Span label = new Span(title);
-        label.addClassName("nav-section-label");
-
-        Div header = new Div(label, chevron);
-        header.addClassName("nav-section-header");
-
-        items.setWidthFull();
-        items.setVisible(expanded);
-
-        header.addClickListener(e -> {
-            boolean nowVisible = !items.isVisible();
-            items.setVisible(nowVisible);
-            chevron.getStyle().set("transform", nowVisible ? "rotate(0deg)" : "rotate(-90deg)");
-        });
-
-        Div section = new Div(header, items);
-        section.setWidthFull();
-        return section;
-    }
-
-    private Span sectionLabel(String title) {
-        Span s = new Span(title);
-        s.addClassName("nav-section-label");
-        return s;
-    }
-
-    private Div navDivider() {
-        Div d = new Div();
-        d.addClassName("nav-divider");
-        return d;
+        return nav;
     }
 }

@@ -75,7 +75,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
                 .orElseThrow(() -> new IllegalStateException("User not authenticated"));
         this.currentUser = userService.findByUsername(username);
 
-        addClassName("page-scroll");
+        addClassNames("page-scroll", "page-shell");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
@@ -89,6 +89,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
 
     private void setupUI() {
         Span title = new Span(getTranslation("accounts.title"));
+        title.addComponentAsFirst(VaadinIcon.WALLET.create());
         title.addClassName("page-title");
 
         searchField.setPlaceholder(getTranslation("transactions.search"));

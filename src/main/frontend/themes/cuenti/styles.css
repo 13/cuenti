@@ -28,6 +28,17 @@ html {
   --cuenti-amount-positive: light-dark(#047857, #34d399);
   --cuenti-amount-negative: light-dark(#b91c1c, #f87171);
   --cuenti-divider: color-mix(in srgb, var(--vaadin-text-color) 8%, transparent);
+
+  /* Chart palette — validated (CVD + contrast) per mode; do not eyeball-edit */
+  --cuenti-chart-income: light-dark(#047857, #199e70);
+  --cuenti-chart-expense: light-dark(#b91c1c, #e34948);
+  --cuenti-chart-cat-1: light-dark(#2a78d6, #3987e5);
+  --cuenti-chart-cat-2: light-dark(#1baf7a, #199e70);
+  --cuenti-chart-cat-3: light-dark(#eda100, #c98500);
+  --cuenti-chart-cat-4: light-dark(#008300, #008300);
+  --cuenti-chart-cat-5: light-dark(#4a3aa7, #9085e9);
+  --cuenti-chart-grid: light-dark(#e1e0d9, #2c2c2a);
+  --cuenti-chart-axis-text: var(--vaadin-text-color-secondary);
 }
 
 /* Headings share Aura's font family with a heavier weight */
@@ -56,6 +67,25 @@ h1, h2, h3, h4, h5, h6,
 
 .page-container--narrow {
   max-width: 860px;
+}
+
+/* Full-height data pages: children centered and width-capped like page-container */
+.page-shell {
+  align-items: center;
+}
+
+.page-shell > * {
+  width: 100%;
+  max-width: 1400px;
+}
+
+/* Page title row: icon + heading */
+.page-title vaadin-icon {
+  width: 22px;
+  height: 22px;
+  margin-right: 10px;
+  color: var(--aura-accent-text-color);
+  vertical-align: -3px;
 }
 
 .page-header {
@@ -263,81 +293,23 @@ vaadin-app-layout::part(navbar) {
   border-bottom: 1px solid var(--vaadin-border-color-secondary);
 }
 
-.nav-item {
+.drawer-nav {
+  overflow-y: auto;
+  flex-grow: 1;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
+  flex-direction: column;
+  gap: var(--vaadin-gap-s);
+  padding: var(--vaadin-padding-s);
+  padding-bottom: var(--vaadin-gap-l);
   box-sizing: border-box;
-  padding: 9px 16px;
-  margin: 1px 0;
-  border-radius: var(--vaadin-radius-m);
-  text-decoration: none !important;
-  color: var(--vaadin-text-color-secondary);
-  font-size: var(--aura-font-size-s);
-  font-weight: 500;
-  transition: background 0.12s, color 0.12s;
 }
 
-.nav-item:hover,
-.nav-item:visited,
-.nav-item:focus {
-  text-decoration: none !important;
-  background: var(--vaadin-background-container);
-  color: var(--vaadin-text-color);
-}
-
-.nav-item:focus-visible {
-  outline: 2px solid var(--vaadin-focus-ring-color);
-  outline-offset: -2px;
-}
-
-.nav-item[highlight] {
-  background: var(--aura-accent-surface);
-  color: light-dark(var(--aura-accent-text-color), var(--vaadin-text-color));
-  font-weight: 600;
-}
-
-.nav-item vaadin-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  color: currentColor;
-}
-
-.nav-section-header {
-  display: flex;
-  align-items: center;
-  padding: 16px 16px 4px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.nav-section-header:hover .nav-section-label {
-  color: var(--vaadin-text-color-secondary);
-}
-
-.nav-section-label {
+.drawer-nav vaadin-side-nav::part(label) {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--vaadin-text-color-disabled);
-  flex-grow: 1;
-}
-
-.nav-section-chevron {
-  width: 14px !important;
-  height: 14px !important;
-  flex-shrink: 0;
-  color: var(--vaadin-text-color-disabled);
-  transition: transform 0.2s ease;
-}
-
-.nav-divider {
-  height: 1px;
-  background: var(--vaadin-border-color-secondary);
-  margin: 6px 16px;
+  color: var(--vaadin-text-color-secondary);
 }
 
 /* Header widgets */
@@ -391,6 +363,27 @@ vaadin-app-layout::part(navbar) {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* Brand block: logo and app name vertically stacked, properly centered */
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--vaadin-gap-s);
+  padding: var(--vaadin-padding-m) 0 var(--vaadin-padding-s);
+}
+
+.auth-brand img {
+  display: block;
+}
+
+.auth-brand-text {
+  font-family: var(--aura-font-family);
+  font-size: var(--cuenti-font-size-xxl);
+  font-weight: 700;
+  color: var(--vaadin-text-color);
+  line-height: 1;
 }
 
 .auth-card vaadin-login-form,

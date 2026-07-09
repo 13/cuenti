@@ -85,7 +85,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
 
-        addClassName("page-scroll");
+        addClassNames("page-scroll", "page-shell");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
@@ -105,6 +105,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
 
         // Page header
         Span title = new Span(getTranslation("scheduled.title"));
+        title.addComponentAsFirst(VaadinIcon.CALENDAR_CLOCK.create());
         title.addClassName("page-title");
         add(title);
 

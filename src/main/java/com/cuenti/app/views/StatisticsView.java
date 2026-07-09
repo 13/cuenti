@@ -5,6 +5,7 @@ import com.cuenti.app.security.SecurityUtils;
 import com.cuenti.app.service.*;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Span;
@@ -67,7 +68,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
 
-        addClassNames("statistics-view", "page-scroll");
+        addClassNames("statistics-view", "page-scroll", "page-shell");
         setWidthFull();
         setPadding(true);
         setSpacing(true);
@@ -93,6 +94,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                 .set("margin-bottom", "var(--vaadin-gap-xs)");
 
         Span title = new Span(getTranslation("statistics.title"));
+        title.addComponentAsFirst(VaadinIcon.CHART.create());
         title.addClassName("page-title");
         header.add(title);
 

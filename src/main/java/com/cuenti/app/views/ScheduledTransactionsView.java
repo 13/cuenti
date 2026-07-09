@@ -109,14 +109,13 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         title.addClassName("page-title");
         add(title);
 
-        // Outer card
+        // No outer card: the two sections below are cards themselves
         Div card = new Div();
         card.setSizeFull();
-        card.addClassName("card");
         card.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--vaadin-gap-l)");
+                .set("gap", "var(--vaadin-gap-m)");
 
         // Toolbar
         horizonSelect.setLabel(getTranslation("scheduled.horizon.label"));
@@ -134,11 +133,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         toolbar.setWidthFull();
         toolbar.setAlignItems(Alignment.BASELINE);
         toolbar.setJustifyContentMode(JustifyContentMode.BETWEEN);
-        toolbar.getStyle()
-                .set("flex-wrap", "wrap")
-                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
-                .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--vaadin-radius-l)");
+        toolbar.getStyle().set("flex-wrap", "wrap");
 
         setupPendingGrid();
         setupTemplateGrid();
@@ -162,11 +157,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
     private Div buildSectionCard(String titleKey, VaadinIcon icon, Grid<?> grid, boolean accent) {
         Div section = new Div();
         section.setWidthFull();
-        section.getStyle()
-                .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--vaadin-radius-l)")
-                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l)")
-                .set("box-sizing", "border-box");
+        section.addClassName("card");
         if (accent) {
             section.getStyle().set("border-left", "4px solid var(--aura-accent-color)");
         }

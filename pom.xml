@@ -15,7 +15,7 @@
 
     <groupId>com.cuenti</groupId>
     <artifactId>cuenti</artifactId>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
 
     <name>Cuenti</name>
     <description>Personal Finance</description>

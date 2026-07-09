@@ -119,12 +119,10 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         HorizontalLayout filterLayout = new HorizontalLayout();
         filterLayout.setWidthFull();
         filterLayout.setAlignItems(Alignment.CENTER);
+        filterLayout.addClassName("card-toolbar");
         filterLayout.getStyle()
                 .set("flex-wrap", "wrap")
-                .set("gap", "var(--vaadin-gap-s)")
-                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
-                .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--vaadin-radius-l)");
+                .set("gap", "var(--vaadin-gap-s)");
 
         timeRangeSelect = new Select<>();
         timeRangeSelect.setLabel(getTranslation("statistics.time_range"));

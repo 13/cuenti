@@ -170,11 +170,8 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
 
         Div toolbar = new Div(inner);
         toolbar.setWidthFull();
-        toolbar.getStyle()
-                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
-                .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--vaadin-radius-l)")
-                .set("box-sizing", "border-box");
+        toolbar.addClassName("card-toolbar");
+        toolbar.getStyle().set("box-sizing", "border-box");
         return toolbar;
     }
 
@@ -497,20 +494,64 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         return FULL_TANK_PATTERN.matcher(memo).find();
     }
 
+    /** Liters/distance actually attributed to consumption figures (drives the averages). */
+    private BigDecimal attributedLiters = BigDecimal.ZERO;
+    private BigDecimal attributedDistance = BigDecimal.ZERO;
+
     private void calculateDerivedValues() {
+        BigDecimal[] attributed = computeDerivedValues(fuelEntries);
+        attributedLiters = attributed[0];
+        attributedDistance = attributed[1];
+    }
+
+    /**
+     * Computes distance/price/consumption per entry (full-tank to full-tank;
+     * fill-to-fill fallback when no entry is flagged). Returns
+     * {attributedLiters, attributedDistance} for the averages.
+     * Static and package-visible for unit tests.
+     */
+    static BigDecimal[] computeDerivedValues(List<FuelEntry> fuelEntries) {
+        BigDecimal attributedLiters = BigDecimal.ZERO;
+        BigDecimal attributedDistance = BigDecimal.ZERO;
+
+        // Consumption is only measurable between two FULL tanks. If the user
+        // never flags full tanks, fall back to treating every fill as full.
+        boolean anyFullTank = fuelEntries.stream().anyMatch(e -> e.fullTank);
+
         FuelEntry previous = null;
+        FuelEntry lastFull = null;
+        BigDecimal litersSinceFull = BigDecimal.ZERO;
+
         for (FuelEntry entry : fuelEntries) {
             if (previous != null && entry.odometer != null && previous.odometer != null) {
                 entry.distance = entry.odometer.subtract(previous.odometer);
-                if (entry.liters != null && entry.distance.compareTo(BigDecimal.ZERO) > 0) {
-                    entry.consumption = entry.liters.divide(entry.distance, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_UP);
-                }
             }
-            if (entry.liters != null && entry.liters.compareTo(BigDecimal.ZERO) > 0) {
+            if (entry.liters != null && entry.liters.compareTo(BigDecimal.ZERO) > 0 && entry.amount != null) {
                 entry.pricePerLiter = entry.amount.divide(entry.liters, 3, RoundingMode.HALF_UP);
+            }
+
+            if (entry.liters != null) {
+                litersSinceFull = litersSinceFull.add(entry.liters);
+            }
+            boolean measurePoint = anyFullTank ? entry.fullTank : true;
+            if (measurePoint && entry.odometer != null) {
+                if (lastFull != null) {
+                    BigDecimal dist = entry.odometer.subtract(lastFull.odometer);
+                    if (dist.compareTo(BigDecimal.ZERO) > 0 && litersSinceFull.compareTo(BigDecimal.ZERO) > 0) {
+                        entry.consumption = litersSinceFull
+                                .divide(dist, 6, RoundingMode.HALF_UP)
+                                .multiply(BigDecimal.valueOf(100))
+                                .setScale(2, RoundingMode.HALF_UP);
+                        attributedLiters = attributedLiters.add(litersSinceFull);
+                        attributedDistance = attributedDistance.add(dist);
+                    }
+                }
+                lastFull = entry;
+                litersSinceFull = BigDecimal.ZERO;
             }
             previous = entry;
         }
+        return new BigDecimal[]{attributedLiters, attributedDistance};
     }
 
     private void renderSummary() {
@@ -532,11 +573,19 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         BigDecimal totalLiters   = fuelEntries.stream().filter(e -> e.liters != null).map(e -> e.liters).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalAmount   = fuelEntries.stream().map(e -> exchangeRateService.convert(e.amount, e.currency, currentUser.getDefaultCurrency())).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalDistance = fuelEntries.stream().filter(e -> e.distance != null).map(e -> e.distance).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal avgConsumption = (totalDistance.compareTo(BigDecimal.ZERO) > 0 && totalLiters.compareTo(BigDecimal.ZERO) > 0)
-                ? totalLiters.divide(totalDistance, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_UP)
+        // Average from liters actually attributed to measured distances
+        // (excludes the first fill, which has no distance to attribute)
+        BigDecimal avgConsumption = attributedDistance.compareTo(BigDecimal.ZERO) > 0
+                ? attributedLiters.divide(attributedDistance, 6, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
+        // Price per liter only over entries whose liters are known
+        BigDecimal literAmount = fuelEntries.stream()
+                .filter(e -> e.liters != null && e.liters.compareTo(BigDecimal.ZERO) > 0)
+                .map(e -> exchangeRateService.convert(e.amount, e.currency, currentUser.getDefaultCurrency()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal avgPricePerL  = totalLiters.compareTo(BigDecimal.ZERO) > 0
-                ? totalAmount.divide(totalLiters, 3, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+                ? literAmount.divide(totalLiters, 3, RoundingMode.HALF_UP) : BigDecimal.ZERO;
 
         // Summary cards row
         FlexLayout summaryLayout = new FlexLayout();
@@ -557,9 +606,8 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         Div trendSection = new Div();
         trendSection.setWidthFull();
         trendSection.getStyle()
-                .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--vaadin-radius-l)")
-                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l)")
+                .set("border-top", "1px solid var(--cuenti-divider)")
+                .set("padding", "var(--vaadin-gap-m) 0 0")
                 .set("box-sizing", "border-box")
                 .set("margin-top", "var(--vaadin-gap-s)");
 
@@ -673,7 +721,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
                 Locale.forLanguageTag(currentUser.getLocale()));
     }
 
-    private static class FuelEntry {
+    static class FuelEntry { // package-visible for tests
         java.time.LocalDate date;
         BigDecimal odometer;
         BigDecimal liters;

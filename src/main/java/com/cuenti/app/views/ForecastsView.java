@@ -379,9 +379,8 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         Div card = new Div();
         card.setWidthFull();
         card.getStyle()
-                .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--vaadin-radius-l)")
-                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l)")
+                .set("border-top", "1px solid var(--cuenti-divider)")
+                .set("padding", "var(--vaadin-gap-m) 0 0")
                 .set("box-sizing", "border-box");
 
         Icon ico = iconType.create();

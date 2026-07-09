@@ -107,11 +107,8 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
         toolbar.setAlignItems(Alignment.CENTER);
         toolbar.expand(searchField);
         toolbar.setSpacing(false);
-        toolbar.getStyle()
-                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
-                .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--vaadin-radius-l)")
-                .set("gap", "var(--vaadin-gap-s)");
+        toolbar.addClassName("card-toolbar");
+        toolbar.getStyle().set("gap", "var(--vaadin-gap-s)");
 
         configureGrid();
 

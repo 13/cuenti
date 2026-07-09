@@ -246,11 +246,8 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         toolbar.setWidthFull();
         toolbar.setAlignItems(Alignment.CENTER);
         toolbar.setJustifyContentMode(JustifyContentMode.BETWEEN);
-        toolbar.getStyle()
-                .set("flex-wrap", "wrap")
-                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
-                .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--vaadin-radius-l)");
+        toolbar.addClassName("card-toolbar");
+        toolbar.getStyle().set("flex-wrap", "wrap");
 
         // Type tabs row — full width below toolbar
         typeTabs.setWidthFull();

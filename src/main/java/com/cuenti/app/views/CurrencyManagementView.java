@@ -76,6 +76,7 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
         HorizontalLayout toolbar = new HorizontalLayout(addButton);
         toolbar.setWidthFull();
         toolbar.setJustifyContentMode(JustifyContentMode.END);
+        toolbar.addClassName("card-toolbar");
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
         com.vaadin.flow.component.button.Button emptyAdd =

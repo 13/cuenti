@@ -214,6 +214,9 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
                     .set("letter-spacing", "0.07em").set("color", "var(--vaadin-text-color-secondary)");
             headerRow.add(h);
         }
+        Div contentScroll = new Div();
+        contentScroll.addClassName("scroll-x");
+        contentScroll.setWidthFull();
         Div content = new Div(headerRow);
         content.setWidthFull();
 
@@ -301,7 +304,8 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
 
         totalRow.add(totalLabel, emptyUnits, totalCostSpan, totalValueSpan, totalGainLossDiv);
         content.add(totalRow);
-        card.add(content);
+        contentScroll.add(content);
+        card.add(contentScroll);
         assetPerformanceLayout.add(card);
     }
 
@@ -353,11 +357,8 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         chartToolbar.setWidthFull();
         chartToolbar.setAlignItems(Alignment.CENTER);
         chartToolbar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
-        chartToolbar.getStyle()
-                .set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-s)")
-                .set("background", "var(--vaadin-background-container)")
-                .set("border-radius", "8px")
-                .set("margin-bottom", "var(--vaadin-gap-s)");
+        chartToolbar.addClassName("card-toolbar");
+        chartToolbar.getStyle().set("margin-bottom", "var(--vaadin-gap-s)");
 
         HorizontalLayout legend = new HorizontalLayout();
         legend.setSpacing(false);

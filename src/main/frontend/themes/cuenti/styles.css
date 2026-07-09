@@ -56,7 +56,6 @@ h1, h2, h3, h4, h5, h6,
 
 .page-container {
   width: 100%;
-  max-width: 1400px;
   margin: 0 auto;
   padding: var(--vaadin-padding-m);
   box-sizing: border-box;
@@ -76,7 +75,6 @@ h1, h2, h3, h4, h5, h6,
 
 .page-shell > * {
   width: 100%;
-  max-width: 1400px;
 }
 
 /* Page title row: icon + heading */
@@ -180,6 +178,24 @@ h1, h2, h3, h4, h5, h6,
 
 .toolbar-spacer {
   flex-grow: 1;
+}
+
+/* Toolbar row living inside a card: flat, separated by a hairline —
+   never a second rounded box inside the card */
+.card-toolbar {
+  background: transparent !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--cuenti-divider);
+  padding: 0 0 var(--vaadin-gap-s) 0 !important;
+}
+
+/* Wide row-based content inside cards scrolls horizontally on phones */
+.scroll-x {
+  overflow-x: auto;
+}
+
+.scroll-x > * {
+  min-width: 540px;
 }
 
 /* ----------------------------------------------------------------------------
@@ -298,10 +314,13 @@ vaadin-app-layout::part(navbar) {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--vaadin-gap-s);
-  padding: var(--vaadin-padding-s);
-  padding-bottom: var(--vaadin-gap-l);
+  gap: 0;
+  padding: var(--vaadin-gap-xs) var(--vaadin-gap-xs) var(--vaadin-gap-l);
   box-sizing: border-box;
+}
+
+.drawer-nav vaadin-side-nav {
+  margin: 0;
 }
 
 .drawer-nav vaadin-side-nav::part(label) {

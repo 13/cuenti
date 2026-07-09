@@ -189,7 +189,7 @@ public class MainLayout extends AppLayout {
                 .set("padding", "0 var(--vaadin-gap-xs)")
                 .set("border-bottom", "1px solid var(--vaadin-border-color-secondary)")
                 .set("display", "flex").set("align-items", "center")
-                .set("height", "53px").set("flex-shrink", "0")
+                .set("height", "52px").set("flex-shrink", "0")
                 .set("box-sizing", "border-box");
 
         SideNav general = navSection(getTranslation("nav.general"), true,

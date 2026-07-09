@@ -26,7 +26,7 @@ public class HelpView extends VerticalLayout implements HasDynamicTitle {
         setAlignItems(Alignment.CENTER);
         setPadding(false);
         setSpacing(false);
-        getStyle().set("padding", "var(--lumo-space-m)").set("gap", "var(--lumo-space-m)");
+        getStyle().set("padding", "var(--vaadin-gap-m)").set("gap", "var(--vaadin-gap-m)");
 
         Span title = new Span(getTranslation("help.title"));
         title.addClassName("page-title");

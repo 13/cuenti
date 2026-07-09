@@ -25,7 +25,7 @@ public class PageHeader extends Div {
         actions.getStyle()
                 .set("display", "flex")
                 .set("align-items", "center")
-                .set("gap", "var(--lumo-space-s)")
+                .set("gap", "var(--vaadin-gap-s)")
                 .set("flex-wrap", "wrap");
 
         add(textBlock, actions);

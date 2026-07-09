@@ -53,7 +53,7 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
         // ── Global toggles card ───────────────────────────────────────
         Div toggleCard = createCard();
         toggleCard.add(cardHeader(VaadinIcon.COG, getTranslation("settings.administration"),
-                getTranslation("settings.administration_desc"), "var(--lumo-primary-color)"));
+                getTranslation("settings.administration_desc"), "var(--aura-accent-color)"));
 
         Checkbox registrationToggle = new Checkbox(getTranslation("settings.enable_registration"));
         registrationToggle.setValue(globalSettingService.isRegistrationEnabled());
@@ -65,10 +65,10 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
 
         Div toggleRow = new Div(registrationToggle, apiToggle);
         toggleRow.getStyle()
-                .set("display", "flex").set("flex-wrap", "wrap").set("gap", "var(--lumo-space-l)")
-                .set("padding", "var(--lumo-space-m)")
+                .set("display", "flex").set("flex-wrap", "wrap").set("gap", "var(--vaadin-gap-l)")
+                .set("padding", "var(--vaadin-gap-m)")
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)");
+                .set("border-radius", "var(--vaadin-radius-l)");
 
         toggleCard.add(toggleRow);
         container.add(toggleCard);
@@ -83,7 +83,7 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
         mgmtHeader.setWidthFull();
         mgmtHeader.setAlignItems(FlexComponent.Alignment.CENTER);
         mgmtHeader.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
-        mgmtHeader.add(cardHeader(VaadinIcon.USERS, getTranslation("settings.user_management"), null, "var(--lumo-success-color)"), addUserButton);
+        mgmtHeader.add(cardHeader(VaadinIcon.USERS, getTranslation("settings.user_management"), null, "var(--aura-green)"), addUserButton);
         card.add(mgmtHeader);
 
         userGrid.removeAllColumns();
@@ -93,16 +93,16 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
             Span initials = new Span(u.getUsername().length() >= 2 ? u.getUsername().substring(0, 2).toUpperCase() : u.getUsername().toUpperCase());
             initials.getStyle()
                     .set("width", "28px").set("height", "28px").set("border-radius", "50%")
-                    .set("background", "var(--lumo-contrast-10pct)").set("color", "var(--lumo-secondary-text-color)")
+                    .set("background", "var(--vaadin-background-container-strong)").set("color", "var(--vaadin-text-color-secondary)")
                     .set("font-size", "11px").set("font-weight", "700")
                     .set("display", "flex").set("align-items", "center").set("justify-content", "center").set("flex-shrink", "0");
             Div nameStack = new Div();
             nameStack.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "1px");
-            Span name = new Span(u.getUsername()); name.getStyle().set("font-weight", "600").set("font-size", "var(--lumo-font-size-s)");
-            Span mail = new Span(u.getEmail()); mail.getStyle().set("font-size", "var(--lumo-font-size-xs)").set("color", "var(--lumo-secondary-text-color)");
+            Span name = new Span(u.getUsername()); name.getStyle().set("font-weight", "600").set("font-size", "var(--aura-font-size-s)");
+            Span mail = new Span(u.getEmail()); mail.getStyle().set("font-size", "var(--aura-font-size-xs)").set("color", "var(--vaadin-text-color-secondary)");
             nameStack.add(name, mail);
             Div row = new Div(initials, nameStack);
-            row.getStyle().set("display", "flex").set("align-items", "center").set("gap", "var(--lumo-space-s)").set("padding", "var(--lumo-space-xs) 0");
+            row.getStyle().set("display", "flex").set("align-items", "center").set("gap", "var(--vaadin-gap-s)").set("padding", "var(--vaadin-gap-xs) 0");
             return row;
         }).setHeader(getTranslation("login.username")).setAutoWidth(true);
 
@@ -142,7 +142,7 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
             deleteBtn.setTooltipText(getTranslation("settings.delete_user"));
             deleteBtn.setEnabled(!u.getUsername().equals(currentUser.getUsername()) && !u.getUsername().equals("demo"));
             HorizontalLayout hl = new HorizontalLayout(resetBtn, deleteBtn);
-            hl.setSpacing(false); hl.getStyle().set("gap", "var(--lumo-space-xs)");
+            hl.setSpacing(false); hl.getStyle().set("gap", "var(--vaadin-gap-xs)");
             return hl;
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
 
@@ -166,16 +166,16 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
 
         HorizontalLayout nameRow = new HorizontalLayout(firstName, lastName);
         nameRow.setWidthFull(); nameRow.setSpacing(false);
-        nameRow.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        nameRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
         firstName.getStyle().set("flex", "1 1 160px"); lastName.getStyle().set("flex", "1 1 160px");
         HorizontalLayout passRow = new HorizontalLayout(password, confirmPassword);
         passRow.setWidthFull(); passRow.setSpacing(false);
-        passRow.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        passRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
         password.getStyle().set("flex", "1 1 160px"); confirmPassword.getStyle().set("flex", "1 1 160px");
 
         VerticalLayout form = new VerticalLayout(username, email, nameRow, passRow);
         form.setPadding(false); form.setSpacing(false);
-        form.getStyle().set("gap", "var(--lumo-space-s)");
+        form.getStyle().set("gap", "var(--vaadin-gap-s)");
         dialog.add(form);
 
         Button save = new Button(getTranslation("settings.create_user"), e -> {
@@ -214,7 +214,7 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
         PasswordField p1 = new PasswordField(getTranslation("settings.new_password")); p1.setWidthFull();
         PasswordField p2 = new PasswordField(getTranslation("settings.confirm_password")); p2.setWidthFull();
         VerticalLayout body = new VerticalLayout(p1, p2);
-        body.setPadding(false); body.setSpacing(false); body.getStyle().set("gap", "var(--lumo-space-s)");
+        body.setPadding(false); body.setSpacing(false); body.getStyle().set("gap", "var(--vaadin-gap-s)");
         d.add(body);
         Button save = new Button(getTranslation("settings.reset"), VaadinIcon.CHECK.create(), e -> {
             if (p1.getValue().equals(p2.getValue()) && !p1.getValue().isBlank()) {
@@ -255,7 +255,7 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
 
         Paragraph dangerText = new Paragraph(getTranslation("settings.delete_user_danger", "This action cannot be undone!"));
         dangerText.getStyle()
-                .set("color", "var(--lumo-error-text-color)")
+                .set("color", "var(--aura-red-text)")
                 .set("font-weight", "bold");
 
         content.add(warningText, itemList, dangerText);

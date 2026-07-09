@@ -68,7 +68,7 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("padding", "var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-m)")
                 .set("overflow", "hidden");
 
         setupUI();
@@ -99,10 +99,10 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         toolbar.expand(searchField);
         toolbar.setSpacing(false);
         toolbar.getStyle()
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
-                .set("gap", "var(--lumo-space-s)");
+                .set("border-radius", "var(--vaadin-radius-l)")
+                .set("gap", "var(--vaadin-gap-s)");
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
         grid.addColumn(Payee::getName).setHeader(getTranslation("payees.name")).setSortable(true).setAutoWidth(true);
@@ -136,7 +136,7 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         card.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-s)")
+                .set("gap", "var(--vaadin-gap-s)")
                 .set("box-sizing", "border-box");
         card.add(toolbar, grid);
         add(title, card);
@@ -239,7 +239,7 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         tagsRow.setWidthFull();
         tagsRow.setSpacing(false);
         tagsRow.setAlignItems(FlexComponent.Alignment.END);
-        tagsRow.getStyle().set("gap", "var(--lumo-space-s)");
+        tagsRow.getStyle().set("gap", "var(--vaadin-gap-s)");
         defaultTagsCombo.getStyle().set("flex", "1 1 0");
         newTagField.getStyle().set("flex", "1 1 0");
         addNewTagBtn.getStyle().set("flex-shrink", "0");
@@ -254,14 +254,14 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
 
         HorizontalLayout catRow = new HorizontalLayout(defaultCategory, paymentMethodCombo);
         catRow.setWidthFull(); catRow.setSpacing(false);
-        catRow.getStyle().set("gap","var(--lumo-space-m)").set("flex-wrap","wrap");
+        catRow.getStyle().set("gap","var(--vaadin-gap-m)").set("flex-wrap","wrap");
         defaultCategory.getElement().getStyle().set("flex","2 1 180px").set("min-width","0");
         paymentMethodCombo.getElement().getStyle().set("flex","1 1 140px").set("min-width","0");
 
         Div body = new Div();
         body.setWidthFull();
-        body.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--lumo-space-s)")
-                .set("padding","var(--lumo-space-m) var(--lumo-space-l)").set("box-sizing","border-box");
+        body.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--vaadin-gap-s)")
+                .set("padding","var(--vaadin-gap-m) var(--vaadin-gap-l)").set("box-sizing","border-box");
         body.add(name, notes, catRow, defaultMemoField, tagsRow);
         dialog.add(body);
 

@@ -66,7 +66,7 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("padding", "var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-m)")
                 .set("overflow", "hidden");
 
         setupUI();
@@ -100,10 +100,10 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         toolbar.expand(searchField);
         toolbar.setSpacing(false);
         toolbar.getStyle()
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
-                .set("gap", "var(--lumo-space-s)");
+                .set("border-radius", "var(--vaadin-radius-l)")
+                .set("gap", "var(--vaadin-gap-s)");
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
         grid.setSizeFull();
@@ -113,10 +113,10 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         
         grid.addComponentColumn(asset -> {
             String color = switch (asset.getType()) {
-                case STOCK  -> "var(--lumo-primary-color)";
-                case ETF    -> "var(--lumo-success-color)";
+                case STOCK  -> "var(--aura-accent-color)";
+                case ETF    -> "var(--aura-green)";
                 case CRYPTO -> "#f39c12";
-                default     -> "var(--lumo-secondary-text-color)";
+                default     -> "var(--vaadin-text-color-secondary)";
             };
             Span span = new Span(asset.getType().name());
             span.getStyle().set("font-size","10px").set("font-weight","700").set("letter-spacing","0.05em")
@@ -126,11 +126,11 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         }).setHeader(getTranslation("assets.type")).setSortable(true).setAutoWidth(true);
 
         grid.addComponentColumn(asset -> {
-            if (asset.getCurrentPrice() == null) { Span s = new Span("—"); s.getStyle().set("color","var(--lumo-disabled-text-color)"); return s; }
+            if (asset.getCurrentPrice() == null) { Span s = new Span("—"); s.getStyle().set("color","var(--vaadin-text-color-disabled)"); return s; }
             BigDecimal displayPrice = exchangeRateService.convert(asset.getCurrentPrice(),
                     asset.getCurrency(), currentUser.getDefaultCurrency());
             Span price = new Span(formatCurrency(displayPrice, currentUser.getDefaultCurrency()));
-            price.getStyle().set("font-weight","700").set("font-size","var(--lumo-font-size-s)").set("color","var(--lumo-primary-color)");
+            price.getStyle().set("font-weight","700").set("font-size","var(--aura-font-size-s)").set("color","var(--aura-accent-color)");
             return price;
         }).setHeader(getTranslation("assets.price") + " (" + currentUser.getDefaultCurrency() + ")").setSortable(true).setAutoWidth(true);
 
@@ -168,7 +168,7 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         card.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-s)")
+                .set("gap", "var(--vaadin-gap-s)")
                 .set("box-sizing", "border-box");
         card.add(toolbar, grid);
         add(title, card);
@@ -198,14 +198,14 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
 
         HorizontalLayout symRow = new HorizontalLayout(symbol, type);
         symRow.setWidthFull(); symRow.setSpacing(false);
-        symRow.getStyle().set("gap","var(--lumo-space-m)").set("flex-wrap","wrap");
+        symRow.getStyle().set("gap","var(--vaadin-gap-m)").set("flex-wrap","wrap");
         symbol.getElement().getStyle().set("flex","1 1 100px").set("min-width","0");
         type.getElement().getStyle().set("flex","2 1 160px").set("min-width","0");
 
         Div body = new Div();
         body.setWidthFull();
-        body.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--lumo-space-s)")
-                .set("padding","var(--lumo-space-m) var(--lumo-space-l)").set("box-sizing","border-box");
+        body.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--vaadin-gap-s)")
+                .set("padding","var(--vaadin-gap-m) var(--vaadin-gap-l)").set("box-sizing","border-box");
         body.add(symRow, name);
         dialog.add(body);
 

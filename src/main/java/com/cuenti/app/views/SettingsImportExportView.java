@@ -60,7 +60,7 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
         // ── JSON Backup / Restore ─────────────────────────────────────
         Div jsonCard = createCard();
         jsonCard.add(cardHeader(VaadinIcon.ARCHIVE, getTranslation("settings.json_backup_restore"),
-                getTranslation("settings.json_desc"), "var(--lumo-warning-color, #e8a000)"));
+                getTranslation("settings.json_desc"), "var(--aura-orange)"));
 
         String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
         String filename = String.format("cuenti_export_%s_%s.json", currentUser.getUsername(), timestamp);
@@ -100,7 +100,7 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
         HorizontalLayout jsonActions = new HorizontalLayout(jsonAnchor, jsonUpload);
         jsonActions.setAlignItems(FlexComponent.Alignment.CENTER);
         jsonActions.setSpacing(false);
-        jsonActions.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        jsonActions.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
 
         jsonCard.add(jsonActions, infoBanner(getTranslation("settings.json_warning"), true));
         container.add(jsonCard);
@@ -108,7 +108,7 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
         // ── Trade Republic ────────────────────────────────────────────
         Div trCard = createCard();
         trCard.add(cardHeader(VaadinIcon.STOCK, getTranslation("settings.tr_import_title"),
-                getTranslation("settings.tr_desc"), "var(--lumo-success-color)"));
+                getTranslation("settings.tr_desc"), "var(--aura-green)"));
 
         ComboBox<Account> cashAccountCombo = new ComboBox<>(getTranslation("settings.tr_cash_account"));
         cashAccountCombo.setItems(accountService.getAccountsByUser(currentUser));
@@ -122,7 +122,7 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
 
         HorizontalLayout trAccounts = new HorizontalLayout(cashAccountCombo, assetAccountCombo);
         trAccounts.setWidthFull(); trAccounts.setSpacing(false);
-        trAccounts.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        trAccounts.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
         cashAccountCombo.getStyle().set("flex", "1 1 200px");
         assetAccountCombo.getStyle().set("flex", "1 1 200px");
 
@@ -151,7 +151,7 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
         // ── Homebank XHB ──────────────────────────────────────────────
         Div card = createCard();
         card.add(cardHeader(VaadinIcon.DATABASE, getTranslation("settings.import_export_title"),
-                getTranslation("settings.data_desc"), "var(--lumo-primary-color)"));
+                getTranslation("settings.data_desc"), "var(--aura-accent-color)"));
 
         AtomicReference<byte[]> xhbData = new AtomicReference<>();
         Upload upload = new Upload(new InMemoryUploadHandler((meta, bytes) -> xhbData.set(bytes)));
@@ -183,7 +183,7 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
         HorizontalLayout xhbActions = new HorizontalLayout(upload, anchor);
         xhbActions.setAlignItems(FlexComponent.Alignment.CENTER);
         xhbActions.setSpacing(false);
-        xhbActions.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        xhbActions.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
         card.add(xhbActions);
         container.add(card);
     }

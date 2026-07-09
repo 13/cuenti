@@ -90,7 +90,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("padding", "var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-m)")
                 .set("overflow", "hidden");
 
         setupUI();
@@ -101,7 +101,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         setSizeFull();
         setPadding(true);
         setSpacing(false);
-        getStyle().set("gap", "var(--lumo-space-m)");
+        getStyle().set("gap", "var(--vaadin-gap-m)");
 
         // Page header
         Span title = new Span(getTranslation("scheduled.title"));
@@ -115,7 +115,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         card.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-l)");
+                .set("gap", "var(--vaadin-gap-l)");
 
         // Toolbar
         horizonSelect.setLabel(getTranslation("scheduled.horizon.label"));
@@ -135,9 +135,9 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         toolbar.setJustifyContentMode(JustifyContentMode.BETWEEN);
         toolbar.getStyle()
                 .set("flex-wrap", "wrap")
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)");
+                .set("border-radius", "var(--vaadin-radius-l)");
 
         setupPendingGrid();
         setupTemplateGrid();
@@ -148,7 +148,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .set("flex-grow", "1")
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-l)");
+                .set("gap", "var(--vaadin-gap-l)");
 
         content.add(buildSectionCard("scheduled.pending_title", VaadinIcon.CLOCK, pendingGrid, true));
         content.add(buildSectionCard("scheduled.list_title", VaadinIcon.CALENDAR, templateGrid, false));
@@ -163,31 +163,31 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         section.setWidthFull();
         section.getStyle()
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
-                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
+                .set("border-radius", "var(--vaadin-radius-l)")
+                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l)")
                 .set("box-sizing", "border-box");
         if (accent) {
-            section.getStyle().set("border-left", "4px solid var(--lumo-primary-color)");
+            section.getStyle().set("border-left", "4px solid var(--aura-accent-color)");
         }
 
         Icon ico = icon.create();
         ico.getStyle()
-                .set("color", accent ? "var(--lumo-primary-color)" : "var(--lumo-secondary-text-color)")
-                .set("font-size", "var(--lumo-font-size-m)")
+                .set("color", accent ? "var(--aura-accent-color)" : "var(--vaadin-text-color-secondary)")
+                .set("font-size", "var(--aura-font-size-m)")
                 .set("flex-shrink", "0");
 
         Span sectionTitle = new Span(getTranslation(titleKey));
         sectionTitle.getStyle()
-                .set("font-size", "var(--lumo-font-size-m)")
+                .set("font-size", "var(--aura-font-size-m)")
                 .set("font-weight", "700")
-                .set("color", "var(--lumo-header-text-color)");
+                .set("color", "var(--vaadin-text-color)");
 
         HorizontalLayout header = new HorizontalLayout(ico, sectionTitle);
         header.setAlignItems(Alignment.CENTER);
         header.setSpacing(false);
         header.getStyle()
-                .set("gap", "var(--lumo-space-s)")
-                .set("margin-bottom", "var(--lumo-space-s)");
+                .set("gap", "var(--vaadin-gap-s)")
+                .set("margin-bottom", "var(--vaadin-gap-s)");
 
         section.add(header, grid);
         return section;
@@ -200,7 +200,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         // Account
         templateGrid.addComponentColumn(st -> {
             Span s = new Span(st.getFromAccount() != null ? st.getFromAccount().getAccountName() : "—");
-            s.getStyle().set("font-size", "var(--lumo-font-size-s)");
+            s.getStyle().set("font-size", "var(--aura-font-size-s)");
             return s;
         }).setHeader(getTranslation("dialog.account")).setAutoWidth(true).setSortable(true)
                 .setComparator(Comparator.comparing(st -> st.getFromAccount() != null ? st.getFromAccount().getAccountName() : ""));
@@ -208,7 +208,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         // Payee
         templateGrid.addComponentColumn(st -> {
             Span s = new Span(st.getPayee() != null ? st.getPayee() : "—");
-            s.getStyle().set("font-weight", "600").set("font-size", "var(--lumo-font-size-s)");
+            s.getStyle().set("font-weight", "600").set("font-size", "var(--aura-font-size-s)");
             return s;
         }).setHeader(getTranslation("transactions.payee")).setAutoWidth(true).setSortable(true)
                 .setComparator(Comparator.comparing(st -> st.getPayee() != null ? st.getPayee() : ""));
@@ -225,7 +225,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         // Next date
         templateGrid.addComponentColumn(st -> {
             Span d = new Span(st.getNextOccurrence().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")));
-            d.getStyle().set("font-size", "var(--lumo-font-size-s)");
+            d.getStyle().set("font-size", "var(--aura-font-size-s)");
             return d;
         }).setHeader(getTranslation("scheduled.next_date")).setAutoWidth(true).setSortable(true)
                 .setComparator(Comparator.comparing(ScheduledTransaction::getNextOccurrence));
@@ -262,7 +262,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
 
             HorizontalLayout hl = new HorizontalLayout(editBtn, deleteBtn);
             hl.setSpacing(false);
-            hl.getStyle().set("gap", "var(--lumo-space-xs)");
+            hl.getStyle().set("gap", "var(--vaadin-gap-xs)");
             return hl;
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
     }
@@ -278,23 +278,23 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
             boolean dueToday = !overdue && st.getNextOccurrence().toLocalDate().isEqual(now.toLocalDate());
 
             Span date = new Span(st.getNextOccurrence().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")));
-            date.getStyle().set("font-size", "var(--lumo-font-size-s)").set("font-weight", "600");
+            date.getStyle().set("font-size", "var(--aura-font-size-s)").set("font-weight", "600");
 
             String badgeText = null;
             String badgeColor = null;
             if (overdue) {
                 badgeText = getTranslation("scheduled.late");
-                badgeColor = "var(--lumo-error-color)";
-                date.getStyle().set("color", "var(--lumo-error-color)");
+                badgeColor = "var(--aura-red)";
+                date.getStyle().set("color", "var(--aura-red)");
             } else if (dueToday) {
                 badgeText = getTranslation("scheduled.today");
-                badgeColor = "var(--lumo-warning-color, #f5a623)";
-                date.getStyle().set("color", "var(--lumo-warning-color, #f5a623)");
+                badgeColor = "var(--aura-orange)";
+                date.getStyle().set("color", "var(--aura-orange)");
             }
 
             Div cell = new Div();
             cell.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "3px")
-                    .set("padding", "var(--lumo-space-xs) 0");
+                    .set("padding", "var(--vaadin-gap-xs) 0");
             cell.add(date);
 
             if (badgeText != null) {
@@ -313,7 +313,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         // Account
         pendingGrid.addComponentColumn(st -> {
             Span s = new Span(st.getFromAccount() != null ? st.getFromAccount().getAccountName() : "—");
-            s.getStyle().set("font-size", "var(--lumo-font-size-s)");
+            s.getStyle().set("font-size", "var(--aura-font-size-s)");
             return s;
         }).setHeader(getTranslation("dialog.account")).setAutoWidth(true).setSortable(true)
                 .setComparator(Comparator.comparing(st -> st.getFromAccount() != null ? st.getFromAccount().getAccountName() : ""));
@@ -321,7 +321,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         // Payee
         pendingGrid.addComponentColumn(st -> {
             Span s = new Span(st.getPayee() != null ? st.getPayee() : "—");
-            s.getStyle().set("font-weight", "600").set("font-size", "var(--lumo-font-size-s)");
+            s.getStyle().set("font-weight", "600").set("font-size", "var(--aura-font-size-s)");
             return s;
         }).setHeader(getTranslation("transactions.payee")).setAutoWidth(true).setSortable(true)
                 .setComparator(Comparator.comparing(st -> st.getPayee() != null ? st.getPayee() : ""));
@@ -360,7 +360,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
             HorizontalLayout actions = new HorizontalLayout(postBtn, skipBtn, editBtn);
             actions.setSpacing(false);
             actions.setAlignItems(Alignment.CENTER);
-            actions.getStyle().set("gap", "var(--lumo-space-xs)");
+            actions.getStyle().set("gap", "var(--vaadin-gap-xs)");
             return actions;
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
     }
@@ -387,9 +387,9 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         typeTabs.setVisible(false);
 
         String[] TYPE_COLORS = {
-            "var(--lumo-error-color)",
-            "var(--lumo-success-color)",
-            "var(--lumo-primary-color)"
+            "var(--aura-red)",
+            "var(--aura-green)",
+            "var(--aura-accent-color)"
         };
         Button[] typeBtns = {expenseBtn, incomeBtn, transferBtn};
         Tab[]    typeTabArr = {expenseTab, incomeTab, transferTab};
@@ -398,7 +398,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         accentBar.setWidthFull();
         accentBar.setHeight("4px");
         accentBar.getStyle()
-                .set("border-radius", "var(--lumo-border-radius-l) var(--lumo-border-radius-l) 0 0")
+                .set("border-radius", "var(--vaadin-radius-l) var(--vaadin-radius-l) 0 0")
                 .set("transition", "background 0.2s");
 
         Runnable[] applyTypeStyle = {null};
@@ -411,12 +411,12 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
             for (int i = 0; i < typeBtns.length; i++) {
                 boolean active = (i == fs);
                 typeBtns[i].getElement().getStyle()
-                        .set("background", active ? TYPE_COLORS[i] : "var(--lumo-contrast-5pct)")
-                        .set("color", active ? "white" : "var(--lumo-secondary-text-color)")
+                        .set("background", active ? TYPE_COLORS[i] : "var(--vaadin-background-container)")
+                        .set("color", active ? "white" : "var(--vaadin-text-color-secondary)")
                         .set("border", "none").set("border-radius", "99px")
                         .set("font-weight", active ? "700" : "500")
-                        .set("font-size", "var(--lumo-font-size-s)")
-                        .set("padding", "var(--lumo-space-xs) var(--lumo-space-m)")
+                        .set("font-size", "var(--aura-font-size-s)")
+                        .set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-m)")
                         .set("cursor", "pointer").set("transition", "all 0.15s");
             }
             accentBar.getStyle().set("background", TYPE_COLORS[fs]);
@@ -434,8 +434,8 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         HorizontalLayout typeRow = new HorizontalLayout(expenseBtn, incomeBtn, transferBtn);
         typeRow.setSpacing(false);
         typeRow.getStyle()
-                .set("gap", "var(--lumo-space-xs)")
-                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
+                .set("gap", "var(--vaadin-gap-xs)")
+                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l)")
                 .set("flex-wrap", "wrap");
 
         // ── Helper: resolve current type from tabs ────────────────────
@@ -450,21 +450,21 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         amount.setWidthFull();
         amount.setRequiredIndicatorVisible(true);
         amount.getElement().getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)").set("font-weight", "800");
+                .set("font-size", "var(--cuenti-font-size-xxl)").set("font-weight", "800");
 
         Span amountLabel = new Span(getTranslation("dialog.amount").toUpperCase());
         amountLabel.getStyle()
                 .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                .set("color", "var(--lumo-secondary-text-color)");
+                .set("color", "var(--vaadin-text-color-secondary)");
 
         Div heroSection = new Div(amountLabel, amount);
         heroSection.setWidthFull();
         heroSection.getStyle()
-                .set("padding", "var(--lumo-space-m) var(--lumo-space-l) var(--lumo-space-l)")
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
+                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l) var(--vaadin-gap-l)")
+                .set("background", "var(--vaadin-background-container)")
+                .set("border-bottom", "1px solid var(--vaadin-border-color-secondary)")
                 .set("box-sizing", "border-box")
-                .set("display", "flex").set("flex-direction", "column").set("gap", "var(--lumo-space-xs)");
+                .set("display", "flex").set("flex-direction", "column").set("gap", "var(--vaadin-gap-xs)");
 
         // ── Date + Enabled toggle ─────────────────────────────────────
         DatePicker nextDate = new DatePicker(getTranslation("scheduled.next_date"));
@@ -474,7 +474,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
 
         HorizontalLayout dateRow = new HorizontalLayout(nextDate, enabled);
         dateRow.setWidthFull(); dateRow.setSpacing(false);
-        dateRow.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap")
+        dateRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap")
                 .set("align-items", "center");
         nextDate.getStyle().set("flex", "1 1 160px");
 
@@ -492,7 +492,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
 
         HorizontalLayout accountRow = new HorizontalLayout(fromAccount, toAccount);
         accountRow.setWidthFull(); accountRow.setSpacing(false);
-        accountRow.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        accountRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
         fromAccount.getStyle().set("flex", "1 1 200px");
         toAccount.getStyle().set("flex", "1 1 200px");
 
@@ -512,7 +512,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
 
         HorizontalLayout payeeCatRow = new HorizontalLayout(payee, category);
         payeeCatRow.setWidthFull(); payeeCatRow.setSpacing(false);
-        payeeCatRow.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        payeeCatRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
         payee.getStyle().set("flex", "1 1 200px");
         category.getStyle().set("flex", "1 1 200px");
 
@@ -529,7 +529,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
 
         HorizontalLayout recurrenceRow = new HorizontalLayout(pattern, recValue);
         recurrenceRow.setWidthFull(); recurrenceRow.setSpacing(false);
-        recurrenceRow.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        recurrenceRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
         pattern.getStyle().set("flex", "2 1 200px");
         recValue.getStyle().set("flex", "1 1 120px");
 
@@ -698,14 +698,14 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         section.setWidthFull();
         section.getStyle()
                 .set("display", "flex").set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-s)")
-                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
+                .set("gap", "var(--vaadin-gap-s)")
+                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l)")
                 .set("box-sizing", "border-box");
         if (label != null && !label.isBlank()) {
             Span lbl = new Span(label.toUpperCase());
             lbl.getStyle()
                     .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                    .set("color", "var(--lumo-secondary-text-color)");
+                    .set("color", "var(--vaadin-text-color-secondary)");
             section.add(lbl);
         }
         return section;
@@ -721,9 +721,9 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         String bg;
         String fg;
         switch (type) {
-            case INCOME   -> { label = getTranslation("transaction.type.income");   bg = "var(--lumo-success-color)"; fg = "white"; }
-            case TRANSFER -> { label = getTranslation("transaction.type.transfer"); bg = "var(--lumo-primary-color)"; fg = "white"; }
-            default       -> { label = getTranslation("transaction.type.expense");  bg = "var(--lumo-error-color)";   fg = "white"; }
+            case INCOME   -> { label = getTranslation("transaction.type.income");   bg = "var(--aura-green)"; fg = "white"; }
+            case TRANSFER -> { label = getTranslation("transaction.type.transfer"); bg = "var(--aura-accent-color)"; fg = "white"; }
+            default       -> { label = getTranslation("transaction.type.expense");  bg = "var(--aura-red)";   fg = "white"; }
         }
         Span badge = new Span(label);
         badge.getStyle()
@@ -737,13 +737,13 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
     /** Amount span coloured by transaction type with bold weight. */
     private Span createAmountSpan(BigDecimal amount, Transaction.TransactionType type) {
         Span span = new Span(formatCurrency(amount));
-        span.getStyle().set("font-weight", "700").set("font-size", "var(--lumo-font-size-s)");
+        span.getStyle().set("font-weight", "700").set("font-size", "var(--aura-font-size-s)");
         if (type == Transaction.TransactionType.EXPENSE)
-            span.getStyle().set("color", "var(--lumo-error-color)");
+            span.getStyle().set("color", "var(--aura-red)");
         else if (type == Transaction.TransactionType.INCOME)
-            span.getStyle().set("color", "var(--lumo-success-color)");
+            span.getStyle().set("color", "var(--aura-green)");
         else
-            span.getStyle().set("color", "var(--lumo-primary-color)");
+            span.getStyle().set("color", "var(--aura-accent-color)");
         return span;
     }
 
@@ -753,10 +753,10 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         if (value != null && value > 1) text = getTranslation("scheduled.every_n").replace("{0}", String.valueOf(value)) + " " + text.toLowerCase();
         Span badge = new Span(text);
         badge.getStyle()
-                .set("font-size", "var(--lumo-font-size-xs)").set("font-weight", "500")
+                .set("font-size", "var(--aura-font-size-xs)").set("font-weight", "500")
                 .set("padding", "2px 8px").set("border-radius", "99px")
-                .set("background", "var(--lumo-contrast-10pct)")
-                .set("color", "var(--lumo-secondary-text-color)")
+                .set("background", "var(--vaadin-background-container-strong)")
+                .set("color", "var(--vaadin-text-color-secondary)")
                 .set("white-space", "nowrap");
         return badge;
     }
@@ -796,11 +796,11 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
     private Div createCard() {
         Div card = new Div();
         card.getStyle()
-                .set("background-color", "var(--lumo-base-color)")
+                .set("background-color", "var(--aura-surface-color-solid)")
                 .set("border-radius", "16px")
-                .set("padding", "var(--lumo-space-l)")
-                .set("box-shadow", "var(--lumo-box-shadow-m)")
-                .set("margin-bottom", "var(--lumo-space-m)");
+                .set("padding", "var(--vaadin-gap-l)")
+                .set("box-shadow", "var(--aura-shadow-m)")
+                .set("margin-bottom", "var(--vaadin-gap-m)");
         return card;
     }
 

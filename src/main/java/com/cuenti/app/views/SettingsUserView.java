@@ -50,7 +50,7 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
     private void buildContent() {
         // ── Profile card ──────────────────────────────────────────────
         Div card = createCard();
-        card.add(cardHeader(VaadinIcon.USER, getTranslation("settings.user_profile"), null, "var(--lumo-primary-color)"));
+        card.add(cardHeader(VaadinIcon.USER, getTranslation("settings.user_profile"), null, "var(--aura-accent-color)"));
 
         TextField firstName = new TextField(getTranslation("settings.first_name"));
         firstName.setValue(currentUser.getFirstName());
@@ -64,7 +64,7 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
 
         HorizontalLayout nameRow = new HorizontalLayout(firstName, lastName);
         nameRow.setWidthFull(); nameRow.setSpacing(false);
-        nameRow.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        nameRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
         firstName.getStyle().set("flex", "1 1 160px");
         lastName.getStyle().set("flex", "1 1 160px");
 
@@ -80,7 +80,7 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
         // ── Localization card ──────────────────────────────────────────
         Div localizationCard = createCard();
         localizationCard.add(cardHeader(VaadinIcon.GLOBE, getTranslation("settings.localization_title"),
-                getTranslation("settings.localization_desc"), "var(--lumo-success-color)"));
+                getTranslation("settings.localization_desc"), "var(--aura-green)"));
 
         ComboBox<Currency> currencyComboBox = new ComboBox<>(getTranslation("settings.default_currency"));
         currencyComboBox.setItems(currencyService.getAllCurrencies());
@@ -103,7 +103,7 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
 
         HorizontalLayout locRow = new HorizontalLayout(currencyComboBox, localeComboBox);
         locRow.setWidthFull(); locRow.setSpacing(false);
-        locRow.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        locRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
         currencyComboBox.getStyle().set("flex", "1 1 200px");
         localeComboBox.getStyle().set("flex", "1 1 160px");
 
@@ -121,7 +121,7 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
         // ── Password card ──────────────────────────────────────────────
         Div passCard = createCard();
         passCard.add(cardHeader(VaadinIcon.LOCK, getTranslation("settings.security_password"),
-                null, "var(--lumo-warning-color, #e8a000)"));
+                null, "var(--aura-orange)"));
 
         PasswordField oldPass = new PasswordField(getTranslation("settings.current_password"));
         oldPass.setWidthFull();
@@ -132,7 +132,7 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
 
         HorizontalLayout newPassRow = new HorizontalLayout(newPass, confirmPass);
         newPassRow.setWidthFull(); newPassRow.setSpacing(false);
-        newPassRow.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        newPassRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
         newPass.getStyle().set("flex", "1 1 160px");
         confirmPass.getStyle().set("flex", "1 1 160px");
 
@@ -155,22 +155,22 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
 
         // ── Danger zone card ───────────────────────────────────────────
         Div dangerCard = createCard();
-        dangerCard.getStyle().set("border-left", "4px solid var(--lumo-error-color)");
+        dangerCard.getStyle().set("border-left", "4px solid var(--aura-red)");
         dangerCard.add(cardHeader(VaadinIcon.WARNING, getTranslation("settings.danger_zone"),
-                getTranslation("settings.danger_desc"), "var(--lumo-error-color)"));
+                getTranslation("settings.danger_desc"), "var(--aura-red)"));
 
         Button cleanupButton = new Button(getTranslation("settings.clean_profile"), VaadinIcon.TRASH.create(), e -> {
             Dialog confirmDialog = new Dialog();
             confirmDialog.setHeaderTitle(getTranslation("settings.confirm_wipe"));
             Span msg = new Span(getTranslation("settings.wipe_confirm_msg"));
             Span typeHint = new Span(getTranslation("settings.delete_confirm_type"));
-            typeHint.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-secondary-text-color)");
+            typeHint.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
             TextField confirmField = new TextField();
             confirmField.setPlaceholder("DELETE");
             confirmField.setWidthFull();
             confirmField.setValueChangeMode(ValueChangeMode.EAGER);
             Div dialogBody = new Div(msg, typeHint, confirmField);
-            dialogBody.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "var(--lumo-space-s)");
+            dialogBody.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "var(--vaadin-gap-s)");
             confirmDialog.add(dialogBody);
             Button delBtn = new Button(getTranslation("settings.delete_everything"), VaadinIcon.TRASH.create(), ev -> {
                 profileCleanupService.cleanupUserData(currentUser);

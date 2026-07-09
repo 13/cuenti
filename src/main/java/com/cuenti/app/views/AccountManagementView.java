@@ -77,7 +77,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("padding", "var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-m)")
                 .set("overflow", "hidden");
 
         setupUI();
@@ -104,10 +104,10 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
         toolbar.expand(searchField);
         toolbar.setSpacing(false);
         toolbar.getStyle()
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
-                .set("gap", "var(--lumo-space-s)");
+                .set("border-radius", "var(--vaadin-radius-l)")
+                .set("gap", "var(--vaadin-gap-s)");
 
         configureGrid();
 
@@ -118,7 +118,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
         card.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-s)")
+                .set("gap", "var(--vaadin-gap-s)")
                 .set("box-sizing", "border-box");
         card.add(toolbar, grid);
         add(title, card);
@@ -142,11 +142,11 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
         // Name + group stacked
         grid.addComponentColumn(acc -> {
             Span name = new Span(acc.getAccountName());
-            name.getStyle().set("font-weight", "600").set("font-size", "var(--lumo-font-size-s)");
+            name.getStyle().set("font-weight", "600").set("font-size", "var(--aura-font-size-s)");
             Span group = new Span(acc.getAccountGroup() != null ? acc.getAccountGroup() : "");
-            group.getStyle().set("font-size", "var(--lumo-font-size-xs)").set("color", "var(--lumo-secondary-text-color)");
+            group.getStyle().set("font-size", "var(--aura-font-size-xs)").set("color", "var(--vaadin-text-color-secondary)");
             Div stack = new Div(name, group);
-            stack.getStyle().set("display","flex").set("flex-direction","column").set("gap","1px").set("padding","var(--lumo-space-xs) 0");
+            stack.getStyle().set("display","flex").set("flex-direction","column").set("gap","1px").set("padding","var(--vaadin-gap-xs) 0");
             return stack;
         }).setHeader(getTranslation("accounts.name")).setSortable(true)
                 .setComparator(java.util.Comparator.comparing(Account::getAccountName)).setAutoWidth(true);
@@ -155,29 +155,29 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
             Span badge = new Span(getTranslation("account.type." + acc.getAccountType().name().toLowerCase()));
             badge.getStyle().set("font-size","10px").set("font-weight","700").set("letter-spacing","0.05em")
                     .set("padding","2px 8px").set("border-radius","99px")
-                    .set("background","var(--lumo-contrast-10pct)").set("color","var(--lumo-secondary-text-color)");
+                    .set("background","var(--vaadin-background-container-strong)").set("color","var(--vaadin-text-color-secondary)");
             return badge;
         }).setHeader(getTranslation("accounts.type")).setSortable(true)
                 .setComparator(java.util.Comparator.comparing(acc -> acc.getAccountType().name())).setAutoWidth(true);
 
         grid.addComponentColumn(acc -> {
             Span s = new Span(acc.getInstitution() != null ? acc.getInstitution() : "");
-            s.getStyle().set("font-size","var(--lumo-font-size-s)").set("color","var(--lumo-secondary-text-color)");
+            s.getStyle().set("font-size","var(--aura-font-size-s)").set("color","var(--vaadin-text-color-secondary)");
             return s;
         }).setHeader(getTranslation("accounts.institution")).setSortable(true)
                 .setComparator(java.util.Comparator.comparing(acc -> acc.getInstitution() != null ? acc.getInstitution() : "")).setAutoWidth(true);
 
         grid.addComponentColumn(acc -> {
             Span s = new Span(acc.getCurrency());
-            s.getStyle().set("font-size","var(--lumo-font-size-s)");
+            s.getStyle().set("font-size","var(--aura-font-size-s)");
             return s;
         }).setHeader(getTranslation("accounts.currency")).setAutoWidth(true);
 
         grid.addComponentColumn(acc -> {
             Span s = new Span(acc.getBalance() != null ? acc.getBalance().toPlainString() : "0");
             boolean neg = acc.getBalance() != null && acc.getBalance().compareTo(java.math.BigDecimal.ZERO) < 0;
-            s.getStyle().set("font-weight","700").set("font-size","var(--lumo-font-size-s)")
-                    .set("color", neg ? "var(--lumo-error-color)" : "var(--lumo-body-text-color)");
+            s.getStyle().set("font-weight","700").set("font-size","var(--aura-font-size-s)")
+                    .set("color", neg ? "var(--aura-red)" : "var(--vaadin-text-color)");
             return s;
         }).setHeader(getTranslation("accounts.balance")).setSortable(true)
                 .setComparator(java.util.Comparator.comparing(acc -> acc.getBalance() != null ? acc.getBalance() : java.math.BigDecimal.ZERO)).setAutoWidth(true);
@@ -298,7 +298,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
 
          Div flagsSection = dialogSection(getTranslation("accounts.options"));
         Div flagsRow = new Div(excludeFromSummaryCheckbox, excludeFromReportsCheckbox);
-        flagsRow.getStyle().set("display","flex").set("flex-wrap","wrap").set("gap","var(--lumo-space-l)").set("padding","var(--lumo-space-xs) 0");
+        flagsRow.getStyle().set("display","flex").set("flex-wrap","wrap").set("gap","var(--vaadin-gap-l)").set("padding","var(--vaadin-gap-xs) 0");
         flagsSection.add(flagsRow);
 
         // ── Binder ────────────────────────────────────────────────────
@@ -344,11 +344,11 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
 
     private Div dialogSection(String label) {
         Div s = new Div(); s.setWidthFull();
-        s.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--lumo-space-s)")
-                .set("padding","var(--lumo-space-m) var(--lumo-space-l)").set("box-sizing","border-box");
+        s.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--vaadin-gap-s)")
+                .set("padding","var(--vaadin-gap-m) var(--vaadin-gap-l)").set("box-sizing","border-box");
         if (label != null && !label.isBlank()) {
             Span lbl = new Span(label.toUpperCase());
-            lbl.getStyle().set("font-size","10px").set("font-weight","700").set("letter-spacing","0.08em").set("color","var(--lumo-secondary-text-color)");
+            lbl.getStyle().set("font-size","10px").set("font-weight","700").set("letter-spacing","0.08em").set("color","var(--vaadin-text-color-secondary)");
             s.add(lbl);
         }
         return s;
@@ -357,7 +357,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
     private HorizontalLayout dialogRow(com.vaadin.flow.component.Component a, com.vaadin.flow.component.Component b) {
         HorizontalLayout row = new HorizontalLayout(a, b);
         row.setWidthFull(); row.setSpacing(false);
-        row.getStyle().set("gap","var(--lumo-space-m)").set("flex-wrap","wrap");
+        row.getStyle().set("gap","var(--vaadin-gap-m)").set("flex-wrap","wrap");
         a.getElement().getStyle().set("flex","1 1 160px").set("min-width","0");
         b.getElement().getStyle().set("flex","1 1 160px").set("min-width","0");
         return row;

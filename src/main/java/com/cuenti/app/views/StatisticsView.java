@@ -89,8 +89,8 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         header.getStyle()
                 .set("display", "flex")
                 .set("align-items", "baseline")
-                .set("gap", "var(--lumo-space-m)")
-                .set("margin-bottom", "var(--lumo-space-xs)");
+                .set("gap", "var(--vaadin-gap-m)")
+                .set("margin-bottom", "var(--vaadin-gap-xs)");
 
         Span title = new Span(getTranslation("statistics.title"));
         title.addClassName("page-title");
@@ -107,7 +107,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         card.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-m)");
+                .set("gap", "var(--vaadin-gap-m)");
         card.add(filters, tabs, contentContainer);
         add(header, card);
         expand(card);
@@ -119,10 +119,10 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         filterLayout.setAlignItems(Alignment.CENTER);
         filterLayout.getStyle()
                 .set("flex-wrap", "wrap")
-                .set("gap", "var(--lumo-space-s)")
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("gap", "var(--vaadin-gap-s)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)");
+                .set("border-radius", "var(--vaadin-radius-l)");
 
         timeRangeSelect = new Select<>();
         timeRangeSelect.setLabel(getTranslation("statistics.time_range"));
@@ -286,7 +286,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         FlexLayout layout = new FlexLayout();
         //layout.setWidthFull();
         layout.setFlexWrap(FlexLayout.FlexWrap.WRAP);
-        layout.getStyle().set("gap", "var(--lumo-space-m)");
+        layout.getStyle().set("gap", "var(--vaadin-gap-m)");
 
         BigDecimal totalIncome = BigDecimal.ZERO;
         BigDecimal totalExpense = BigDecimal.ZERO;
@@ -312,10 +312,10 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         BigDecimal netFlow = totalIncome.subtract(totalExpense);
 
         layout.add(
-                createSummaryCard(getTranslation("statistics.total_income"), totalIncome, "var(--lumo-success-color)"),
-                createSummaryCard(getTranslation("statistics.total_expense"), totalExpense, "var(--lumo-error-color)"),
+                createSummaryCard(getTranslation("statistics.total_income"), totalIncome, "var(--aura-green)"),
+                createSummaryCard(getTranslation("statistics.total_expense"), totalExpense, "var(--aura-red)"),
                 createSummaryCard(getTranslation("statistics.net_flow"), netFlow,
-                        netFlow.compareTo(BigDecimal.ZERO) >= 0 ? "var(--lumo-success-color)" : "var(--lumo-error-color)")
+                        netFlow.compareTo(BigDecimal.ZERO) >= 0 ? "var(--aura-green)" : "var(--aura-red)")
         );
 
         contentContainer.add(layout);
@@ -523,22 +523,22 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         chartsRow.setWidthFull();
         chartsRow.setFlexWrap(FlexLayout.FlexWrap.WRAP);
         chartsRow.getStyle()
-                .set("gap", "var(--lumo-space-l)")
-                .set("margin-bottom", "var(--lumo-space-l)")
-                .set("padding-bottom", "var(--lumo-space-m)")
-                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)");
+                .set("gap", "var(--vaadin-gap-l)")
+                .set("margin-bottom", "var(--vaadin-gap-l)")
+                .set("padding-bottom", "var(--vaadin-gap-m)")
+                .set("border-bottom", "1px solid var(--vaadin-border-color-secondary)");
 
         if (!incomeEntries.isEmpty()) {
             Div incomeChart = new Div();
             incomeChart.getStyle().set("flex", "1 1 280px").set("min-width", "0");
-            renderHorizontalBarChart(incomeChart, incomeTitle, incomeEntries, "var(--lumo-success-color)");
+            renderHorizontalBarChart(incomeChart, incomeTitle, incomeEntries, "var(--aura-green)");
             chartsRow.add(incomeChart);
         }
 
         if (!expenseEntries.isEmpty()) {
             Div expenseChart = new Div();
             expenseChart.getStyle().set("flex", "1 1 280px").set("min-width", "0");
-            renderHorizontalBarChart(expenseChart, expenseTitle, expenseEntries, "var(--lumo-error-color)");
+            renderHorizontalBarChart(expenseChart, expenseTitle, expenseEntries, "var(--aura-red)");
             chartsRow.add(expenseChart);
         }
 
@@ -565,9 +565,9 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                 .set("font-size", "10px")
                 .set("font-weight", "700")
                 .set("letter-spacing", "0.08em")
-                .set("color", "var(--lumo-secondary-text-color)")
+                .set("color", "var(--vaadin-text-color-secondary)")
                 .set("display", "block")
-                .set("margin-bottom", "var(--lumo-space-s)");
+                .set("margin-bottom", "var(--vaadin-gap-s)");
 
         Div chartDiv = new Div();
         chartDiv.setWidthFull();
@@ -589,9 +589,9 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
             label.getStyle()
                     .set("width", "110px")
                     .set("min-width", "110px")
-                    .set("font-size", "var(--lumo-font-size-xs)")
+                    .set("font-size", "var(--aura-font-size-xs)")
                     .set("font-weight", "500")
-                    .set("color", "var(--lumo-secondary-text-color)")
+                    .set("color", "var(--vaadin-text-color-secondary)")
                     .set("text-align", "right")
                     .set("overflow", "hidden")
                     .set("text-overflow", "ellipsis")
@@ -600,7 +600,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
             Div barBg = new Div();
             barBg.getStyle()
                     .set("flex", "1")
-                    .set("background", "var(--lumo-contrast-5pct)")
+                    .set("background", "var(--vaadin-background-container)")
                     .set("border-radius", "6px")
                     .set("height", "26px")
                     .set("position", "relative")
@@ -623,7 +623,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                     .set("width", "90px")
                     .set("min-width", "90px")
                     .set("text-align", "right")
-                    .set("font-size", "var(--lumo-font-size-xs)")
+                    .set("font-size", "var(--aura-font-size-xs)")
                     .set("font-weight", "700")
                     .set("color", barColor)
                     .set("flex-shrink", "0");
@@ -768,34 +768,34 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                 .set("height", "48px")
                 .set("border-radius", "12px")
                 .set("overflow", "hidden")
-                .set("margin", "var(--lumo-space-m) 0")
+                .set("margin", "var(--vaadin-gap-m) 0")
                 .set("box-shadow", "0 1px 4px rgba(0,0,0,0.08)");
 
         Div incomeBar = new Div();
         incomeBar.setWidth(incomePercent + "%");
         incomeBar.getStyle()
-                .set("background", "linear-gradient(90deg, #1a9a5c, var(--lumo-success-color))");
+                .set("background", "linear-gradient(90deg, #1a9a5c, var(--aura-green))");
 
         Div expenseBar = new Div();
         expenseBar.setWidth(expensePercent + "%");
         expenseBar.getStyle()
-                .set("background", "linear-gradient(90deg, var(--lumo-error-color), #d94040)");
+                .set("background", "linear-gradient(90deg, var(--aura-red), #d94040)");
 
         chartContainer.add(incomeBar, expenseBar);
 
         // Percentages shown in legend — no text-on-gradient contrast issues
         HorizontalLayout legend = new HorizontalLayout();
         legend.setSpacing(true);
-        legend.getStyle().set("margin-top", "var(--lumo-space-xs)");
+        legend.getStyle().set("margin-top", "var(--vaadin-gap-xs)");
         legend.add(
                 createLegendItem(getTranslation("statistics.income")
                         + " — " + formatCurrency(income)
                         + " (" + String.format("%.0f%%", incomePercent) + ")",
-                        "var(--lumo-success-color)"),
+                        "var(--aura-green)"),
                 createLegendItem(getTranslation("statistics.expense")
                         + " — " + formatCurrency(expense)
                         + " (" + String.format("%.0f%%", expensePercent) + ")",
-                        "var(--lumo-error-color)")
+                        "var(--aura-red)")
         );
 
         container.add(chartContainer, legend);
@@ -808,7 +808,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         double rate = netFlow.divide(income, 4, RoundingMode.HALF_UP).doubleValue() * 100;
         double fillPercent = Math.max(0, Math.min(100, rate));
         boolean positive = rate >= 0;
-        String barColor = positive ? "var(--lumo-success-color)" : "var(--lumo-error-color)";
+        String barColor = positive ? "var(--aura-green)" : "var(--aura-red)";
         String gradientEnd = positive ? "#b7f5c8" : "#ffb3b3";
 
         Div wrapper = new Div();
@@ -816,21 +816,21 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         wrapper.getStyle()
                 .set("display", "flex")
                 .set("align-items", "center")
-                .set("gap", "var(--lumo-space-m)")
-                .set("margin-top", "var(--lumo-space-m)");
+                .set("gap", "var(--vaadin-gap-m)")
+                .set("margin-top", "var(--vaadin-gap-m)");
 
         Span label = new Span(getTranslation("statistics.savings_rate").toUpperCase());
         label.getStyle()
                 .set("font-size", "10px")
                 .set("font-weight", "700")
                 .set("letter-spacing", "0.08em")
-                .set("color", "var(--lumo-secondary-text-color)")
+                .set("color", "var(--vaadin-text-color-secondary)")
                 .set("white-space", "nowrap");
 
         Div barBg = new Div();
         barBg.getStyle()
                 .set("flex", "1")
-                .set("background", "var(--lumo-contrast-5pct)")
+                .set("background", "var(--vaadin-background-container)")
                 .set("border-radius", "8px")
                 .set("height", "28px")
                 .set("position", "relative")
@@ -850,7 +850,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         value.getStyle()
                 .set("min-width", "56px")
                 .set("text-align", "right")
-                .set("font-size", "var(--lumo-font-size-m)")
+                .set("font-size", "var(--aura-font-size-m)")
                 .set("font-weight", "700")
                 .set("color", barColor);
 
@@ -895,7 +895,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         chartWrapper.setWidthFull();
         chartWrapper.getStyle()
                 .set("overflow-x", "auto")
-                .set("padding-bottom", "var(--lumo-space-s)");
+                .set("padding-bottom", "var(--vaadin-gap-s)");
 
         Div chartArea = new Div();
         chartArea.getStyle()
@@ -904,9 +904,9 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                 .set("justify-content", "space-around")
                 .set("min-width", "min-content")
                 .set("height", "200px")
-                .set("padding", "var(--lumo-space-m) var(--lumo-space-s) 0 var(--lumo-space-s)")
-                .set("border-bottom", "2px solid var(--lumo-contrast-10pct)")
-                .set("margin-bottom", "var(--lumo-space-s)")
+                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-s) 0 var(--vaadin-gap-s)")
+                .set("border-bottom", "2px solid var(--vaadin-border-color-secondary)")
+                .set("margin-bottom", "var(--vaadin-gap-s)")
                 .set("gap", "6px");
 
         BigDecimal maxValue = monthlyData.values().stream()
@@ -928,15 +928,15 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
             bars.setSpacing(false);
             bars.getStyle().set("gap", "2px").set("height", "160px").set("align-items", "flex-end");
 
-            bars.add(createGradientBar(entry.getValue()[0], maxValue, "var(--lumo-success-color)", "#b7f5c8"));
-            bars.add(createGradientBar(entry.getValue()[1], maxValue, "var(--lumo-error-color)", "#ffb3b3"));
+            bars.add(createGradientBar(entry.getValue()[0], maxValue, "var(--aura-green)", "#b7f5c8"));
+            bars.add(createGradientBar(entry.getValue()[1], maxValue, "var(--aura-red)", "#ffb3b3"));
 
             String monthLabel = entry.getKey().length() >= 7 ? entry.getKey().substring(5) : entry.getKey();
             Span label = new Span(monthLabel);
             label.getStyle()
                     .set("font-size", "10px")
                     .set("font-weight", "600")
-                    .set("color", "var(--lumo-secondary-text-color)")
+                    .set("color", "var(--vaadin-text-color-secondary)")
                     .set("letter-spacing", "0.03em");
 
             barGroup.add(bars, label);
@@ -947,10 +947,10 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
 
         HorizontalLayout legend = new HorizontalLayout();
         legend.setSpacing(true);
-        legend.getStyle().set("margin-top", "var(--lumo-space-s)");
+        legend.getStyle().set("margin-top", "var(--vaadin-gap-s)");
         legend.add(
-                createLegendItem(getTranslation("statistics.income"), "var(--lumo-success-color)"),
-                createLegendItem(getTranslation("statistics.expense"), "var(--lumo-error-color)")
+                createLegendItem(getTranslation("statistics.income"), "var(--aura-green)"),
+                createLegendItem(getTranslation("statistics.expense"), "var(--aura-red)")
         );
 
         container.add(chartWrapper, legend);
@@ -978,18 +978,18 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                 .set("border-left", "4px solid " + color)
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-xs)");
+                .set("gap", "var(--vaadin-gap-xs)");
 
         Span titleSpan = new Span(title.toUpperCase());
         titleSpan.getStyle()
                 .set("font-size", "10px")
                 .set("font-weight", "700")
                 .set("letter-spacing", "0.08em")
-                .set("color", "var(--lumo-secondary-text-color)");
+                .set("color", "var(--vaadin-text-color-secondary)");
 
         Span valueSpan = new Span(formatCurrency(amount));
         valueSpan.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)")
+                .set("font-size", "var(--cuenti-font-size-xxl)")
                 .set("font-weight", "700")
                 .set("color", color)
                 .set("line-height", "1.1");
@@ -1002,19 +1002,19 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         Div card = new Div();
         card.setWidthFull();
         card.getStyle()
-                .set("background", "var(--lumo-contrast-5pct)")
+                .set("background", "var(--vaadin-background-container)")
                 .set("border-radius", "16px")
-                .set("padding", "var(--lumo-space-l)")
-                .set("margin-top", "var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-l)")
+                .set("margin-top", "var(--vaadin-gap-m)")
                 .set("box-sizing", "border-box");
 
         Span titleEl = new Span(title);
         titleEl.getStyle()
-                .set("font-size", "var(--lumo-font-size-m)")
+                .set("font-size", "var(--aura-font-size-m)")
                 .set("font-weight", "700")
-                .set("color", "var(--lumo-header-text-color)")
+                .set("color", "var(--vaadin-text-color)")
                 .set("display", "block")
-                .set("margin-bottom", "var(--lumo-space-m)");
+                .set("margin-bottom", "var(--vaadin-gap-m)");
         card.add(titleEl);
 
         return card;
@@ -1024,11 +1024,11 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         HorizontalLayout header = new HorizontalLayout();
         header.setWidthFull();
         header.getStyle()
-                .set("padding", "var(--lumo-space-s) 0")
-                .set("border-bottom", "2px solid var(--lumo-contrast-10pct)")
+                .set("padding", "var(--vaadin-gap-s) 0")
+                .set("border-bottom", "2px solid var(--vaadin-border-color-secondary)")
                 .set("font-weight", "bold")
-                .set("font-size", "var(--lumo-font-size-s)")
-                .set("color", "var(--lumo-secondary-text-color)");
+                .set("font-size", "var(--aura-font-size-s)")
+                .set("color", "var(--vaadin-text-color-secondary)");
 
         for (int i = 0; i < columns.length; i++) {
             Span col = new Span(columns[i]);
@@ -1043,9 +1043,9 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         HorizontalLayout header = new HorizontalLayout();
         header.setWidthFull();
         header.getStyle()
-                .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
-                .set("border-bottom", "2px solid var(--lumo-contrast-10pct)")
-                .set("margin-bottom", "var(--lumo-space-xs)");
+                .set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-s)")
+                .set("border-bottom", "2px solid var(--vaadin-border-color-secondary)")
+                .set("margin-bottom", "var(--vaadin-gap-xs)");
 
         for (int i = 0; i < labels.length; i++) {
             final String key = keys[i];
@@ -1061,7 +1061,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                     .set("letter-spacing", "0.07em")
                     .set("cursor", "pointer")
                     .set("user-select", "none")
-                    .set("color", active ? "var(--lumo-primary-color)" : "var(--lumo-secondary-text-color)")
+                    .set("color", active ? "var(--aura-accent-color)" : "var(--vaadin-text-color-secondary)")
                     .set("transition", "color 0.15s");
 
             col.addClickListener(e -> {
@@ -1087,10 +1087,10 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         HorizontalLayout row = new HorizontalLayout();
         row.setWidthFull();
         row.getStyle()
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-s)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-s)")
                 .set("border-radius", "8px")
-                .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
-                .set("font-size", "var(--lumo-font-size-s)")
+                .set("border-bottom", "1px solid var(--cuenti-divider)")
+                .set("font-size", "var(--aura-font-size-s)")
                 .set("align-items", "center");
         row.addClassName("hover-row");
 
@@ -1098,15 +1098,15 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         labelSpan.getStyle()
                 .set("flex", "2")
                 .set("font-weight", "500")
-                .set("color", "var(--lumo-body-text-color)")
+                .set("color", "var(--vaadin-text-color)")
                 .set("overflow", "hidden")
                 .set("text-overflow", "ellipsis")
                 .set("white-space", "nowrap");
 
-        row.add(labelSpan, createAmountBadge(income, "var(--lumo-success-color)", "rgba(var(--lumo-success-color-50pct-rgb, 0,168,80),0.1)"),
-                createAmountBadge(expense, "var(--lumo-error-color)", "rgba(var(--lumo-error-color-50pct-rgb, 255,63,63),0.1)"),
-                createAmountBadge(net, isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)",
-                        isPositive ? "rgba(var(--lumo-success-color-50pct-rgb, 0,168,80),0.15)" : "rgba(var(--lumo-error-color-50pct-rgb, 255,63,63),0.15)"));
+        row.add(labelSpan, createAmountBadge(income, "var(--aura-green)", "color-mix(in srgb, var(--aura-green) 10%, transparent)"),
+                createAmountBadge(expense, "var(--aura-red)", "color-mix(in srgb, var(--aura-red) 10%, transparent)"),
+                createAmountBadge(net, isPositive ? "var(--aura-green)" : "var(--aura-red)",
+                        isPositive ? "color-mix(in srgb, var(--aura-green) 15%, transparent)" : "color-mix(in srgb, var(--aura-red) 15%, transparent)"));
 
         if (pctChange != null) {
             boolean pctPositive = pctChange.startsWith("+");
@@ -1115,10 +1115,10 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
             pctSpan.getStyle()
                     .set("flex", "1")
                     .set("text-align", "right")
-                    .set("font-size", "var(--lumo-font-size-xs)")
+                    .set("font-size", "var(--aura-font-size-xs)")
                     .set("font-weight", "600")
-                    .set("color", pctNeutral ? "var(--lumo-secondary-text-color)"
-                            : pctPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
+                    .set("color", pctNeutral ? "var(--vaadin-text-color-secondary)"
+                            : pctPositive ? "var(--aura-green)" : "var(--aura-red)");
             row.add(pctSpan);
         }
 
@@ -1130,7 +1130,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         badge.getStyle()
                 .set("flex", "1")
                 .set("text-align", "right")
-                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("font-size", "var(--aura-font-size-xs)")
                 .set("font-weight", "600")
                 .set("color", color);
         return badge;
@@ -1140,24 +1140,24 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         HorizontalLayout row = new HorizontalLayout();
         row.setWidthFull();
         row.getStyle()
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-s) var(--lumo-space-xs) var(--lumo-space-s)")
-                .set("margin-top", "var(--lumo-space-s)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-s) var(--vaadin-gap-xs) var(--vaadin-gap-s)")
+                .set("margin-top", "var(--vaadin-gap-s)")
                 .set("border-radius", "8px 8px 0 0")
-                .set("background", "var(--lumo-contrast-10pct)")
+                .set("background", "var(--vaadin-background-container-strong)")
                 .set("align-items", "center");
 
         Span indicator = new Span("▸ ");
         indicator.getStyle()
-                .set("color", "var(--lumo-secondary-text-color)")
-                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("color", "var(--vaadin-text-color-secondary)")
+                .set("font-size", "var(--aura-font-size-xs)")
                 .set("margin-right", "4px");
 
         Span labelSpan = new Span(label);
         labelSpan.getStyle()
                 .set("flex", "2")
-                .set("font-size", "var(--lumo-font-size-s)")
+                .set("font-size", "var(--aura-font-size-s)")
                 .set("font-weight", "700")
-                .set("color", "var(--lumo-header-text-color)")
+                .set("color", "var(--vaadin-text-color)")
                 .set("display", "flex")
                 .set("align-items", "center")
                 .set("gap", "2px");
@@ -1167,9 +1167,9 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         netSpan.getStyle()
                 .set("flex", "1")
                 .set("text-align", "right")
-                .set("font-size", "var(--lumo-font-size-s)")
+                .set("font-size", "var(--aura-font-size-s)")
                 .set("font-weight", "700")
-                .set("color", isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
+                .set("color", isPositive ? "var(--aura-green)" : "var(--aura-red)");
 
         row.add(labelSpan, netSpan);
         return row;
@@ -1179,8 +1179,8 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         HorizontalLayout row = new HorizontalLayout();
         row.setWidthFull();
         row.getStyle()
-                .set("padding", "var(--lumo-space-xs) var(--lumo-space-s) var(--lumo-space-xs) var(--lumo-space-xl)")
-                .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
+                .set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-s) var(--vaadin-gap-xs) var(--cuenti-space-xl)")
+                .set("border-bottom", "1px solid var(--cuenti-divider)")
                 .set("align-items", "center");
         row.addClassName("hover-row--tinted");
 
@@ -1188,15 +1188,15 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         dot.getStyle()
                 .set("width", "6px").set("height", "6px")
                 .set("border-radius", "50%")
-                .set("background", isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)")
+                .set("background", isPositive ? "var(--aura-green)" : "var(--aura-red)")
                 .set("flex-shrink", "0")
-                .set("margin-right", "var(--lumo-space-s)");
+                .set("margin-right", "var(--vaadin-gap-s)");
 
         Span labelSpan = new Span(label);
         labelSpan.getStyle()
                 .set("flex", "2")
-                .set("font-size", "var(--lumo-font-size-s)")
-                .set("color", "var(--lumo-secondary-text-color)")
+                .set("font-size", "var(--aura-font-size-s)")
+                .set("color", "var(--vaadin-text-color-secondary)")
                 .set("display", "flex")
                 .set("align-items", "center");
         labelSpan.addComponentAsFirst(dot);
@@ -1205,9 +1205,9 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         netSpan.getStyle()
                 .set("flex", "1")
                 .set("text-align", "right")
-                .set("font-size", "var(--lumo-font-size-s)")
+                .set("font-size", "var(--aura-font-size-s)")
                 .set("font-weight", "600")
-                .set("color", isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
+                .set("color", isPositive ? "var(--aura-green)" : "var(--aura-red)");
 
         row.add(labelSpan, netSpan);
         return row;
@@ -1217,10 +1217,10 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         HorizontalLayout row = new HorizontalLayout();
         row.setWidthFull();
         row.getStyle()
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-s)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-s)")
                 .set("border-radius", "8px")
-                .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
-                .set("font-size", "var(--lumo-font-size-s)")
+                .set("border-bottom", "1px solid var(--cuenti-divider)")
+                .set("font-size", "var(--aura-font-size-s)")
                 .set("align-items", "center");
         row.addClassName("hover-row");
 
@@ -1237,7 +1237,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                 .set("flex", "1")
                 .set("text-align", "right")
                 .set("font-weight", "700")
-                .set("color", isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
+                .set("color", isPositive ? "var(--aura-green)" : "var(--aura-red)");
 
         row.add(labelSpan, netSpan);
         return row;
@@ -1263,8 +1263,8 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         Div row = new Div();
         row.setWidthFull();
         row.getStyle()
-                .set("margin-bottom", "var(--lumo-space-m)")
-                .set("padding", "var(--lumo-space-s)")
+                .set("margin-bottom", "var(--vaadin-gap-m)")
+                .set("padding", "var(--vaadin-gap-s)")
                 .set("border-radius", "8px");
         row.addClassName("hover-row");
 
@@ -1274,17 +1274,17 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         info.setAlignItems(Alignment.BASELINE);
 
         Span labelSpan = new Span(label);
-        labelSpan.getStyle().set("font-size", "var(--lumo-font-size-s)").set("font-weight", "500");
+        labelSpan.getStyle().set("font-size", "var(--aura-font-size-s)").set("font-weight", "500");
 
         HorizontalLayout rightInfo = new HorizontalLayout();
         rightInfo.setSpacing(true);
         rightInfo.setAlignItems(Alignment.BASELINE);
 
         Span amountSpan = new Span(formatCurrency(amount));
-        amountSpan.getStyle().set("font-size", "var(--lumo-font-size-s)").set("font-weight", "700").set("color", "var(--lumo-error-color)");
+        amountSpan.getStyle().set("font-size", "var(--aura-font-size-s)").set("font-weight", "700").set("color", "var(--aura-red)");
 
         Span pctSpan = new Span(String.format("%.0f%%", percent));
-        pctSpan.getStyle().set("font-size", "var(--lumo-font-size-xs)").set("color", "var(--lumo-secondary-text-color)");
+        pctSpan.getStyle().set("font-size", "var(--aura-font-size-xs)").set("color", "var(--vaadin-text-color-secondary)");
 
         rightInfo.add(pctSpan, amountSpan);
         info.add(labelSpan, rightInfo);
@@ -1292,7 +1292,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         Div progressBg = new Div();
         progressBg.setWidthFull();
         progressBg.getStyle()
-                .set("background", "var(--lumo-contrast-10pct)")
+                .set("background", "var(--vaadin-background-container-strong)")
                 .set("border-radius", "6px")
                 .set("height", "8px")
                 .set("margin-top", "6px");
@@ -1301,7 +1301,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         progressBar.setWidth(percent + "%");
         progressBar.setHeight("100%");
         progressBar.getStyle()
-                .set("background", "linear-gradient(90deg, var(--lumo-error-color), var(--lumo-error-color-50pct, #ff9999))")
+                .set("background", "linear-gradient(90deg, var(--aura-red), var(--lumo-error-color-50pct, #ff9999))")
                 .set("border-radius", "6px");
 
         progressBg.add(progressBar);
@@ -1325,9 +1325,9 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
 
         Span text = new Span(label);
         text.getStyle()
-                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("font-size", "var(--aura-font-size-xs)")
                 .set("font-weight", "500")
-                .set("color", "var(--lumo-secondary-text-color)");
+                .set("color", "var(--vaadin-text-color-secondary)");
 
         item.add(dot, text);
         return item;

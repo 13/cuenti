@@ -39,7 +39,7 @@ public class AboutView extends VerticalLayout implements HasDynamicTitle {
         setPadding(false);
         setSpacing(false);
         addClassName("page-scroll");
-        getStyle().set("padding", "var(--lumo-space-l)");
+        getStyle().set("padding", "var(--vaadin-gap-l)");
 
         String version   = getVersion();
         String buildDate = getBuildDate();
@@ -49,10 +49,10 @@ public class AboutView extends VerticalLayout implements HasDynamicTitle {
         Div card = new Div();
         card.addClassName("card");
         card.getStyle()
-                .set("padding", "var(--lumo-space-xl)")
+                .set("padding", "var(--cuenti-space-xl)")
                 .set("max-width", "680px").set("width", "100%")
                 .set("display", "flex").set("flex-direction", "column")
-                .set("align-items", "center").set("gap", "var(--lumo-space-l)")
+                .set("align-items", "center").set("gap", "var(--vaadin-gap-l)")
                 .set("box-sizing", "border-box");
 
         // Logo + app name
@@ -61,33 +61,33 @@ public class AboutView extends VerticalLayout implements HasDynamicTitle {
 
         Span appName = new Span(getTranslation("app.name"));
         appName.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)").set("font-weight", "800")
-                .set("color", "var(--lumo-header-text-color)");
+                .set("font-size", "var(--cuenti-font-size-xxl)").set("font-weight", "800")
+                .set("color", "var(--vaadin-text-color)");
 
         Span tagline = new Span(getTranslation("app.name") + " — " + getTranslation("about.tagline", "Personal Finance, Simplified"));
-        tagline.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-secondary-text-color)");
+        tagline.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
 
         Div heroSection = new Div(logo, appName, tagline);
-        heroSection.getStyle().set("display","flex").set("flex-direction","column").set("align-items","center").set("gap","var(--lumo-space-s)");
+        heroSection.getStyle().set("display","flex").set("flex-direction","column").set("align-items","center").set("gap","var(--vaadin-gap-s)");
         card.add(heroSection);
 
         // Version badge
         Div versionBadge = new Div();
         versionBadge.getStyle()
-                .set("display","flex").set("gap","var(--lumo-space-m)").set("flex-wrap","wrap").set("justify-content","center");
-        versionBadge.add(infoPill("v" + version, "var(--lumo-primary-color)"));
-        versionBadge.add(infoPill(buildDate, "var(--lumo-secondary-text-color)"));
+                .set("display","flex").set("gap","var(--vaadin-gap-m)").set("flex-wrap","wrap").set("justify-content","center");
+        versionBadge.add(infoPill("v" + version, "var(--aura-accent-color)"));
+        versionBadge.add(infoPill(buildDate, "var(--vaadin-text-color-secondary)"));
         card.add(versionBadge);
 
         // Tech stack
         Div techCard = new Div();
         techCard.setWidthFull();
         techCard.getStyle()
-                .set("background","var(--cuenti-surface-muted)").set("border-radius","var(--lumo-border-radius-l)")
-                .set("padding","var(--lumo-space-m) var(--lumo-space-l)")
-                .set("display","flex").set("flex-direction","column").set("gap","var(--lumo-space-xs)");
+                .set("background","var(--cuenti-surface-muted)").set("border-radius","var(--vaadin-radius-l)")
+                .set("padding","var(--vaadin-gap-m) var(--vaadin-gap-l)")
+                .set("display","flex").set("flex-direction","column").set("gap","var(--vaadin-gap-xs)");
         Span techTitle = new Span(getTranslation("about.tech_title").toUpperCase());
-        techTitle.getStyle().set("font-size","10px").set("font-weight","700").set("letter-spacing","0.08em").set("color","var(--lumo-secondary-text-color)");
+        techTitle.getStyle().set("font-size","10px").set("font-weight","700").set("letter-spacing","0.08em").set("color","var(--vaadin-text-color-secondary)");
         techCard.add(techTitle);
         String[][] rows = new String[][]{
                 { getTranslation("tech.spring_boot"), SpringBootVersion.getVersion() },
@@ -98,9 +98,9 @@ public class AboutView extends VerticalLayout implements HasDynamicTitle {
         for (String[] row : rows) {
             Div rowDiv = new Div();
             rowDiv.getStyle().set("display","flex").set("justify-content","space-between").set("align-items","center")
-                    .set("padding","var(--lumo-space-xs) 0").set("border-bottom","1px solid var(--lumo-contrast-5pct)");
-            Span k = new Span(row[0]); k.getStyle().set("font-size","var(--lumo-font-size-s)").set("color","var(--lumo-secondary-text-color)");
-            Span v = new Span(row[1]); v.getStyle().set("font-size","var(--lumo-font-size-s)").set("font-weight","600");
+                    .set("padding","var(--vaadin-gap-xs) 0").set("border-bottom","1px solid var(--cuenti-divider)");
+            Span k = new Span(row[0]); k.getStyle().set("font-size","var(--aura-font-size-s)").set("color","var(--vaadin-text-color-secondary)");
+            Span v = new Span(row[1]); v.getStyle().set("font-size","var(--aura-font-size-s)").set("font-weight","600");
             rowDiv.add(k, v);
             techCard.add(rowDiv);
         }
@@ -108,7 +108,7 @@ public class AboutView extends VerticalLayout implements HasDynamicTitle {
 
         // Copyright
         Span copyright = new Span(getTranslation("about.copyright", String.valueOf(currentYear), getTranslation("app.name")));
-        copyright.getStyle().set("font-size","var(--lumo-font-size-xs)").set("color","var(--lumo-tertiary-text-color)");
+        copyright.getStyle().set("font-size","var(--aura-font-size-xs)").set("color","var(--vaadin-text-color-disabled)");
         card.add(copyright);
 
         add(card);
@@ -125,7 +125,7 @@ public class AboutView extends VerticalLayout implements HasDynamicTitle {
 
     private Span infoPill(String text, String color) {
         Span s = new Span(text);
-        s.getStyle().set("font-size","var(--lumo-font-size-xs)").set("font-weight","600")
+        s.getStyle().set("font-size","var(--aura-font-size-xs)").set("font-weight","600")
                 .set("padding","3px 10px").set("border-radius","99px")
                 .set("background", color + "1a").set("color", color);
         return s;

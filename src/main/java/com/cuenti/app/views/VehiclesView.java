@@ -102,7 +102,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("padding", "var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-m)")
                 .set("overflow", "hidden");
 
         setupUI();
@@ -150,7 +150,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         card.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-m)");
+                .set("gap", "var(--vaadin-gap-m)");
 
         card.add(createToolbar(), summaryContainer, grid);
         add(title, card);
@@ -165,14 +165,14 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         inner.setWidthFull();
         inner.setAlignItems(Alignment.BASELINE);
         inner.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
-        inner.getStyle().set("flex-wrap", "wrap").set("gap", "var(--lumo-space-s)");
+        inner.getStyle().set("flex-wrap", "wrap").set("gap", "var(--vaadin-gap-s)");
 
         Div toolbar = new Div(inner);
         toolbar.setWidthFull();
         toolbar.getStyle()
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
+                .set("border-radius", "var(--vaadin-radius-l)")
                 .set("box-sizing", "border-box");
         return toolbar;
     }
@@ -181,7 +181,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         HorizontalLayout filterLayout = new HorizontalLayout();
         filterLayout.setAlignItems(Alignment.BASELINE);
         filterLayout.setSpacing(false);
-        filterLayout.getStyle().set("gap", "var(--lumo-space-s)");
+        filterLayout.getStyle().set("gap", "var(--vaadin-gap-s)");
 
         timeRangeSelect = new Select<>();
         timeRangeSelect.setLabel(getTranslation("statistics.time_range"));
@@ -333,7 +333,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         // Date
         grid.addComponentColumn(e -> {
             Span s = new Span(e.date.format(dateFormatter));
-            s.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-secondary-text-color)");
+            s.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
             return s;
         }).setHeader(getTranslation("vehicles.date")).setAutoWidth(true).setSortable(true)
                 .setComparator(java.util.Comparator.comparing(e -> e.date));
@@ -341,16 +341,16 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         // Odometer
         grid.addComponentColumn(e -> {
             Span s = new Span(e.odometer != null ? e.odometer.setScale(0, RoundingMode.HALF_UP) + " km" : "—");
-            s.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-secondary-text-color)");
+            s.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
             return s;
         }).setHeader(getTranslation("vehicles.odometer")).setAutoWidth(true).setSortable(true)
                 .setComparator(java.util.Comparator.comparing(e -> e.odometer != null ? e.odometer : BigDecimal.ZERO));
 
         // Distance
         grid.addComponentColumn(e -> {
-                    if (e.distance == null) { Span s = new Span("—"); s.getStyle().set("color", "var(--lumo-disabled-text-color)"); return s; }
+                    if (e.distance == null) { Span s = new Span("—"); s.getStyle().set("color", "var(--vaadin-text-color-disabled)"); return s; }
                     Span s = new Span(e.distance.setScale(0, RoundingMode.HALF_UP) + " km");
-                    s.getStyle().set("font-size", "var(--lumo-font-size-s)");
+                    s.getStyle().set("font-size", "var(--aura-font-size-s)");
                     return s;
                 }).setHeader(getTranslation("vehicles.distance")).setAutoWidth(true).setSortable(true)
                 .setComparator(java.util.Comparator.comparing(e -> e.distance != null ? e.distance : BigDecimal.ZERO));
@@ -358,7 +358,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         // Liters
         grid.addComponentColumn(e -> {
             Span s = new Span(e.liters != null ? e.liters.setScale(2, RoundingMode.HALF_UP) + " L" : "—");
-            s.getStyle().set("font-size", "var(--lumo-font-size-s)");
+            s.getStyle().set("font-size", "var(--aura-font-size-s)");
             return s;
         }).setHeader(getTranslation("vehicles.liters")).setAutoWidth(true).setSortable(true)
                 .setComparator(java.util.Comparator.comparing(e -> e.liters != null ? e.liters : BigDecimal.ZERO));
@@ -367,7 +367,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         grid.addComponentColumn(e -> {
             BigDecimal converted = exchangeRateService.convert(e.amount, e.currency, currentUser.getDefaultCurrency());
             Span s = new Span(formatCurrency(converted));
-            s.getStyle().set("font-weight", "700").set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-error-color)");
+            s.getStyle().set("font-weight", "700").set("font-size", "var(--aura-font-size-s)").set("color", "var(--aura-red)");
             return s;
         }).setHeader(getTranslation("vehicles.amount")).setAutoWidth(true).setSortable(true)
                 .setComparator(java.util.Comparator.comparing(e -> e.amount));
@@ -375,23 +375,23 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         // Price / L
         grid.addComponentColumn(e -> {
             Span s = new Span(e.pricePerLiter != null ? formatCurrency(e.pricePerLiter) + "/L" : "—");
-            s.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-secondary-text-color)");
+            s.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
             return s;
         }).setHeader(getTranslation("vehicles.price_per_liter")).setAutoWidth(true).setSortable(true)
                 .setComparator(java.util.Comparator.comparing(e -> e.pricePerLiter != null ? e.pricePerLiter : BigDecimal.ZERO));
 
         // Consumption — coloured pill
         grid.addComponentColumn(e -> {
-            if (e.consumption == null) { Span s = new Span("—"); s.getStyle().set("color", "var(--lumo-disabled-text-color)"); return s; }
+            if (e.consumption == null) { Span s = new Span("—"); s.getStyle().set("color", "var(--vaadin-text-color-disabled)"); return s; }
             Span s = new Span(e.consumption + " L/100km");
             // Low consumption = green (< 6), medium = warning (6-9), high = red (> 9)
             String color = e.consumption.compareTo(BigDecimal.valueOf(6)) < 0
-                    ? "var(--lumo-success-color)"
+                    ? "var(--aura-green)"
                     : e.consumption.compareTo(BigDecimal.valueOf(9)) < 0
-                            ? "var(--lumo-warning-color, #e8a000)"
-                            : "var(--lumo-error-color)";
+                            ? "var(--aura-orange)"
+                            : "var(--aura-red)";
             s.getStyle()
-                    .set("font-size", "var(--lumo-font-size-xs)").set("font-weight", "700")
+                    .set("font-size", "var(--aura-font-size-xs)").set("font-weight", "700")
                     .set("padding", "2px 8px").set("border-radius", "99px")
                     .set("background", color + "1a") // 10% tint
                     .set("color", color).set("white-space", "nowrap");
@@ -403,11 +403,11 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         grid.addComponentColumn(e -> {
             if (e.fullTank) {
                 Icon icon = VaadinIcon.CHECK.create();
-                icon.setColor("var(--lumo-success-color)");
+                icon.setColor("var(--aura-green)");
                 return icon;
             } else {
                 Span dash = new Span("—");
-                dash.getStyle().set("color", "var(--lumo-disabled-text-color)");
+                dash.getStyle().set("color", "var(--vaadin-text-color-disabled)");
                 return dash;
             }
         })
@@ -421,7 +421,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         // Station
         grid.addComponentColumn(e -> {
                     Span s = new Span(e.station != null ? e.station : "—");
-                    s.getStyle().set("font-weight", "500").set("font-size", "var(--lumo-font-size-s)");
+                    s.getStyle().set("font-weight", "500").set("font-size", "var(--aura-font-size-s)");
                     return s;
                 }).setHeader(getTranslation("vehicles.station")).setFlexGrow(1).setSortable(true)
                 .setComparator(java.util.Comparator.comparing(e -> e.station != null ? e.station : ""));
@@ -511,12 +511,12 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
             Div empty = new Div();
             empty.getStyle()
                     .set("display", "flex").set("flex-direction", "column").set("align-items", "center")
-                    .set("justify-content", "center").set("padding", "var(--lumo-space-xl)")
-                    .set("color", "var(--lumo-secondary-text-color)").set("gap", "var(--lumo-space-s)");
+                    .set("justify-content", "center").set("padding", "var(--cuenti-space-xl)")
+                    .set("color", "var(--vaadin-text-color-secondary)").set("gap", "var(--vaadin-gap-s)");
             Icon ico = VaadinIcon.DROP.create();
             ico.getStyle().set("font-size", "48px").set("opacity", "0.3");
             Span msg = new Span(getTranslation("vehicles.no_data"));
-            msg.getStyle().set("font-size", "var(--lumo-font-size-m)");
+            msg.getStyle().set("font-size", "var(--aura-font-size-m)");
             empty.add(ico, msg);
             summaryContainer.add(empty);
             return;
@@ -535,15 +535,15 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         FlexLayout summaryLayout = new FlexLayout();
         summaryLayout.setWidthFull();
         summaryLayout.setFlexWrap(FlexLayout.FlexWrap.WRAP);
-        summaryLayout.getStyle().set("gap", "var(--lumo-space-m)");
+        summaryLayout.getStyle().set("gap", "var(--vaadin-gap-m)");
 
         summaryLayout.add(
-                createSummaryCard(getTranslation("vehicles.total_fillups"),  String.valueOf(fuelEntries.size()),                                   VaadinIcon.DROP, "var(--lumo-primary-color)"),
-                createSummaryCard(getTranslation("vehicles.total_liters"),   totalLiters.setScale(2, RoundingMode.HALF_UP) + " L",                 VaadinIcon.FILL,  "var(--lumo-primary-color)"),
-                createSummaryCard(getTranslation("vehicles.total_cost"),     formatCurrency(totalAmount),                                          VaadinIcon.MONEY,  "var(--lumo-error-color)"),
-                createSummaryCard(getTranslation("vehicles.total_distance"), totalDistance.setScale(0, RoundingMode.HALF_UP) + " km",              VaadinIcon.ROAD,   "var(--lumo-success-color)"),
+                createSummaryCard(getTranslation("vehicles.total_fillups"),  String.valueOf(fuelEntries.size()),                                   VaadinIcon.DROP, "var(--aura-accent-color)"),
+                createSummaryCard(getTranslation("vehicles.total_liters"),   totalLiters.setScale(2, RoundingMode.HALF_UP) + " L",                 VaadinIcon.FILL,  "var(--aura-accent-color)"),
+                createSummaryCard(getTranslation("vehicles.total_cost"),     formatCurrency(totalAmount),                                          VaadinIcon.MONEY,  "var(--aura-red)"),
+                createSummaryCard(getTranslation("vehicles.total_distance"), totalDistance.setScale(0, RoundingMode.HALF_UP) + " km",              VaadinIcon.ROAD,   "var(--aura-green)"),
                 createSummaryCard(getTranslation("vehicles.avg_consumption"),avgConsumption + " L/100km",                                          VaadinIcon.DASHBOARD, consumptionColor(avgConsumption)),
-                createSummaryCard(getTranslation("vehicles.avg_price_per_liter"), avgPricePerL.compareTo(BigDecimal.ZERO) > 0 ? formatCurrency(avgPricePerL) + "/L" : "—", VaadinIcon.TAG, "var(--lumo-secondary-text-color)")
+                createSummaryCard(getTranslation("vehicles.avg_price_per_liter"), avgPricePerL.compareTo(BigDecimal.ZERO) > 0 ? formatCurrency(avgPricePerL) + "/L" : "—", VaadinIcon.TAG, "var(--vaadin-text-color-secondary)")
         );
 
         // Consumption trend mini chart
@@ -551,16 +551,16 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         trendSection.setWidthFull();
         trendSection.getStyle()
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
-                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
+                .set("border-radius", "var(--vaadin-radius-l)")
+                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l)")
                 .set("box-sizing", "border-box")
-                .set("margin-top", "var(--lumo-space-s)");
+                .set("margin-top", "var(--vaadin-gap-s)");
 
         Span trendTitle = new Span(getTranslation("vehicles.consumption_trend").toUpperCase());
         trendTitle.getStyle()
                 .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                .set("color", "var(--lumo-secondary-text-color)").set("display", "block")
-                .set("margin-bottom", "var(--lumo-space-s)");
+                .set("color", "var(--vaadin-text-color-secondary)").set("display", "block")
+                .set("margin-bottom", "var(--vaadin-gap-s)");
         trendSection.add(trendTitle);
         renderConsumptionChart(trendSection);
 
@@ -568,10 +568,10 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
     }
 
     private String consumptionColor(BigDecimal c) {
-        if (c.compareTo(BigDecimal.ZERO) == 0) return "var(--lumo-secondary-text-color)";
-        if (c.compareTo(BigDecimal.valueOf(6)) < 0) return "var(--lumo-success-color)";
-        if (c.compareTo(BigDecimal.valueOf(9)) < 0) return "var(--lumo-warning-color, #e8a000)";
-        return "var(--lumo-error-color)";
+        if (c.compareTo(BigDecimal.ZERO) == 0) return "var(--vaadin-text-color-secondary)";
+        if (c.compareTo(BigDecimal.valueOf(6)) < 0) return "var(--aura-green)";
+        if (c.compareTo(BigDecimal.valueOf(9)) < 0) return "var(--aura-orange)";
+        return "var(--aura-red)";
     }
 
     private void renderConsumptionChart(Div container) {
@@ -581,7 +581,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
                 .toList();
         if (withConsumption.isEmpty()) {
             Span none = new Span(getTranslation("vehicles.no_consumption_data"));
-            none.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-secondary-text-color)");
+            none.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
             container.add(none);
             return;
         }
@@ -614,7 +614,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
                     .set("border-radius", "4px 4px 0 0");
 
             Span lbl = new Span(e.date.format(fmt));
-            lbl.getStyle().set("font-size", "9px").set("color", "var(--lumo-secondary-text-color)")
+            lbl.getStyle().set("font-size", "9px").set("color", "var(--vaadin-text-color-secondary)")
                     .set("white-space", "nowrap");
 
             barGroup.add(value, bar, lbl);
@@ -629,16 +629,16 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         card.getStyle()
                 .set("flex", "1 1 150px").set("min-width", "140px")
                 .set("border-left", "4px solid " + accentColor)
-                .set("display", "flex").set("flex-direction", "column").set("gap", "var(--lumo-space-xs)");
+                .set("display", "flex").set("flex-direction", "column").set("gap", "var(--vaadin-gap-xs)");
 
         Span titleSpan = new Span(title.toUpperCase());
         titleSpan.getStyle()
                 .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                .set("color", "var(--lumo-secondary-text-color)");
+                .set("color", "var(--vaadin-text-color-secondary)");
 
         Span valueSpan = new Span(value);
         valueSpan.getStyle()
-                .set("font-size", "var(--lumo-font-size-xl)").set("font-weight", "700")
+                .set("font-size", "var(--aura-font-size-xl)").set("font-weight", "700")
                 .set("color", accentColor).set("line-height", "1.1");
 
         card.add(titleSpan, valueSpan);
@@ -650,12 +650,12 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         Div empty = new Div();
         empty.getStyle()
                 .set("display", "flex").set("flex-direction", "column").set("align-items", "center")
-                .set("justify-content", "center").set("padding", "var(--lumo-space-xl)")
-                .set("color", "var(--lumo-secondary-text-color)").set("gap", "var(--lumo-space-s)");
+                .set("justify-content", "center").set("padding", "var(--cuenti-space-xl)")
+                .set("color", "var(--vaadin-text-color-secondary)").set("gap", "var(--vaadin-gap-s)");
         Icon ico = VaadinIcon.CAR.create();
         ico.getStyle().set("font-size", "48px").set("opacity", "0.25");
         Span msg = new Span(getTranslation("vehicles.select_placeholder"));
-        msg.getStyle().set("font-size", "var(--lumo-font-size-m)");
+        msg.getStyle().set("font-size", "var(--aura-font-size-m)");
         empty.add(ico, msg);
         summaryContainer.add(empty);
     }

@@ -1,75 +1,39 @@
 /* ============================================================================
-   Cuenti Design System
+   Cuenti — Aura design system customization
    ----------------------------------------------------------------------------
-   Enterprise finance SaaS look built on Lumo design tokens.
-   - Trust blue primary, profit green / loss red semantics
-   - Lexend for headings, Source Sans 3 for body (system-font fallback)
-   - Light and dark theme variants
-   - Reusable utility classes consumed by the Java views
+   Built on the Vaadin Aura theme (loaded via @StyleSheet(Aura.STYLESHEET)).
+   - Brand accent: trust blue; semantic green/red for profit/loss
+   - Typography: Aura's Instrument Sans (no external font requests)
+   - Light/dark resolved by CSS color-scheme + light-dark(); the theme
+     toggle sets document.documentElement.style.colorScheme
+   - Utility classes consumed by the Java views; custom CSS kept minimal
    ============================================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
-
 /* ----------------------------------------------------------------------------
-   1. Design tokens — shared
+   1. Design tokens
    ---------------------------------------------------------------------------- */
 html {
-  --cuenti-font-heading: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --lumo-font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* Brand accent (Aura derives hover/active/surface shades from these) */
+  --aura-accent-color-light: #1e40af;
+  --aura-accent-color-dark: #3b82f6;
 
-  /* Type scale */
-  --lumo-font-size-xxxl: 2rem;
-  --lumo-font-size-xxl: 1.5rem;
-  --lumo-font-size-xl: 1.25rem;
-  --lumo-font-size-l: 1.125rem;
-  --lumo-font-size-m: 1rem;
-  --lumo-font-size-s: 0.875rem;
-  --lumo-font-size-xs: 0.8125rem;
-  --lumo-font-size-xxs: 0.75rem;
+  /* App background: neutral light / deep navy dark */
+  --aura-background-color-light: oklch(0.96 0.005 255);
+  --aura-background-color-dark: oklch(0.21 0.03 262);
 
-  /* Shape */
-  --lumo-border-radius-s: 0.375rem;
-  --lumo-border-radius-m: 0.5rem;
-  --lumo-border-radius-l: 0.75rem;
-
-  /* Semantic colors (identical hue both themes; contrast tuned per theme below) */
-  --lumo-success-color: #059669;
-  --lumo-error-color: #dc2626;
-
-  /* Elevation scale */
-  --cuenti-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
-  --cuenti-shadow-raised: 0 4px 12px rgba(15, 23, 42, 0.12);
+  /* App-specific tokens not covered by Aura */
+  --cuenti-font-size-xxl: calc(var(--aura-font-size-xl) * 1.3);
+  --cuenti-surface-muted: var(--vaadin-background-container);
+  --cuenti-space-xl: calc(var(--vaadin-gap-l) * 1.5);
+  --cuenti-amount-positive: light-dark(#047857, #34d399);
+  --cuenti-amount-negative: light-dark(#b91c1c, #f87171);
+  --cuenti-divider: color-mix(in srgb, var(--vaadin-text-color) 8%, transparent);
 }
 
-/* Light theme */
-html, [theme~="light"] {
-  --lumo-primary-color: #1e40af;
-  --lumo-primary-text-color: #1e40af;
-  --lumo-primary-color-50pct: rgba(30, 64, 175, 0.5);
-  --lumo-primary-color-10pct: rgba(30, 64, 175, 0.1);
-  --lumo-success-text-color: #047857;
-  --lumo-error-text-color: #b91c1c;
-  --cuenti-surface-muted: #f8fafc;
-}
-
-/* Dark theme — deep navy, lighter primary for contrast */
-[theme~="dark"] {
-  --lumo-base-color: #0f172a;
-  --lumo-primary-color: #3b82f6;
-  --lumo-primary-text-color: #60a5fa;
-  --lumo-primary-color-50pct: rgba(59, 130, 246, 0.5);
-  --lumo-primary-color-10pct: rgba(59, 130, 246, 0.14);
-  --lumo-success-text-color: #34d399;
-  --lumo-error-text-color: #f87171;
-  --cuenti-surface-muted: #101a34;
-  --cuenti-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
-  --cuenti-shadow-raised: 0 4px 12px rgba(0, 0, 0, 0.5);
-}
-
-/* Headings use the display face */
+/* Headings share Aura's font family with a heavier weight */
 h1, h2, h3, h4, h5, h6,
 .page-title, .card-title, .stat-value {
-  font-family: var(--cuenti-font-heading);
+  font-family: var(--aura-font-family);
 }
 
 /* ----------------------------------------------------------------------------
@@ -77,18 +41,17 @@ h1, h2, h3, h4, h5, h6,
    ---------------------------------------------------------------------------- */
 .page-scroll {
   overflow-y: auto;
-  background: var(--cuenti-surface-muted);
 }
 
 .page-container {
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: var(--lumo-space-m);
+  padding: var(--vaadin-padding-m);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: var(--lumo-space-m);
+  gap: var(--vaadin-gap-m);
 }
 
 .page-container--narrow {
@@ -100,20 +63,20 @@ h1, h2, h3, h4, h5, h6,
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--lumo-space-s);
+  gap: var(--vaadin-gap-s);
 }
 
 .page-title {
-  font-size: var(--lumo-font-size-xxl);
+  font-size: var(--cuenti-font-size-xxl);
   font-weight: 700;
-  color: var(--lumo-header-text-color);
+  color: var(--vaadin-text-color);
   line-height: 1.2;
   margin: 0;
 }
 
 .page-subtitle {
-  font-size: var(--lumo-font-size-s);
-  color: var(--lumo-secondary-text-color);
+  font-size: var(--aura-font-size-s);
+  color: var(--vaadin-text-color-secondary);
   margin: 0;
 }
 
@@ -121,58 +84,58 @@ h1, h2, h3, h4, h5, h6,
    3. Cards
    ---------------------------------------------------------------------------- */
 .card {
-  background: var(--lumo-base-color);
-  border: 1px solid var(--lumo-contrast-10pct);
-  border-radius: var(--lumo-border-radius-l);
-  box-shadow: var(--cuenti-shadow-card);
-  padding: var(--lumo-space-m);
+  background: var(--aura-surface-color-solid);
+  border: 1px solid var(--vaadin-border-color-secondary);
+  border-radius: var(--vaadin-radius-l);
+  box-shadow: var(--aura-shadow-xs);
+  padding: var(--vaadin-padding-m);
   box-sizing: border-box;
 }
 
 .card-title {
-  font-size: var(--lumo-font-size-l);
+  font-size: var(--aura-font-size-l);
   font-weight: 600;
-  color: var(--lumo-header-text-color);
-  margin: 0 0 var(--lumo-space-s) 0;
+  color: var(--vaadin-text-color);
+  margin: 0 0 var(--vaadin-gap-s) 0;
 }
 
 /* Metric tile */
 .stat-card {
   display: flex;
   flex-direction: column;
-  gap: var(--lumo-space-xs);
+  gap: var(--vaadin-gap-xs);
   flex: 1 1 200px;
   min-width: 0;
 }
 
 .stat-label {
-  font-size: var(--lumo-font-size-xs);
+  font-size: var(--aura-font-size-xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--lumo-secondary-text-color);
+  color: var(--vaadin-text-color-secondary);
   display: flex;
   align-items: center;
-  gap: var(--lumo-space-xs);
+  gap: var(--vaadin-gap-xs);
 }
 
 .stat-label vaadin-icon {
   width: 16px;
   height: 16px;
-  color: var(--lumo-primary-text-color);
+  color: var(--aura-accent-text-color);
 }
 
 .stat-value {
-  font-size: var(--lumo-font-size-xxl);
+  font-size: var(--cuenti-font-size-xxl);
   font-weight: 700;
-  color: var(--lumo-header-text-color);
+  color: var(--vaadin-text-color);
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
 }
 
 .stat-caption {
-  font-size: var(--lumo-font-size-xs);
-  color: var(--lumo-secondary-text-color);
+  font-size: var(--aura-font-size-xs);
+  color: var(--vaadin-text-color-secondary);
 }
 
 /* ----------------------------------------------------------------------------
@@ -182,7 +145,7 @@ h1, h2, h3, h4, h5, h6,
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;
-  gap: var(--lumo-space-s);
+  gap: var(--vaadin-gap-s);
 }
 
 .toolbar-spacer {
@@ -193,19 +156,19 @@ h1, h2, h3, h4, h5, h6,
    5. Semantic amounts & badges
    ---------------------------------------------------------------------------- */
 .amount-positive {
-  color: var(--lumo-success-text-color);
+  color: var(--cuenti-amount-positive);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 .amount-negative {
-  color: var(--lumo-error-text-color);
+  color: var(--cuenti-amount-negative);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 .amount-neutral {
-  color: var(--lumo-body-text-color);
+  color: var(--vaadin-text-color);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -215,12 +178,12 @@ h1, h2, h3, h4, h5, h6,
   align-items: center;
   border-radius: 999px;
   padding: 0.15rem 0.55rem;
-  font-size: var(--lumo-font-size-xs);
+  font-size: var(--aura-font-size-xs);
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
-  background-color: var(--tag-bg, var(--lumo-primary-color));
-  color: var(--tag-fg, var(--lumo-base-color));
+  background-color: var(--tag-bg, var(--aura-accent-color));
+  color: var(--tag-fg, var(--aura-accent-contrast-color));
 }
 
 /* Bar chart bars (dashboard cash-flow chart) */
@@ -250,17 +213,17 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .hover-row:hover {
-  background: var(--lumo-contrast-5pct);
+  background: var(--vaadin-background-container);
 }
 
-/* Tinted variant: rests on contrast-5pct, deepens on hover */
+/* Tinted variant: rests on container tint, deepens on hover */
 .hover-row--tinted {
-  background: var(--lumo-contrast-5pct);
+  background: var(--vaadin-background-container);
   transition: background 0.12s;
 }
 
 .hover-row--tinted:hover {
-  background: var(--lumo-contrast-10pct);
+  background: var(--vaadin-background-container-strong);
 }
 
 /* ----------------------------------------------------------------------------
@@ -271,33 +234,33 @@ h1, h2, h3, h4, h5, h6,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--lumo-space-s);
-  padding: var(--lumo-space-xl);
+  gap: var(--vaadin-gap-s);
+  padding: var(--cuenti-space-xl);
   text-align: center;
-  color: var(--lumo-secondary-text-color);
+  color: var(--vaadin-text-color-secondary);
 }
 
 .empty-state vaadin-icon {
   width: 40px;
   height: 40px;
-  color: var(--lumo-contrast-30pct);
+  color: var(--vaadin-text-color-disabled);
 }
 
 .empty-state-title {
-  font-size: var(--lumo-font-size-m);
+  font-size: var(--aura-font-size-m);
   font-weight: 600;
-  color: var(--lumo-body-text-color);
+  color: var(--vaadin-text-color);
 }
 
 /* ----------------------------------------------------------------------------
-   7. App shell: navbar + drawer navigation (moved from MainLayout executeJs)
+   7. App shell: navbar + drawer navigation
    ---------------------------------------------------------------------------- */
 vaadin-app-layout::part(navbar) {
   padding: 0;
   height: 52px;
   min-height: 52px;
   box-shadow: none;
-  border-bottom: 1px solid var(--lumo-contrast-10pct);
+  border-bottom: 1px solid var(--vaadin-border-color-secondary);
 }
 
 .nav-item {
@@ -308,10 +271,10 @@ vaadin-app-layout::part(navbar) {
   box-sizing: border-box;
   padding: 9px 16px;
   margin: 1px 0;
-  border-radius: 10px;
+  border-radius: var(--vaadin-radius-m);
   text-decoration: none !important;
-  color: var(--lumo-secondary-text-color);
-  font-size: var(--lumo-font-size-s);
+  color: var(--vaadin-text-color-secondary);
+  font-size: var(--aura-font-size-s);
   font-weight: 500;
   transition: background 0.12s, color 0.12s;
 }
@@ -320,23 +283,19 @@ vaadin-app-layout::part(navbar) {
 .nav-item:visited,
 .nav-item:focus {
   text-decoration: none !important;
-  background: var(--lumo-contrast-5pct);
-  color: var(--lumo-body-text-color);
+  background: var(--vaadin-background-container);
+  color: var(--vaadin-text-color);
 }
 
 .nav-item:focus-visible {
-  outline: 2px solid var(--lumo-primary-color-50pct);
+  outline: 2px solid var(--vaadin-focus-ring-color);
   outline-offset: -2px;
 }
 
 .nav-item[highlight] {
-  background: var(--lumo-primary-color-10pct);
-  color: var(--lumo-primary-text-color);
+  background: var(--aura-accent-surface);
+  color: light-dark(var(--aura-accent-text-color), var(--vaadin-text-color));
   font-weight: 600;
-}
-
-[theme~="dark"] .nav-item[highlight] {
-  color: white;
 }
 
 .nav-item vaadin-icon {
@@ -355,7 +314,7 @@ vaadin-app-layout::part(navbar) {
 }
 
 .nav-section-header:hover .nav-section-label {
-  color: var(--lumo-secondary-text-color);
+  color: var(--vaadin-text-color-secondary);
 }
 
 .nav-section-label {
@@ -363,7 +322,7 @@ vaadin-app-layout::part(navbar) {
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--lumo-tertiary-text-color);
+  color: var(--vaadin-text-color-disabled);
   flex-grow: 1;
 }
 
@@ -371,13 +330,13 @@ vaadin-app-layout::part(navbar) {
   width: 14px !important;
   height: 14px !important;
   flex-shrink: 0;
-  color: var(--lumo-tertiary-text-color);
+  color: var(--vaadin-text-color-disabled);
   transition: transform 0.2s ease;
 }
 
 .nav-divider {
   height: 1px;
-  background: var(--lumo-contrast-10pct);
+  background: var(--vaadin-border-color-secondary);
   margin: 6px 16px;
 }
 
@@ -386,8 +345,8 @@ vaadin-app-layout::part(navbar) {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--lumo-primary-color);
-  color: white;
+  background: var(--aura-accent-color);
+  color: var(--aura-accent-contrast-color);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -400,16 +359,16 @@ vaadin-app-layout::part(navbar) {
 .user-link {
   display: flex;
   align-items: center;
-  gap: var(--lumo-space-xs);
+  gap: var(--vaadin-gap-xs);
   text-decoration: none;
-  border-radius: var(--lumo-border-radius-m);
+  border-radius: var(--vaadin-radius-m);
   padding: 2px 6px;
   cursor: pointer;
   color: inherit;
 }
 
 .user-link:hover {
-  background: var(--lumo-contrast-5pct);
+  background: var(--vaadin-background-container);
 }
 
 /* ----------------------------------------------------------------------------
@@ -417,16 +376,15 @@ vaadin-app-layout::part(navbar) {
    ---------------------------------------------------------------------------- */
 .auth-view {
   overflow-y: auto;
-  background: var(--cuenti-surface-muted);
 }
 
 .auth-card {
   margin-top: clamp(8px, 7vh, 88px);
-  background: var(--lumo-base-color);
-  border: 1px solid var(--lumo-contrast-10pct);
-  border-radius: var(--lumo-border-radius-l);
-  box-shadow: var(--cuenti-shadow-raised);
-  padding: var(--lumo-space-l);
+  background: var(--aura-surface-color-solid);
+  border: 1px solid var(--vaadin-border-color-secondary);
+  border-radius: var(--vaadin-radius-l);
+  box-shadow: var(--aura-shadow-m);
+  padding: var(--vaadin-padding-l, 1.5rem);
   width: 100%;
   max-width: 400px;
   box-sizing: border-box;
@@ -446,17 +404,12 @@ vaadin-app-layout::part(navbar) {
 /* ----------------------------------------------------------------------------
    9. Grid polish
    ---------------------------------------------------------------------------- */
-vaadin-grid {
-  --lumo-size-xl: 3rem;
-  border-radius: var(--lumo-border-radius-m);
-}
-
 vaadin-grid::part(header-cell) {
-  font-size: var(--lumo-font-size-xs);
+  font-size: var(--aura-font-size-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--lumo-secondary-text-color);
+  color: var(--vaadin-text-color-secondary);
 }
 
 /* ----------------------------------------------------------------------------
@@ -464,16 +417,16 @@ vaadin-grid::part(header-cell) {
    ---------------------------------------------------------------------------- */
 @media (max-width: 768px) {
   .page-container {
-    padding: var(--lumo-space-s);
-    gap: var(--lumo-space-s);
+    padding: var(--vaadin-padding-s);
+    gap: var(--vaadin-gap-s);
   }
 
   .page-title {
-    font-size: var(--lumo-font-size-xl);
+    font-size: var(--aura-font-size-xl);
   }
 
   .stat-value {
-    font-size: var(--lumo-font-size-xl);
+    font-size: var(--aura-font-size-xl);
   }
 
   .toolbar > * {

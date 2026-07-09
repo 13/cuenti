@@ -55,7 +55,7 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("padding", "var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-m)")
                 .set("overflow", "hidden");
 
         setupUI();
@@ -103,7 +103,7 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
         card.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-s)")
+                .set("gap", "var(--vaadin-gap-s)")
                 .set("box-sizing", "border-box");
         card.add(toolbar, grid);
         add(title, card);
@@ -135,20 +135,20 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
         binder.setBean(currency);
 
         Div row1 = rowDiv(code, symbol, fracDigits);
-        row1.getStyle().set("gap","var(--lumo-space-m)");
+        row1.getStyle().set("gap","var(--vaadin-gap-m)");
         code.getElement().getStyle().set("flex","2 1 120px").set("min-width","0");
         symbol.getElement().getStyle().set("flex","1 1 70px").set("min-width","0");
         fracDigits.getElement().getStyle().set("flex","1 1 80px").set("min-width","0");
 
         Div row2 = rowDiv(decimalChar, groupingChar);
-        row2.getStyle().set("gap","var(--lumo-space-m)");
+        row2.getStyle().set("gap","var(--vaadin-gap-m)");
         decimalChar.getElement().getStyle().set("flex","1 1 120px").set("min-width","0");
         groupingChar.getElement().getStyle().set("flex","1 1 120px").set("min-width","0");
 
         Div body = new Div();
         body.setWidthFull();
-        body.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--lumo-space-s)")
-                .set("padding","var(--lumo-space-m) var(--lumo-space-l)").set("box-sizing","border-box");
+        body.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--vaadin-gap-s)")
+                .set("padding","var(--vaadin-gap-m) var(--vaadin-gap-l)").set("box-sizing","border-box");
         body.add(name, row1, row2);
         dialog.add(body);
 

@@ -56,7 +56,7 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("padding", "var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-m)")
                 .set("overflow", "hidden");
 
         setupUI();
@@ -82,10 +82,10 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
         toolbar.expand(searchField);
         toolbar.setSpacing(false);
         toolbar.getStyle()
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
-                .set("gap", "var(--lumo-space-s)");
+                .set("border-radius", "var(--vaadin-radius-l)")
+                .set("gap", "var(--vaadin-gap-s)");
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
         grid.setSizeFull();
@@ -113,7 +113,7 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
         card.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-s)")
+                .set("gap", "var(--vaadin-gap-s)")
                 .set("box-sizing", "border-box");
         card.add(toolbar, grid);
         add(title, card);
@@ -138,7 +138,7 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
 
         Div body = new Div(nameField);
         body.setWidthFull();
-        body.getStyle().set("padding","var(--lumo-space-m) var(--lumo-space-l)").set("box-sizing","border-box");
+        body.getStyle().set("padding","var(--vaadin-gap-m) var(--vaadin-gap-l)").set("box-sizing","border-box");
         dialog.add(body);
 
         Button saveButton = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {

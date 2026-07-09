@@ -42,10 +42,10 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
 
     Span logoText = new Span(getTranslation("app.name"));
     logoText.getStyle()
-            .set("font-family", "var(--cuenti-font-heading)")
-            .set("font-size", "var(--lumo-font-size-xxl)")
+            .set("font-family", "var(--aura-font-family)")
+            .set("font-size", "var(--cuenti-font-size-xxl)")
             .set("font-weight", "700")
-            .set("color", "var(--lumo-header-text-color)")
+            .set("color", "var(--vaadin-text-color)")
             .set("margin-top", "-20px");
 
     Div card = new Div(logo, logoText, loginForm, registerLink);

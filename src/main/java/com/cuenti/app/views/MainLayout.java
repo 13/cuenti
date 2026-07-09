@@ -22,7 +22,6 @@ import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.server.VaadinSession;
-import com.vaadin.flow.theme.lumo.Lumo;
 import com.cuenti.app.views.ThemePreference;
 import jakarta.annotation.security.PermitAll;
 import lombok.extern.slf4j.Slf4j;
@@ -81,10 +80,7 @@ public class MainLayout extends AppLayout {
 
     private void applyTheme() {
         boolean isDark = currentUser == null || currentUser.isDarkMode();
-        UI.getCurrent().getElement().executeJs(
-                "document.documentElement.setAttribute('theme', $0)",
-                isDark ? Lumo.DARK : Lumo.LIGHT
-        );
+        ThemePreference.applyTheme(UI.getCurrent(), isDark);
     }
 
     private void toggleTheme() {
@@ -100,7 +96,7 @@ public class MainLayout extends AppLayout {
 
     private void createHeader() {
         DrawerToggle toggle = new DrawerToggle();
-        toggle.getStyle().set("color", "var(--lumo-secondary-text-color)");
+        toggle.getStyle().set("color", "var(--vaadin-text-color-secondary)");
 
         // Theme toggle — icon reflects current mode
         boolean isDark = currentUser == null || currentUser.isDarkMode();
@@ -109,7 +105,7 @@ public class MainLayout extends AppLayout {
         themeBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
         themeBtn.getElement().setProperty("title", getTranslation("layout.toggle_theme"));
         themeBtn.getElement().setAttribute("aria-label", getTranslation("layout.toggle_theme"));
-        themeBtn.getStyle().set("color", "var(--lumo-secondary-text-color)");
+        themeBtn.getStyle().set("color", "var(--vaadin-text-color-secondary)");
         themeBtn.addClickListener(e -> {
             toggleTheme();
             boolean nowDark = currentUser != null && currentUser.isDarkMode();
@@ -125,14 +121,14 @@ public class MainLayout extends AppLayout {
 
         Span userSpan = new Span(uname);
         userSpan.getStyle()
-                .set("font-size", "var(--lumo-font-size-s)").set("font-weight", "500")
-                .set("color", "var(--lumo-body-text-color)");
+                .set("font-size", "var(--aura-font-size-s)").set("font-weight", "500")
+                .set("color", "var(--vaadin-text-color)");
 
         Button logoutBtn = new Button(new Icon(VaadinIcon.SIGN_OUT));
         logoutBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
         logoutBtn.getElement().setProperty("title", getTranslation("nav.logout"));
         logoutBtn.getElement().setAttribute("aria-label", getTranslation("nav.logout"));
-        logoutBtn.getStyle().set("color", "var(--lumo-secondary-text-color)");
+        logoutBtn.getStyle().set("color", "var(--vaadin-text-color-secondary)");
         logoutBtn.addClickListener(e -> {
             // Persist current theme and locale to cookies so the login page can apply the same settings after logout
             boolean isDarkNow = currentUser == null || currentUser.isDarkMode();
@@ -153,7 +149,7 @@ public class MainLayout extends AppLayout {
         HorizontalLayout right = new HorizontalLayout(themeBtn, userLink, logoutBtn);
         right.setAlignItems(FlexComponent.Alignment.CENTER);
         right.setSpacing(false);
-        right.getStyle().set("gap", "var(--lumo-space-xs)");
+        right.getStyle().set("gap", "var(--vaadin-gap-xs)");
 
         HorizontalLayout header = new HorizontalLayout(toggle, right);
         header.setWidthFull();
@@ -161,7 +157,7 @@ public class MainLayout extends AppLayout {
         header.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
         header.setPadding(false);
         header.getStyle()
-                .set("padding", "0 var(--lumo-space-m)")
+                .set("padding", "0 var(--vaadin-gap-m)")
                 .set("height", "100%")
                 .set("box-sizing", "border-box");
 
@@ -179,19 +175,19 @@ public class MainLayout extends AppLayout {
 
         Span logoText = new Span(getTranslation("app.name"));
         logoText.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)")
+                .set("font-size", "var(--cuenti-font-size-xxl)")
                 .set("font-weight", "700")
-                .set("color", "var(--lumo-header-text-color)");
+                .set("color", "var(--vaadin-text-color)");
 
         HorizontalLayout logoContent = new HorizontalLayout(logo, logoText);
         logoContent.setAlignItems(FlexComponent.Alignment.CENTER);
         logoContent.setSpacing(false);
-        logoContent.getStyle().set("gap", "var(--lumo-space-s)");
+        logoContent.getStyle().set("gap", "var(--vaadin-gap-s)");
 
         Div logoSection = new Div(logoContent);
         logoSection.getStyle()
-                .set("padding", "0 var(--lumo-space-xs)")
-                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
+                .set("padding", "0 var(--vaadin-gap-xs)")
+                .set("border-bottom", "1px solid var(--vaadin-border-color-secondary)")
                 .set("display", "flex").set("align-items", "center")
                 .set("height", "53px").set("flex-shrink", "0")
                 .set("box-sizing", "border-box");
@@ -202,7 +198,7 @@ public class MainLayout extends AppLayout {
         nav.setSpacing(false);
         nav.getStyle()
                 .set("overflow-y", "auto").set("flex-grow", "1")
-                .set("padding-bottom", "var(--lumo-space-l)");
+                .set("padding-bottom", "var(--vaadin-gap-l)");
 
         // ── General (default open) ──────────────────────────────────
         Div generalItems = new Div(
@@ -249,7 +245,7 @@ public class MainLayout extends AppLayout {
         drawer.setHeightFull();
         drawer.getStyle()
                 .set("display", "flex").set("flex-direction", "column")
-                .set("background", "var(--lumo-base-color)");
+                .set("background", "var(--aura-surface-color-solid)");
 
         addToDrawer(drawer);
     }

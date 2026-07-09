@@ -57,7 +57,7 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("padding", "var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-m)")
                 .set("overflow", "hidden");
 
         selectedYear = LocalDate.now().getYear();
@@ -90,13 +90,13 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         Div toolbar = new Div(yearSelect);
         toolbar.setWidthFull();
         toolbar.getStyle()
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
+                .set("border-radius", "var(--vaadin-radius-l)")
                 .set("box-sizing", "border-box");
 
         contentContainer.setWidthFull();
-        contentContainer.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "var(--lumo-space-m)");
+        contentContainer.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "var(--vaadin-gap-m)");
 
         Div card = new Div();
         card.setSizeFull();
@@ -104,7 +104,7 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         card.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-m)")
+                .set("gap", "var(--vaadin-gap-m)")
                 .set("overflow-y", "auto");
 
         card.add(toolbar, contentContainer);
@@ -194,13 +194,13 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         FlexLayout summaryLayout = new FlexLayout();
         summaryLayout.setWidthFull();
         summaryLayout.setFlexWrap(FlexLayout.FlexWrap.WRAP);
-        summaryLayout.getStyle().set("gap", "var(--lumo-space-m)");
+        summaryLayout.getStyle().set("gap", "var(--vaadin-gap-m)");
 
         summaryLayout.add(
-                createSummaryCard(getTranslation("forecasts.total_income"),  totalIncome,  VaadinIcon.ARROW_DOWN, "var(--lumo-success-color)"),
-                createSummaryCard(getTranslation("forecasts.total_expense"), totalExpense, VaadinIcon.ARROW_UP,   "var(--lumo-error-color)"),
+                createSummaryCard(getTranslation("forecasts.total_income"),  totalIncome,  VaadinIcon.ARROW_DOWN, "var(--aura-green)"),
+                createSummaryCard(getTranslation("forecasts.total_expense"), totalExpense, VaadinIcon.ARROW_UP,   "var(--aura-red)"),
                 createSummaryCard(getTranslation("forecasts.net_forecast"),  netForecast,  VaadinIcon.SCALE,
-                        netForecast.compareTo(BigDecimal.ZERO) >= 0 ? "var(--lumo-success-color)" : "var(--lumo-error-color)")
+                        netForecast.compareTo(BigDecimal.ZERO) >= 0 ? "var(--aura-green)" : "var(--aura-red)")
         );
         contentContainer.add(summaryLayout);
 
@@ -250,7 +250,7 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         header.getStyle()
                 .set("display", "grid")
                 .set("grid-template-columns", "1fr repeat(3, minmax(120px,auto))")
-                .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
+                .set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-s)")
                 .set("margin-bottom", "2px");
 
         for (String col : new String[]{
@@ -261,7 +261,7 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
             Span h = new Span(col.toUpperCase());
             h.getStyle()
                     .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.07em")
-                    .set("color", "var(--lumo-secondary-text-color)").set("text-align", "right");
+                    .set("color", "var(--vaadin-text-color-secondary)").set("text-align", "right");
             header.add(h);
         }
         // Override first col to left-align
@@ -288,29 +288,29 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
             row.getStyle()
                     .set("display", "grid")
                     .set("grid-template-columns", "1fr repeat(3, minmax(120px,auto))")
-                    .set("padding", "var(--lumo-space-s) var(--lumo-space-s)")
+                    .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-s)")
                     .set("border-radius", "8px")
-                    .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
+                    .set("border-bottom", "1px solid var(--cuenti-divider)")
                     .set("align-items", "center")
                     .set("transition", "background 0.12s");
             if (isCurrent) {
                 row.getStyle().set("background", "var(--lumo-primary-color-10pct, rgba(var(--lumo-primary-color-rgb,26,119,242),0.08))");
             }
             row.getElement().executeJs(
-                "const orig = '" + (isCurrent ? "var(--lumo-primary-color-10pct, rgba(26,119,242,0.08))" : "") + "';" +
-                "this.addEventListener('mouseenter', () => this.style.background='var(--lumo-contrast-5pct)');" +
+                "const orig = '" + (isCurrent ? "var(--aura-accent-surface)" : "") + "';" +
+                "this.addEventListener('mouseenter', () => this.style.background='var(--vaadin-background-container)');" +
                 "this.addEventListener('mouseleave', () => this.style.background=orig);"
             );
 
             // Month label + badges
             Div labelCell = new Div();
-            labelCell.getStyle().set("display", "flex").set("align-items", "center").set("gap", "var(--lumo-space-s)");
+            labelCell.getStyle().set("display", "flex").set("align-items", "center").set("gap", "var(--vaadin-gap-s)");
 
             Span monthSpan = new Span(monthName);
             monthSpan.getStyle()
                     .set("font-weight", isCurrent ? "700" : "500")
-                    .set("font-size", "var(--lumo-font-size-s)")
-                    .set("color", isPast ? "var(--lumo-secondary-text-color)" : "var(--lumo-body-text-color)");
+                    .set("font-size", "var(--aura-font-size-s)")
+                    .set("color", isPast ? "var(--vaadin-text-color-secondary)" : "var(--vaadin-text-color)");
             labelCell.add(monthSpan);
 
             if (isCurrent) {
@@ -318,14 +318,14 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
                 nowBadge.getStyle()
                         .set("font-size", "9px").set("font-weight", "700").set("letter-spacing", "0.05em")
                         .set("padding", "1px 6px").set("border-radius", "99px")
-                        .set("background", "var(--lumo-primary-color)").set("color", "white");
+                        .set("background", "var(--aura-accent-color)").set("color", "white");
                 labelCell.add(nowBadge);
             }
 
-            Span incomeSpan  = createAmountCell(income, "var(--lumo-success-color)");
-            Span expenseSpan = createAmountCell(expense, "var(--lumo-error-color)");
+            Span incomeSpan  = createAmountCell(income, "var(--aura-green)");
+            Span expenseSpan = createAmountCell(expense, "var(--aura-red)");
             Span netSpan     = createAmountCell(net,
-                    net.compareTo(BigDecimal.ZERO) >= 0 ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
+                    net.compareTo(BigDecimal.ZERO) >= 0 ? "var(--aura-green)" : "var(--aura-red)");
             netSpan.getStyle().set("font-weight", "700");
 
             row.add(labelCell, incomeSpan, expenseSpan, netSpan);
@@ -335,8 +335,8 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         if (!any) {
             Div empty = new Div();
             empty.getStyle()
-                    .set("padding", "var(--lumo-space-xl)").set("text-align", "center")
-                    .set("color", "var(--lumo-secondary-text-color)").set("font-size", "var(--lumo-font-size-s)");
+                    .set("padding", "var(--cuenti-space-xl)").set("text-align", "center")
+                    .set("color", "var(--vaadin-text-color-secondary)").set("font-size", "var(--aura-font-size-s)");
             empty.add(new Span(getTranslation("forecasts.no_scheduled")));
             card.add(empty);
         }
@@ -345,10 +345,10 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
     private Span createAmountCell(BigDecimal amount, String color) {
         Span s = new Span(amount.compareTo(BigDecimal.ZERO) == 0 ? "—" : formatCurrency(amount));
         s.getStyle()
-                .set("font-size", "var(--lumo-font-size-s)")
+                .set("font-size", "var(--aura-font-size-s)")
                 .set("font-weight", "600")
                 .set("text-align", "right")
-                .set("color", amount.compareTo(BigDecimal.ZERO) == 0 ? "var(--lumo-disabled-text-color)" : color);
+                .set("color", amount.compareTo(BigDecimal.ZERO) == 0 ? "var(--vaadin-text-color-disabled)" : color);
         return s;
     }
 
@@ -358,16 +358,16 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         card.getStyle()
                 .set("flex", "1 1 200px").set("min-width", "180px")
                 .set("border-left", "4px solid " + color)
-                .set("display", "flex").set("flex-direction", "column").set("gap", "var(--lumo-space-xs)");
+                .set("display", "flex").set("flex-direction", "column").set("gap", "var(--vaadin-gap-xs)");
 
         Span titleSpan = new Span(title.toUpperCase());
         titleSpan.getStyle()
                 .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                .set("color", "var(--lumo-secondary-text-color)");
+                .set("color", "var(--vaadin-text-color-secondary)");
 
         Span valueSpan = new Span(formatCurrency(amount));
         valueSpan.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)").set("font-weight", "700")
+                .set("font-size", "var(--cuenti-font-size-xxl)").set("font-weight", "700")
                 .set("color", color).set("line-height", "1.1");
 
         card.add(titleSpan, valueSpan);
@@ -379,24 +379,24 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         card.setWidthFull();
         card.getStyle()
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
-                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
+                .set("border-radius", "var(--vaadin-radius-l)")
+                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l)")
                 .set("box-sizing", "border-box");
 
         Icon ico = iconType.create();
         ico.getStyle()
-                .set("color", "var(--lumo-secondary-text-color)")
-                .set("font-size", "var(--lumo-font-size-m)").set("flex-shrink", "0");
+                .set("color", "var(--vaadin-text-color-secondary)")
+                .set("font-size", "var(--aura-font-size-m)").set("flex-shrink", "0");
 
         Span titleSpan = new Span(title);
         titleSpan.getStyle()
-                .set("font-size", "var(--lumo-font-size-m)").set("font-weight", "700")
-                .set("color", "var(--lumo-header-text-color)");
+                .set("font-size", "var(--aura-font-size-m)").set("font-weight", "700")
+                .set("color", "var(--vaadin-text-color)");
 
         HorizontalLayout header = new HorizontalLayout(ico, titleSpan);
         header.setAlignItems(FlexComponent.Alignment.CENTER);
         header.setSpacing(false);
-        header.getStyle().set("gap", "var(--lumo-space-s)").set("margin-bottom", "var(--lumo-space-m)");
+        header.getStyle().set("gap", "var(--vaadin-gap-s)").set("margin-bottom", "var(--vaadin-gap-m)");
         card.add(header);
         return card;
     }
@@ -421,19 +421,19 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
 
         if (!anyData) {
             Span none = new Span(getTranslation("forecasts.no_scheduled"));
-            none.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-secondary-text-color)");
+            none.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
             card.add(none);
             return;
         }
 
         Div chartScroll = new Div();
-        chartScroll.getStyle().set("overflow-x", "auto").set("padding-bottom", "var(--lumo-space-xs)");
+        chartScroll.getStyle().set("overflow-x", "auto").set("padding-bottom", "var(--vaadin-gap-xs)");
 
         Div chartArea = new Div();
         chartArea.getStyle()
                 .set("display", "flex").set("align-items", "flex-end")
-                .set("gap", "8px").set("height", "140px").set("padding", "0 var(--lumo-space-s)")
-                .set("border-bottom", "2px solid var(--lumo-contrast-10pct)")
+                .set("gap", "8px").set("height", "140px").set("padding", "0 var(--vaadin-gap-s)")
+                .set("border-bottom", "2px solid var(--vaadin-border-color-secondary)")
                 .set("min-width", "min-content");
 
         java.time.format.DateTimeFormatter monthFmt = java.time.format.DateTimeFormatter.ofPattern("MMM",
@@ -457,13 +457,13 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
             bars.getStyle().set("display", "flex").set("align-items", "flex-end")
                     .set("gap", "3px").set("height", "110px");
 
-            bars.add(createChartBar(inc, maxVal, "var(--lumo-success-color)", "#b7f5c8"));
-            bars.add(createChartBar(exp, maxVal, "var(--lumo-error-color)", "#ffb3b3"));
+            bars.add(createChartBar(inc, maxVal, "var(--aura-green)", "#b7f5c8"));
+            bars.add(createChartBar(exp, maxVal, "var(--aura-red)", "#ffb3b3"));
 
             Span lbl = new Span(monthLabel);
             lbl.getStyle()
                     .set("font-size", "10px").set("font-weight", isCurrent ? "900" : "500")
-                    .set("color", isCurrent ? "var(--lumo-secondary-text-color)" : "var(--lumo-secondary-text-color)")
+                    .set("color", isCurrent ? "var(--vaadin-text-color-secondary)" : "var(--vaadin-text-color-secondary)")
                     .set("white-space", "nowrap");
 
             if (isCurrent) {
@@ -478,9 +478,9 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         // Legend
         HorizontalLayout legend = new HorizontalLayout();
         legend.setSpacing(false);
-        legend.getStyle().set("gap", "var(--lumo-space-m)").set("margin-top", "var(--lumo-space-s)");
-        legend.add(createLegendItem(getTranslation("statistics.income"), "var(--lumo-success-color)"));
-        legend.add(createLegendItem(getTranslation("statistics.expense"), "var(--lumo-error-color)"));
+        legend.getStyle().set("gap", "var(--vaadin-gap-m)").set("margin-top", "var(--vaadin-gap-s)");
+        legend.add(createLegendItem(getTranslation("statistics.income"), "var(--aura-green)"));
+        legend.add(createLegendItem(getTranslation("statistics.expense"), "var(--aura-red)"));
         card.add(chartScroll, legend);
     }
 
@@ -505,8 +505,8 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         dot.getStyle().set("width", "10px").set("height", "10px")
                 .set("background", color).set("border-radius", "3px").set("flex-shrink", "0");
         Span text = new Span(label);
-        text.getStyle().set("font-size", "var(--lumo-font-size-xs)").set("font-weight", "500")
-                .set("color", "var(--lumo-secondary-text-color)");
+        text.getStyle().set("font-size", "var(--aura-font-size-xs)").set("font-weight", "500")
+                .set("color", "var(--vaadin-text-color-secondary)");
         item.add(dot, text);
         return item;
     }

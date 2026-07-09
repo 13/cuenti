@@ -101,8 +101,8 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("padding", "var(--lumo-space-m)")
-                .set("gap", "var(--lumo-space-s)")
+                .set("padding", "var(--vaadin-gap-m)")
+                .set("gap", "var(--vaadin-gap-s)")
                 .set("overflow", "hidden");
         
         setupUI();
@@ -186,7 +186,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         HorizontalLayout filtersRow = new HorizontalLayout(accountSelector, dateFrom, dateTo, searchField);
         filtersRow.setAlignItems(Alignment.BASELINE);
         filtersRow.setSpacing(false);
-        filtersRow.getStyle().set("gap", "var(--lumo-space-s)").set("flex-wrap", "wrap");
+        filtersRow.getStyle().set("gap", "var(--vaadin-gap-s)").set("flex-wrap", "wrap");
 
         // Top toolbar: filters left, add button right
         HorizontalLayout toolbar = new HorizontalLayout(filtersRow, addButton);
@@ -195,15 +195,15 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         toolbar.setJustifyContentMode(JustifyContentMode.BETWEEN);
         toolbar.getStyle()
                 .set("flex-wrap", "wrap")
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)");
+                .set("border-radius", "var(--vaadin-radius-l)");
 
         // Type tabs row — full width below toolbar
         typeTabs.setWidthFull();
         typeTabs.getStyle()
-                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
-                .set("margin-bottom", "var(--lumo-space-xs)");
+                .set("border-bottom", "1px solid var(--vaadin-border-color-secondary)")
+                .set("margin-bottom", "var(--vaadin-gap-xs)");
 
         setupGrid();
 
@@ -215,7 +215,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         card.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-s)");
+                .set("gap", "var(--vaadin-gap-s)");
         card.add(toolbar, typeTabs, grid);
         add(card);
         expand(card);
@@ -279,15 +279,15 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                     .set("display", "flex").set("align-items", "center").set("justify-content", "center")
                     .set("flex-shrink", "0");
             String bg;
-            if (t.getType() == Transaction.TransactionType.INCOME)        bg = "rgba(var(--lumo-success-color-50pct-rgb,0,168,80),0.15)";
-            else if (t.getType() == Transaction.TransactionType.TRANSFER) bg = "rgba(var(--lumo-primary-color-50pct-rgb,26,119,242),0.15)";
-            else                                                           bg = "rgba(var(--lumo-error-color-50pct-rgb,255,63,63),0.15)";
+            if (t.getType() == Transaction.TransactionType.INCOME)        bg = "color-mix(in srgb, var(--aura-green) 15%, transparent)";
+            else if (t.getType() == Transaction.TransactionType.TRANSFER) bg = "color-mix(in srgb, var(--aura-accent-color) 15%, transparent)";
+            else                                                           bg = "color-mix(in srgb, var(--aura-red) 15%, transparent)";
             avatar.getStyle().set("background", bg);
             Icon icon = getPaymentIcon(t);
             String iconColor;
-            if (t.getType() == Transaction.TransactionType.INCOME)        iconColor = "var(--lumo-success-color)";
-            else if (t.getType() == Transaction.TransactionType.TRANSFER) iconColor = "var(--lumo-primary-color)";
-            else                                                           iconColor = "var(--lumo-error-color)";
+            if (t.getType() == Transaction.TransactionType.INCOME)        iconColor = "var(--aura-green)";
+            else if (t.getType() == Transaction.TransactionType.TRANSFER) iconColor = "var(--aura-accent-color)";
+            else                                                           iconColor = "var(--aura-red)";
             icon.getStyle().set("font-size", "14px").set("color", iconColor);
             avatar.add(icon);
             return avatar;
@@ -297,8 +297,8 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         grid.addComponentColumn(t -> {
             Span date = new Span(t.getTransactionDate().format(getDateTimeFormatter()));
             date.getStyle()
-                    .set("font-size", "var(--lumo-font-size-s)")
-                    .set("color", "var(--lumo-secondary-text-color)");
+                    .set("font-size", "var(--aura-font-size-s)")
+                    .set("color", "var(--vaadin-text-color-secondary)");
             return date;
         }).setHeader(getTranslation("transactions.date"))
                 .setSortable(true).setComparator(Transaction::getTransactionDate)
@@ -307,7 +307,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         // 3. Payee + account stacked
         grid.addComponentColumn(t -> {
             Span payee = new Span(t.getPayee() != null ? t.getPayee() : "—");
-            payee.getStyle().set("font-weight", "600").set("font-size", "var(--lumo-font-size-s)");
+            payee.getStyle().set("font-weight", "600").set("font-size", "var(--aura-font-size-s)");
 
             Account acc = t.getType() == Transaction.TransactionType.INCOME ? t.getToAccount() : t.getFromAccount();
             String accName = acc != null ? acc.getAccountName() : "";
@@ -316,12 +316,12 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
             }
             Span account = new Span(accName);
             account.getStyle()
-                    .set("font-size", "var(--lumo-font-size-xs)")
-                    .set("color", "var(--lumo-secondary-text-color)");
+                    .set("font-size", "var(--aura-font-size-xs)")
+                    .set("color", "var(--vaadin-text-color-secondary)");
 
             Div stack = new Div(payee, account);
             stack.getStyle().set("display", "flex").set("flex-direction", "column")
-                    .set("gap", "1px").set("padding", "var(--lumo-space-xs) 0");
+                    .set("gap", "1px").set("padding", "var(--vaadin-gap-xs) 0");
             return stack;
         }).setHeader(getTranslation("transactions.payee"))
                 .setSortable(true)
@@ -340,8 +340,8 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
             if (cat.isBlank()) return new Span();
             Span text = new Span(cat);
             text.getStyle()
-                    .set("font-size", "var(--lumo-font-size-s)")
-                    .set("color", "var(--lumo-body-text-color)");
+                    .set("font-size", "var(--aura-font-size-s)")
+                    .set("color", "var(--vaadin-text-color)");
             return text;
         }).setHeader(getTranslation("transactions.category"))
                 .setSortable(true)
@@ -371,12 +371,12 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                         && t.getToAccount().getId().equals(selected.getId()));
 
             String sign  = isCredit ? "+" : "−";
-            String color = isCredit ? "var(--lumo-success-color)" : "var(--lumo-error-color)";
+            String color = isCredit ? "var(--aura-green)" : "var(--aura-red)";
             if (t.getType() == Transaction.TransactionType.TRANSFER && allSelected)
-                color = "var(--lumo-primary-color)";
+                color = "var(--aura-accent-color)";
 
             Span s = new Span(sign + formatCurrency(t.getAmount()));
-            s.getStyle().set("font-weight", "700").set("font-size", "var(--lumo-font-size-s)")
+            s.getStyle().set("font-weight", "700").set("font-size", "var(--aura-font-size-s)")
                     .set("color", color).set("white-space", "nowrap");
             return s;
         }).setHeader(getTranslation("dialog.amount"))
@@ -389,9 +389,9 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
             BigDecimal bal = balanceCache.getOrDefault(t.getId(), BigDecimal.ZERO);
             Span s = new Span(formatCurrency(bal));
             s.getStyle()
-                    .set("font-size", "var(--lumo-font-size-s)").set("font-weight", "500")
+                    .set("font-size", "var(--aura-font-size-s)").set("font-weight", "500")
                     .set("color", bal.compareTo(BigDecimal.ZERO) >= 0
-                            ? "var(--lumo-body-text-color)" : "var(--lumo-error-color)");
+                            ? "var(--vaadin-text-color)" : "var(--aura-red)");
             return s;
         }).setHeader(getTranslation("accounts.balance"))
                 .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END)
@@ -402,8 +402,8 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
             if (t.getMemo() == null || t.getMemo().isBlank()) return new Span();
             Span s = new Span(t.getMemo());
             s.getStyle()
-                    .set("font-size", "var(--lumo-font-size-xs)")
-                    .set("color", "var(--lumo-secondary-text-color)")
+                    .set("font-size", "var(--aura-font-size-xs)")
+                    .set("color", "var(--vaadin-text-color-secondary)")
                     .set("max-width", "180px").set("overflow", "hidden")
                     .set("text-overflow", "ellipsis").set("white-space", "nowrap")
                     .set("display", "block");
@@ -417,7 +417,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
             HorizontalLayout hl = new HorizontalLayout();
             hl.setSpacing(false);
             hl.setAlignItems(Alignment.CENTER);
-            hl.getStyle().set("gap", "var(--lumo-space-xs)");
+            hl.getStyle().set("gap", "var(--vaadin-gap-xs)");
 
             Account selected = accountSelector.getValue();
             boolean allSelected = (selected == null) || (selected.getId() != null && selected.getId().equals(-1L));
@@ -473,11 +473,11 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                 : formatCurrency(t.getAmount());
 
         Div body = new Div();
-        body.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "var(--lumo-space-s)");
+        body.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "var(--vaadin-gap-s)");
         Span msg = new Span(getTranslation("dialog.confirm_delete_message") + "?");
-        msg.getStyle().set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-secondary-text-color)");
+        msg.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
         Span detail = new Span(message);
-        detail.getStyle().set("font-weight", "700").set("font-size", "var(--lumo-font-size-m)");
+        detail.getStyle().set("font-weight", "700").set("font-size", "var(--aura-font-size-m)");
         body.add(msg, detail);
         confirmDialog.add(body);
 
@@ -688,9 +688,9 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
         // Colour tokens per type
         String[] TYPE_COLORS = {
-            "var(--lumo-error-color)",    // expense
-            "var(--lumo-success-color)",  // income
-            "var(--lumo-primary-color)"   // transfer
+            "var(--aura-red)",    // expense
+            "var(--aura-green)",  // income
+            "var(--aura-accent-color)"   // transfer
         };
         Button[] typeBtns = {expenseBtn, incomeBtn, transferBtn};
         Tab[]    typeTabs = {expenseTab, incomeTab, transferTab};
@@ -700,7 +700,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         accentBar.setWidthFull();
         accentBar.setHeight("4px");
         accentBar.getStyle()
-                .set("border-radius", "var(--lumo-border-radius-l) var(--lumo-border-radius-l) 0 0")
+                .set("border-radius", "var(--vaadin-radius-l) var(--vaadin-radius-l) 0 0")
                 .set("transition", "background 0.2s");
 
         Runnable[] selectType = {null};
@@ -714,13 +714,13 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                 Button b = typeBtns[i];
                 boolean active = (i == finalSel);
                 b.getElement().getStyle()
-                        .set("background", active ? TYPE_COLORS[i] : "var(--lumo-contrast-5pct)")
-                        .set("color", active ? "white" : "var(--lumo-secondary-text-color)")
+                        .set("background", active ? TYPE_COLORS[i] : "var(--vaadin-background-container)")
+                        .set("color", active ? "white" : "var(--vaadin-text-color-secondary)")
                         .set("border", "none")
                         .set("border-radius", "99px")
                         .set("font-weight", active ? "700" : "500")
-                        .set("font-size", "var(--lumo-font-size-s)")
-                        .set("padding", "var(--lumo-space-xs) var(--lumo-space-m)")
+                        .set("font-size", "var(--aura-font-size-s)")
+                        .set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-m)")
                         .set("cursor", "pointer")
                         .set("transition", "all 0.15s");
             }
@@ -741,7 +741,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
         HorizontalLayout typeRow = new HorizontalLayout(expenseBtn, incomeBtn, transferBtn);
         typeRow.setSpacing(false);
-        typeRow.getStyle().set("gap", "var(--lumo-space-xs)").set("padding", "var(--lumo-space-m) var(--lumo-space-l)").set("flex-wrap", "wrap");
+        typeRow.getStyle().set("gap", "var(--vaadin-gap-xs)").set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l)").set("flex-wrap", "wrap");
 
         // ── Hero: Amount field ────────────────────────────────────────
         BigDecimalField amountField = new BigDecimalField();
@@ -749,15 +749,15 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         amountField.setRequiredIndicatorVisible(true);
         amountField.setValue(currentFormTransaction[0].getAmount() != null ? currentFormTransaction[0].getAmount() : BigDecimal.ZERO);
         amountField.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)")
+                .set("font-size", "var(--cuenti-font-size-xxl)")
                 .set("font-weight", "800")
                 .set("--vaadin-text-field-default-width", "100%");
-        amountField.getElement().getStyle().set("font-size", "var(--lumo-font-size-xxl)").set("font-weight", "800");
+        amountField.getElement().getStyle().set("font-size", "var(--cuenti-font-size-xxl)").set("font-weight", "800");
 
         Span amountLabel = new Span(getTranslation("dialog.amount").toUpperCase());
         amountLabel.getStyle()
                 .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                .set("color", "var(--lumo-secondary-text-color)");
+                .set("color", "var(--vaadin-text-color-secondary)");
 
         // Split toggle button — next to amount
         Button splitToggleBtn = new Button(VaadinIcon.PIE_CHART.create());
@@ -769,15 +769,15 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         amountRow.setWidthFull();
         amountRow.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
         amountRow.setSpacing(false);
-        amountRow.getStyle().set("gap", "var(--lumo-space-xs)");
+        amountRow.getStyle().set("gap", "var(--vaadin-gap-xs)");
         amountRow.expand(amountField);
 
         Div heroSection = new Div(amountLabel, amountRow);
         heroSection.setWidthFull();
         heroSection.getStyle()
-                .set("padding", "var(--lumo-space-m) var(--lumo-space-l) var(--lumo-space-l)")
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
+                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l) var(--vaadin-gap-l)")
+                .set("background", "var(--vaadin-background-container)")
+                .set("border-bottom", "1px solid var(--vaadin-border-color-secondary)")
                 .set("box-sizing", "border-box");
 
         // ── Date picker ───────────────────────────────────────────────
@@ -914,7 +914,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         tagsRow.setWidthFull();
         tagsRow.setSpacing(false);
         tagsRow.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.END);
-        tagsRow.getStyle().set("gap", "var(--lumo-space-s)");
+        tagsRow.getStyle().set("gap", "var(--vaadin-gap-s)");
         tagsCombo.getStyle().set("flex", "1 1 0");
         newTagField.getStyle().set("flex", "1 1 0");
         addNewTagBtn.getStyle().set("flex-shrink", "0");
@@ -971,7 +971,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         Div assetSection = createFormSection(getTranslation("dialog.asset_details"));
         HorizontalLayout assetRow = new HorizontalLayout(assetCombo, unitsField, unitPriceField);
         assetRow.setWidthFull(); assetRow.setSpacing(false);
-        assetRow.getStyle().set("gap", "var(--lumo-space-s)").set("flex-wrap", "wrap");
+        assetRow.getStyle().set("gap", "var(--vaadin-gap-s)").set("flex-wrap", "wrap");
         assetCombo.getStyle().set("flex", "1 1 160px"); unitsField.getStyle().set("flex", "1 1 100px"); unitPriceField.getStyle().set("flex", "1 1 100px");
         assetSection.add(assetRow);
 
@@ -1023,7 +1023,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         splitMemoField.getStyle().set("flex", "1 1 90px").set("min-width", "0");
         HorizontalLayout splitInputRow = new HorizontalLayout(splitAmountField, splitCategoryCombo, splitMemoField);
         splitInputRow.setWidthFull(); splitInputRow.setSpacing(false);
-        splitInputRow.getStyle().set("gap", "var(--lumo-space-s)").set("flex-wrap", "wrap");
+        splitInputRow.getStyle().set("gap", "var(--vaadin-gap-s)").set("flex-wrap", "wrap");
         splitInputRow.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.BASELINE);
 
         Button addSplitBtn = new Button(getTranslation("dialog.add"), VaadinIcon.PLUS.create(), ev -> {
@@ -1041,7 +1041,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
         HorizontalLayout splitAddRow = new HorizontalLayout(splitInputRow, addSplitBtn);
         splitAddRow.setWidthFull(); splitAddRow.setSpacing(false);
-        splitAddRow.getStyle().set("gap", "var(--lumo-space-s)");
+        splitAddRow.getStyle().set("gap", "var(--vaadin-gap-s)");
         splitAddRow.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.BASELINE);
         splitAddRow.expand(splitInputRow);
 
@@ -1100,17 +1100,17 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         // wraps to single column on mobile
         HorizontalLayout row1 = new HorizontalLayout(datePicker, accountCombo);
         row1.setWidthFull(); row1.setSpacing(false);
-        row1.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        row1.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
         row1.getChildren().forEach(c -> c.getElement().getStyle().set("flex", "1 1 200px").set("min-width", "0"));
         // wraps to single column on mobile
         HorizontalLayout row2 = new HorizontalLayout(payeeCombo, categoryCombo);
         row2.setWidthFull(); row2.setSpacing(false);
-        row2.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        row2.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
         row2.getChildren().forEach(c -> c.getElement().getStyle().set("flex", "1 1 200px").set("min-width", "0"));
         // wraps to single column on mobile
         HorizontalLayout row3 = new HorizontalLayout(toAccountCombo, paymentCombo);
         row3.setWidthFull(); row3.setSpacing(false);
-        row3.getStyle().set("gap", "var(--lumo-space-m)").set("flex-wrap", "wrap");
+        row3.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
          row3.getChildren().forEach(c -> c.getElement().getStyle().set("flex", "1 1 200px").set("min-width", "0"));
          coreSection.add(row1, row2, row3, tagsRow, memoField, splitSection, assetSection, hiddenTabs);
 
@@ -1121,7 +1121,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
         Button moreBtn = new Button(getTranslation("dialog.more_details"), VaadinIcon.ANGLE_DOWN.create());
         moreBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-        moreBtn.getStyle().set("font-size", "var(--lumo-font-size-xs)").set("color", "var(--lumo-secondary-text-color)");
+        moreBtn.getStyle().set("font-size", "var(--aura-font-size-xs)").set("color", "var(--vaadin-text-color-secondary)");
         moreBtn.addClickListener(e -> {
             boolean v = !extraSection.isVisible();
             extraSection.setVisible(v);
@@ -1195,14 +1195,14 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         section.setWidthFull();
         section.getStyle()
                 .set("display", "flex").set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-s)")
-                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
+                .set("gap", "var(--vaadin-gap-s)")
+                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l)")
                 .set("box-sizing", "border-box");
         if (labelKey != null && !labelKey.isBlank()) {
             Span label = new Span(labelKey.toUpperCase());
             label.getStyle()
                     .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                    .set("color", "var(--lumo-secondary-text-color)");
+                    .set("color", "var(--vaadin-text-color-secondary)");
             section.add(label);
         }
         return section;

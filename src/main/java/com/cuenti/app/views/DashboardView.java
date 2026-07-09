@@ -151,7 +151,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
     private void createMetrics(List<Account> accounts) {
         metricsLayout.setWidthFull();
         metricsLayout.setFlexWrap(FlexLayout.FlexWrap.WRAP);
-        metricsLayout.getStyle().set("gap", "var(--lumo-space-m)");
+        metricsLayout.getStyle().set("gap", "var(--vaadin-gap-m)");
 
         // Available Cash: Sum of all NON-ASSET accounts
         BigDecimal availableCash = accounts.stream()
@@ -199,7 +199,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         HorizontalLayout headerRow = new HorizontalLayout();
         headerRow.setWidthFull();
         headerRow.getStyle()
-                .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
+                .set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-s)")
                 .set("margin-bottom", "2px");
         for (String[] hdr : new String[][]{
                 {getTranslation("dashboard.asset"),         "2",   "left"},
@@ -211,7 +211,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
             h.getStyle()
                     .set("flex", hdr[1]).set("text-align", hdr[2])
                     .set("font-size", "10px").set("font-weight", "700")
-                    .set("letter-spacing", "0.07em").set("color", "var(--lumo-secondary-text-color)");
+                    .set("letter-spacing", "0.07em").set("color", "var(--vaadin-text-color-secondary)");
             headerRow.add(h);
         }
         Div content = new Div(headerRow);
@@ -234,34 +234,34 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
             row.setAlignItems(Alignment.CENTER);
             row.addClassName("hover-row");
             row.getStyle()
-                    .set("padding", "var(--lumo-space-s) var(--lumo-space-s)")
+                    .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-s)")
                     .set("border-radius", "8px")
-                    .set("border-bottom", "1px solid var(--lumo-contrast-5pct)");
+                    .set("border-bottom", "1px solid var(--cuenti-divider)");
 
             // Asset name + symbol stacked
             Div assetInfo = new Div();
             assetInfo.getStyle().set("flex", "2").set("display", "flex")
                     .set("flex-direction", "column").set("gap", "2px");
             Span assetName = new Span(asset.getName());
-            assetName.getStyle().set("font-weight", "600").set("font-size", "var(--lumo-font-size-s)");
+            assetName.getStyle().set("font-weight", "600").set("font-size", "var(--aura-font-size-s)");
             Span assetSymbol = new Span(asset.getSymbol());
             assetSymbol.getStyle()
                     .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.05em")
                     .set("padding", "1px 5px").set("border-radius", "4px")
-                    .set("background", "var(--lumo-contrast-10pct)")
-                    .set("color", "var(--lumo-secondary-text-color)").set("width", "fit-content");
+                    .set("background", "var(--vaadin-background-container-strong)")
+                    .set("color", "var(--vaadin-text-color-secondary)").set("width", "fit-content");
             assetInfo.add(assetName, assetSymbol);
 
             Span unitsSpan = new Span(data.totalUnits().stripTrailingZeros().toPlainString());
             unitsSpan.getStyle().set("flex", "1").set("text-align", "right")
-                    .set("font-size", "var(--lumo-font-size-s)").set("color", "var(--lumo-secondary-text-color)");
+                    .set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
 
             Span costSpan = new Span(formatCurrency(data.totalCost(), currentUser.getDefaultCurrency()));
-            costSpan.getStyle().set("flex", "1.5").set("text-align", "right").set("font-size", "var(--lumo-font-size-s)");
+            costSpan.getStyle().set("flex", "1.5").set("text-align", "right").set("font-size", "var(--aura-font-size-s)");
 
             Span valueSpan = new Span(formatCurrency(data.currentValue(), currentUser.getDefaultCurrency()));
             valueSpan.getStyle().set("flex", "1.5").set("text-align", "right")
-                    .set("font-weight", "600").set("font-size", "var(--lumo-font-size-s)");
+                    .set("font-weight", "600").set("font-size", "var(--aura-font-size-s)");
 
             Div gainLossDiv = createGainLossDisplay(data.gainLoss(), data.gainLossPercent());
             gainLossDiv.getStyle().set("flex", "1.5").set("text-align", "right");
@@ -280,10 +280,10 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         totalRow.setWidthFull();
         totalRow.setAlignItems(Alignment.CENTER);
         totalRow.getStyle()
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-s)")
-                .set("margin-top", "var(--lumo-space-xs)")
-                .set("border-top", "2px solid var(--lumo-contrast-10pct)")
-                .set("background", "var(--lumo-contrast-5pct)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-s)")
+                .set("margin-top", "var(--vaadin-gap-xs)")
+                .set("border-top", "2px solid var(--vaadin-border-color-secondary)")
+                .set("background", "var(--vaadin-background-container)")
                 .set("border-radius", "0 0 8px 8px");
 
         Span totalLabel = new Span(getTranslation("dashboard.total_portfolio").toUpperCase());
@@ -292,10 +292,10 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         Span emptyUnits = new Span(""); emptyUnits.getStyle().set("flex", "1");
         Span totalCostSpan = new Span(formatCurrency(totalCost, currentUser.getDefaultCurrency()));
         totalCostSpan.getStyle().set("flex", "1.5").set("text-align", "right")
-                .set("font-weight", "700").set("font-size", "var(--lumo-font-size-s)");
+                .set("font-weight", "700").set("font-size", "var(--aura-font-size-s)");
         Span totalValueSpan = new Span(formatCurrency(totalValue, currentUser.getDefaultCurrency()));
         totalValueSpan.getStyle().set("flex", "1.5").set("text-align", "right")
-                .set("font-weight", "700").set("font-size", "var(--lumo-font-size-s)");
+                .set("font-weight", "700").set("font-size", "var(--aura-font-size-s)");
         Div totalGainLossDiv = createGainLossDisplay(totalGainLoss, totalGainLossPercent);
         totalGainLossDiv.getStyle().set("flex", "1.5").set("text-align", "right");
 
@@ -310,7 +310,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
      */
     private Div createGainLossDisplay(BigDecimal gainLoss, BigDecimal percent) {
         boolean isPositive = gainLoss.compareTo(BigDecimal.ZERO) >= 0;
-        String color = isPositive ? "var(--lumo-success-color)" : "var(--lumo-error-color)";
+        String color = isPositive ? "var(--aura-green)" : "var(--aura-red)";
         String sign   = isPositive ? "+" : "";
 
         Div container = new Div();
@@ -320,7 +320,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
 
         Span amountSpan = new Span(sign + formatCurrency(gainLoss.abs(), currentUser.getDefaultCurrency()));
         amountSpan.getStyle()
-                .set("font-size", "var(--lumo-font-size-s)").set("font-weight", "700").set("color", color);
+                .set("font-size", "var(--aura-font-size-s)").set("font-weight", "700").set("color", color);
 
         Span pctBadge = new Span(sign + percent.setScale(2, RoundingMode.HALF_UP) + "%");
         pctBadge.getStyle()
@@ -335,7 +335,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
     private void createCharts(List<Transaction> transactions) {
         chartsLayout.setWidthFull();
         chartsLayout.setFlexWrap(FlexLayout.FlexWrap.WRAP);
-        chartsLayout.getStyle().set("gap", "var(--lumo-space-m)");
+        chartsLayout.getStyle().set("gap", "var(--vaadin-gap-m)");
 
         // ── Cash Flow card ────────────────────────────────────────────
         Div timeChartCard = createCardContainer();
@@ -354,17 +354,17 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         chartToolbar.setAlignItems(Alignment.CENTER);
         chartToolbar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
         chartToolbar.getStyle()
-                .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
-                .set("background", "var(--lumo-contrast-5pct)")
+                .set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-s)")
+                .set("background", "var(--vaadin-background-container)")
                 .set("border-radius", "8px")
-                .set("margin-bottom", "var(--lumo-space-s)");
+                .set("margin-bottom", "var(--vaadin-gap-s)");
 
         HorizontalLayout legend = new HorizontalLayout();
         legend.setSpacing(false);
-        legend.getStyle().set("gap", "var(--lumo-space-m)");
+        legend.getStyle().set("gap", "var(--vaadin-gap-m)");
         legend.add(
-            createLegendItem(getTranslation("dashboard.revenue"), "var(--lumo-success-color)"),
-            createLegendItem(getTranslation("dashboard.spending"), "var(--lumo-error-color)")
+            createLegendItem(getTranslation("dashboard.revenue"), "var(--aura-green)"),
+            createLegendItem(getTranslation("dashboard.spending"), "var(--aura-red)")
         );
         chartToolbar.add(legend, timeRange);
         timeChartCard.add(chartToolbar);
@@ -372,7 +372,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         timeChartContainer.setWidthFull();
         timeChartContainer.getStyle()
                 .set("overflow-x", "auto")
-                .set("padding-bottom", "var(--lumo-space-xs)");
+                .set("padding-bottom", "var(--vaadin-gap-xs)");
         renderTimeChart(timeChartContainer, transactions, timeRange.getValue());
         timeRange.addValueChangeListener(e -> {
             renderTimeChart(timeChartContainer, transactions, e.getValue());
@@ -387,7 +387,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
 
         distributionContainer.setWidthFull();
         distributionContainer.getStyle()
-                .set("display", "flex").set("flex-direction", "column").set("gap", "var(--lumo-space-s)");
+                .set("display", "flex").set("flex-direction", "column").set("gap", "var(--vaadin-gap-s)");
         renderDistributionChart(distributionContainer, transactions, timeRange.getValue());
         distCard.add(distributionContainer);
 
@@ -453,8 +453,8 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         chartArea.getStyle()
                 .set("display", "flex").set("align-items", "flex-end").set("justify-content", "space-around")
                 .set("gap", "4px").set("height", (CHART_H + 24) + "px")
-                .set("border-bottom", "2px solid var(--lumo-contrast-10pct)")
-                .set("padding", "0 var(--lumo-space-xs)").set("min-width", "min-content");
+                .set("border-bottom", "2px solid var(--vaadin-border-color-secondary)")
+                .set("padding", "0 var(--vaadin-gap-xs)").set("min-width", "min-content");
 
         int idx = 0;
         for (Map.Entry<String, BigDecimal[]> entry : chartData.entrySet()) {
@@ -476,14 +476,14 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
             Div barsRow = new Div();
             barsRow.getStyle().set("display", "flex").set("align-items", "flex-end")
                     .set("gap", "2px").set("height", CHART_H + "px");
-            barsRow.add(createChartBar(hInc, "var(--lumo-success-color)", "#b7f5c8", isCurrent));
-            barsRow.add(createChartBar(hExp, "var(--lumo-error-color)",   "#ffb3b3", isCurrent));
+            barsRow.add(createChartBar(hInc, "var(--aura-green)", "#b7f5c8", isCurrent));
+            barsRow.add(createChartBar(hExp, "var(--aura-red)",   "#ffb3b3", isCurrent));
 
             Span lbl = new Span(entry.getKey());
             lbl.getStyle()
                     .set("font-size", "9px")
                     .set("font-weight", isCurrent ? "700" : "400")
-                    .set("color", isCurrent ? "var(--lumo-secondary-text-color)" : "var(--lumo-secondary-text-color)")
+                    .set("color", isCurrent ? "var(--vaadin-text-color-secondary)" : "var(--vaadin-text-color-secondary)")
                     .set("white-space", "nowrap");
             group.add(barsRow, lbl);
             chartArea.add(group);
@@ -533,8 +533,8 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
 
         if (data.isEmpty()) {
             Span empty = new Span(getTranslation("dashboard.no_spending"));
-            empty.getStyle().set("font-size", "var(--lumo-font-size-s)")
-                    .set("color", "var(--lumo-secondary-text-color)");
+            empty.getStyle().set("font-size", "var(--aura-font-size-s)")
+                    .set("color", "var(--vaadin-text-color-secondary)");
             container.add(empty);
             return;
         }
@@ -549,9 +549,9 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
 
         // Colour palette cycling through Lumo + accent colours
         String[] COLORS = {
-            "var(--lumo-primary-color)",
-            "var(--lumo-error-color)",
-            "var(--lumo-success-color)",
+            "var(--aura-accent-color)",
+            "var(--aura-red)",
+            "var(--aura-green)",
             "#f5a623",
             "#9b59b6"
         };
@@ -566,32 +566,32 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
                             ? entry.getValue().divide(total, 4, RoundingMode.HALF_UP).doubleValue() * 100 : 0;
 
                     Span catSpan = new Span(entry.getKey());
-                    catSpan.getStyle().set("font-size", "var(--lumo-font-size-s)").set("font-weight", "500");
+                    catSpan.getStyle().set("font-size", "var(--aura-font-size-s)").set("font-weight", "500");
 
                     Span pctSpan = new Span(String.format("%.0f%%", ofTotal));
-                    pctSpan.getStyle().set("font-size", "var(--lumo-font-size-xs)")
-                            .set("color", "var(--lumo-secondary-text-color)");
+                    pctSpan.getStyle().set("font-size", "var(--aura-font-size-xs)")
+                            .set("color", "var(--vaadin-text-color-secondary)");
 
                     Span amtSpan = new Span(formatCurrency(entry.getValue(), currentUser.getDefaultCurrency()));
-                    amtSpan.getStyle().set("font-size", "var(--lumo-font-size-s)").set("font-weight", "700")
+                    amtSpan.getStyle().set("font-size", "var(--aura-font-size-s)").set("font-weight", "700")
                             .set("color", color);
 
                     HorizontalLayout info = new HorizontalLayout();
                     info.setWidthFull();
                     info.setAlignItems(Alignment.BASELINE);
                     info.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
-                    info.getStyle().set("gap", "var(--lumo-space-s)");
+                    info.getStyle().set("gap", "var(--vaadin-gap-s)");
 
                     HorizontalLayout left = new HorizontalLayout(catSpan, pctSpan);
                     left.setAlignItems(Alignment.BASELINE);
                     left.setSpacing(false);
-                    left.getStyle().set("gap", "var(--lumo-space-xs)");
+                    left.getStyle().set("gap", "var(--vaadin-gap-xs)");
                     info.add(left, amtSpan);
 
                     Div progressBg = new Div();
                     progressBg.setWidthFull();
                     progressBg.getStyle()
-                            .set("background", "var(--lumo-contrast-5pct)")
+                            .set("background", "var(--vaadin-background-container)")
                             .set("border-radius", "6px").set("height", "8px").set("overflow", "hidden");
                     Div bar = new Div();
                     // Bar width = actual share of total spending (honest representation)
@@ -607,7 +607,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
                     item.setWidthFull();
                     item.addClassName("hover-row");
                     item.getStyle().set("display", "flex").set("flex-direction", "column")
-                            .set("gap", "4px").set("padding", "var(--lumo-space-xs) var(--lumo-space-xs)")
+                            .set("gap", "4px").set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-xs)")
                             .set("border-radius", "8px");
                     container.add(item);
                 });
@@ -628,8 +628,8 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
             Span groupLabel = new Span(entry.getKey().toUpperCase());
             groupLabel.getStyle()
                     .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                    .set("color", "var(--lumo-primary-color)").set("display", "block")
-                    .set("margin-top", "var(--lumo-space-m)").set("margin-bottom", "var(--lumo-space-xs)");
+                    .set("color", "var(--aura-accent-color)").set("display", "block")
+                    .set("margin-top", "var(--vaadin-gap-m)").set("margin-bottom", "var(--vaadin-gap-xs)");
             card.add(groupLabel);
 
             BigDecimal groupSum = BigDecimal.ZERO;
@@ -638,12 +638,12 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
                 boolean negative = converted.compareTo(BigDecimal.ZERO) < 0;
 
                 Span nameSpan = new Span(acc.getAccountName());
-                nameSpan.getStyle().set("font-size", "var(--lumo-font-size-s)").set("font-weight", "500");
+                nameSpan.getStyle().set("font-size", "var(--aura-font-size-s)").set("font-weight", "500");
 
                 Span balSpan = new Span(formatCurrency(converted, currentUser.getDefaultCurrency()));
                 balSpan.getStyle()
-                        .set("font-size", "var(--lumo-font-size-s)").set("font-weight", "600")
-                        .set("color", negative ? "var(--lumo-error-color)" : "var(--lumo-body-text-color)");
+                        .set("font-size", "var(--aura-font-size-s)").set("font-weight", "600")
+                        .set("color", negative ? "var(--aura-red)" : "var(--vaadin-text-color)");
 
                 HorizontalLayout row = new HorizontalLayout(nameSpan, balSpan);
                 row.setWidthFull();
@@ -651,25 +651,25 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
                 row.setAlignItems(Alignment.CENTER);
                 row.addClassName("hover-row");
                 row.getStyle()
-                        .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
+                        .set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-s)")
                         .set("border-radius", "8px")
-                        .set("border-bottom", "1px solid var(--lumo-contrast-5pct)");
+                        .set("border-bottom", "1px solid var(--cuenti-divider)");
                 card.add(row);
                 groupSum = groupSum.add(converted);
             }
 
             // Group subtotal
             Span groupTotalLabel = new Span(getTranslation("dashboard.group_total", entry.getKey()));
-            groupTotalLabel.getStyle().set("font-size", "var(--lumo-font-size-s)").set("font-weight", "700")
-                    .set("color", "var(--lumo-secondary-text-color)");
+            groupTotalLabel.getStyle().set("font-size", "var(--aura-font-size-s)").set("font-weight", "700")
+                    .set("color", "var(--vaadin-text-color-secondary)");
             Span groupTotalVal = new Span(formatCurrency(groupSum, currentUser.getDefaultCurrency()));
-            groupTotalVal.getStyle().set("font-size", "var(--lumo-font-size-s)").set("font-weight", "700");
+            groupTotalVal.getStyle().set("font-size", "var(--aura-font-size-s)").set("font-weight", "700");
             HorizontalLayout groupTotalRow = new HorizontalLayout(groupTotalLabel, groupTotalVal);
             groupTotalRow.setWidthFull();
             groupTotalRow.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
             groupTotalRow.getStyle()
-                    .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
-                    .set("background", "var(--lumo-contrast-5pct)")
+                    .set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-s)")
+                    .set("background", "var(--vaadin-background-container)")
                     .set("border-radius", "8px").set("margin-top", "2px");
             card.add(groupTotalRow);
             grandTotal = grandTotal.add(groupSum);
@@ -681,16 +681,16 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
                 .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.07em");
         Span gtValue = new Span(formatCurrency(grandTotal, currentUser.getDefaultCurrency()));
         gtValue.getStyle()
-                .set("font-size", "var(--lumo-font-size-xl)").set("font-weight", "800")
-                .set("color", grandTotal.compareTo(BigDecimal.ZERO) >= 0 ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
+                .set("font-size", "var(--aura-font-size-xl)").set("font-weight", "800")
+                .set("color", grandTotal.compareTo(BigDecimal.ZERO) >= 0 ? "var(--aura-green)" : "var(--aura-red)");
         HorizontalLayout grandTotalRow = new HorizontalLayout(gtLabel, gtValue);
         grandTotalRow.setWidthFull();
         grandTotalRow.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
         grandTotalRow.setAlignItems(Alignment.CENTER);
         grandTotalRow.getStyle()
-                .set("padding", "var(--lumo-space-m) var(--lumo-space-s)")
-                .set("margin-top", "var(--lumo-space-s)")
-                .set("border-top", "2px solid var(--lumo-contrast-10pct)");
+                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-s)")
+                .set("margin-top", "var(--vaadin-gap-s)")
+                .set("border-top", "2px solid var(--vaadin-border-color-secondary)");
         card.add(grandTotalRow);
 
         // Total incl. investment gain/loss
@@ -702,19 +702,19 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
             Span gtwgLabel = new Span(getTranslation("dashboard.grand_total_with_gain").toUpperCase());
             gtwgLabel.getStyle()
                     .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.07em")
-                    .set("color", "var(--lumo-secondary-text-color)");
+                    .set("color", "var(--vaadin-text-color-secondary)");
             Span gtwgValue = new Span(formatCurrency(grandTotalWithGain, currentUser.getDefaultCurrency()));
             gtwgValue.getStyle()
-                    .set("font-size", "var(--lumo-font-size-xl)").set("font-weight", "800")
-                    .set("color", grandTotalWithGain.compareTo(BigDecimal.ZERO) >= 0 ? "var(--lumo-success-color)" : "var(--lumo-error-color)");
+                    .set("font-size", "var(--aura-font-size-xl)").set("font-weight", "800")
+                    .set("color", grandTotalWithGain.compareTo(BigDecimal.ZERO) >= 0 ? "var(--aura-green)" : "var(--aura-red)");
             HorizontalLayout gtwgRow = new HorizontalLayout(gtwgLabel, gtwgValue);
             gtwgRow.setWidthFull();
             gtwgRow.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
             gtwgRow.setAlignItems(Alignment.CENTER);
             gtwgRow.getStyle()
-                    .set("padding", "var(--lumo-space-s) var(--lumo-space-s)")
-                    .set("border-top", "1px solid var(--lumo-contrast-10pct)")
-                    .set("background", "var(--lumo-contrast-5pct)")
+                    .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-s)")
+                    .set("border-top", "1px solid var(--vaadin-border-color-secondary)")
+                    .set("background", "var(--vaadin-background-container)")
                     .set("border-radius", "0 0 8px 8px)");
             card.add(gtwgRow);
         }
@@ -745,23 +745,23 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
     private Div createSectionHeader(String titleKey, VaadinIcon iconType, Object... params) {
         Icon ico = iconType.create();
         ico.getStyle()
-                .set("color", "var(--lumo-secondary-text-color)")
-                .set("font-size", "var(--lumo-font-size-m)").set("flex-shrink", "0");
+                .set("color", "var(--vaadin-text-color-secondary)")
+                .set("font-size", "var(--aura-font-size-m)").set("flex-shrink", "0");
         String translatedTitle = (params != null && params.length > 0)
                 ? getTranslation(titleKey, params)
                 : getTranslation(titleKey);
         Span title = new Span(translatedTitle);
         title.getStyle()
-                .set("font-size", "var(--lumo-font-size-m)").set("font-weight", "700")
-                .set("color", "var(--lumo-header-text-color)");
+                .set("font-size", "var(--aura-font-size-m)").set("font-weight", "700")
+                .set("color", "var(--vaadin-text-color)");
         HorizontalLayout header = new HorizontalLayout(ico, title);
         header.setAlignItems(Alignment.CENTER);
         header.setSpacing(false);
         header.getStyle()
-                .set("gap", "var(--lumo-space-s)")
-                .set("margin-bottom", "var(--lumo-space-m)")
-                .set("padding-bottom", "var(--lumo-space-s)")
-                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)");
+                .set("gap", "var(--vaadin-gap-s)")
+                .set("margin-bottom", "var(--vaadin-gap-m)")
+                .set("padding-bottom", "var(--vaadin-gap-s)")
+                .set("border-bottom", "1px solid var(--vaadin-border-color-secondary)");
         Div wrapper = new Div(header);
         wrapper.setWidthFull();
         return wrapper;
@@ -776,8 +776,8 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         dot.setWidth("10px"); dot.setHeight("10px");
         dot.getStyle().set("background", color).set("border-radius", "3px").set("flex-shrink", "0");
         Span s = new Span(label);
-        s.getStyle().set("font-size", "var(--lumo-font-size-xs)").set("font-weight", "500")
-                .set("color", "var(--lumo-secondary-text-color)");
+        s.getStyle().set("font-size", "var(--aura-font-size-xs)").set("font-weight", "500")
+                .set("color", "var(--vaadin-text-color-secondary)");
         item.add(dot, s);
         return item;
     }

@@ -65,7 +65,7 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("padding", "var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-m)")
                 .set("overflow", "hidden");
 
         setupUI();
@@ -91,17 +91,17 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
         toolbar.expand(searchField);
         toolbar.setSpacing(false);
         toolbar.getStyle()
-                .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-m)")
                 .set("background", "var(--cuenti-surface-muted)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
-                .set("gap", "var(--lumo-space-s)");
+                .set("border-radius", "var(--vaadin-radius-l)")
+                .set("gap", "var(--vaadin-gap-s)");
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
         grid.addColumn(Category::getFullName).setHeader(getTranslation("categories.name")).setSortable(true).setAutoWidth(true);
         
         grid.addComponentColumn(category -> {
             boolean isExpense = category.getType() == Category.CategoryType.EXPENSE;
-            String color = isExpense ? "var(--lumo-error-color)" : "var(--lumo-success-color)";
+            String color = isExpense ? "var(--aura-red)" : "var(--aura-green)";
             Span span = new Span(getTranslation("category.type." + category.getType().name().toLowerCase()));
             span.getStyle().set("font-size","10px").set("font-weight","700").set("letter-spacing","0.05em")
                     .set("padding","2px 8px").set("border-radius","99px")
@@ -142,7 +142,7 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
         card.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-s)")
+                .set("gap", "var(--vaadin-gap-s)")
                 .set("box-sizing", "border-box");
         card.add(toolbar, grid);
         add(title, card);
@@ -234,8 +234,8 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
 
         Div body = new Div();
         body.setWidthFull();
-        body.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--lumo-space-s)")
-                .set("padding","var(--lumo-space-m) var(--lumo-space-l)").set("box-sizing","border-box");
+        body.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--vaadin-gap-s)")
+                .set("padding","var(--vaadin-gap-m) var(--vaadin-gap-l)").set("box-sizing","border-box");
         body.add(nameField, typeGroup, parentCombo);
         dialog.add(body);
 

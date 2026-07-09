@@ -20,8 +20,11 @@ public final class ThemePreference {
     }
 
     public static void applyTheme(UI ui, boolean isDark) {
+        // Aura resolves light/dark via the CSS color-scheme property; the
+        // theme attribute is kept for any attribute-based selectors.
         ui.getElement().executeJs(
-                "document.documentElement.setAttribute('theme', $0)",
+                "document.documentElement.setAttribute('theme', $0);" +
+                "document.documentElement.style.colorScheme = $0;",
                 isDark ? Lumo.DARK : Lumo.LIGHT
         );
     }

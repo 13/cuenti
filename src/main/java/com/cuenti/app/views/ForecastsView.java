@@ -52,12 +52,11 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
 
-        addClassName("forecasts-view");
+        addClassNames("forecasts-view", "page-scroll");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("background", "var(--lumo-contrast-5pct)")
                 .set("padding", "var(--lumo-space-m)")
                 .set("overflow", "hidden");
 
@@ -70,10 +69,7 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
     private void setupUI() {
         // Page header
         Span title = new Span(getTranslation("forecasts.title"));
-        title.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)")
-                .set("font-weight", "700")
-                .set("color", "var(--lumo-header-text-color)");
+        title.addClassName("page-title");
 
         // Year selector toolbar
         yearSelect = new Select<>();
@@ -95,8 +91,8 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         toolbar.setWidthFull();
         toolbar.getStyle()
                 .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("border-radius", "12px")
+                .set("background", "var(--cuenti-surface-muted)")
+                .set("border-radius", "var(--lumo-border-radius-l)")
                 .set("box-sizing", "border-box");
 
         contentContainer.setWidthFull();
@@ -104,14 +100,10 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
 
         Div card = new Div();
         card.setSizeFull();
+        card.addClassName("card");
         card.getStyle()
-                .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "20px")
-                .set("padding", "var(--lumo-space-l)")
-                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("box-sizing", "border-box")
                 .set("gap", "var(--lumo-space-m)")
                 .set("overflow-y", "auto");
 
@@ -362,12 +354,9 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
 
     private Div createSummaryCard(String title, BigDecimal amount, VaadinIcon iconType, String color) {
         Div card = new Div();
+        card.addClassName("card");
         card.getStyle()
                 .set("flex", "1 1 200px").set("min-width", "180px")
-                .set("background", "var(--lumo-base-color)")
-                .set("border-radius", "16px")
-                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
-                .set("box-shadow", "0 1px 6px rgba(0,0,0,0.07)")
                 .set("border-left", "4px solid " + color)
                 .set("display", "flex").set("flex-direction", "column").set("gap", "var(--lumo-space-xs)");
 
@@ -389,8 +378,8 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         Div card = new Div();
         card.setWidthFull();
         card.getStyle()
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("border-radius", "16px")
+                .set("background", "var(--cuenti-surface-muted)")
+                .set("border-radius", "var(--lumo-border-radius-l)")
                 .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
                 .set("box-sizing", "border-box");
 

@@ -70,14 +70,11 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
 
-        addClassName("dashboard-view");
+        addClassNames("dashboard-view", "page-scroll");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
         setAlignItems(Alignment.CENTER);
-        getStyle()
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("overflow-y", "auto");
 
         setupUI();
     }
@@ -94,21 +91,11 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         calculateAssetPerformance(userTransactions);
 
         // Page title
-        Span pageTitle = new Span(getTranslation("dashboard.title"));
-        pageTitle.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)")
-                .set("font-weight", "700")
-                .set("color", "var(--lumo-header-text-color)");
+        com.cuenti.app.views.components.PageHeader pageTitle =
+                new com.cuenti.app.views.components.PageHeader(getTranslation("dashboard.title"));
 
         Div container = new Div();
-        container.setWidthFull();
-        container.setMaxWidth("1400px");
-        container.getStyle()
-                .set("display", "flex")
-                .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-m)")
-                .set("padding", "var(--lumo-space-m)")
-                .set("box-sizing", "border-box");
+        container.addClassName("page-container");
 
         createMetrics(accounts);
         createAssetPerformanceSection();
@@ -189,9 +176,9 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         BigDecimal netWorth = availableCash.add(portfolioValue);
 
         metricsLayout.add(
-                createMetricCard(getTranslation("dashboard.available_cash"),  availableCash,  VaadinIcon.WALLET,    "linear-gradient(135deg, #1a9a5c 0%, #2ecc71 100%)"),
-                createMetricCard(getTranslation("dashboard.portfolio_value"), portfolioValue, VaadinIcon.STOCK,     "linear-gradient(135deg, #1a6bbf 0%, #3498db 100%)"),
-                createMetricCard(getTranslation("dashboard.net_worth"),       netWorth,       VaadinIcon.TRENDING_UP, "linear-gradient(135deg, #7b2fa8 0%, #9b59b6 100%)")
+                createMetricCard(getTranslation("dashboard.available_cash"),  availableCash,  VaadinIcon.WALLET),
+                createMetricCard(getTranslation("dashboard.portfolio_value"), portfolioValue, VaadinIcon.STOCK),
+                createMetricCard(getTranslation("dashboard.net_worth"),       netWorth,       VaadinIcon.TRENDING_UP)
         );
     }
 
@@ -245,15 +232,11 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
             HorizontalLayout row = new HorizontalLayout();
             row.setWidthFull();
             row.setAlignItems(Alignment.CENTER);
+            row.addClassName("hover-row");
             row.getStyle()
                     .set("padding", "var(--lumo-space-s) var(--lumo-space-s)")
                     .set("border-radius", "8px")
-                    .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
-                    .set("transition", "background 0.12s");
-            row.getElement().executeJs(
-                "this.addEventListener('mouseenter',()=>this.style.background='var(--lumo-contrast-5pct)');" +
-                "this.addEventListener('mouseleave',()=>this.style.background='');"
-            );
+                    .set("border-bottom", "1px solid var(--lumo-contrast-5pct)");
 
             // Asset name + symbol stacked
             Div assetInfo = new Div();
@@ -515,17 +498,14 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
 
     private Div createChartBar(double heightPx, String colorTop, String colorBottom, boolean highlight) {
         Div bar = new Div();
+        bar.addClassName("chart-bar");
         bar.setWidth("12px");
         bar.setHeight(Math.max(2, heightPx) + "px");
         bar.getStyle()
-                .set("background", "linear-gradient(to top, " + colorBottom + ", " + colorTop + ")")
-                .set("border-radius", "3px 3px 0 0")
-                .set("opacity", highlight ? "1" : "0.7")
-                .set("transition", "opacity 0.15s");
-        bar.getElement().executeJs(
-            "this.addEventListener('mouseenter',()=>this.style.opacity='1');" +
-            "this.addEventListener('mouseleave',()=>this.style.opacity='" + (highlight ? "1" : "0.7") + "');"
-        );
+                .set("background", "linear-gradient(to top, " + colorBottom + ", " + colorTop + ")");
+        if (highlight) {
+            bar.getElement().setAttribute("highlight", "");
+        }
         return bar;
     }
 
@@ -625,13 +605,10 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
 
                     Div item = new Div(info, progressBg);
                     item.setWidthFull();
+                    item.addClassName("hover-row");
                     item.getStyle().set("display", "flex").set("flex-direction", "column")
                             .set("gap", "4px").set("padding", "var(--lumo-space-xs) var(--lumo-space-xs)")
-                            .set("border-radius", "8px").set("transition", "background 0.12s");
-                    item.getElement().executeJs(
-                        "this.addEventListener('mouseenter',()=>this.style.background='var(--lumo-contrast-5pct)');" +
-                        "this.addEventListener('mouseleave',()=>this.style.background='');"
-                    );
+                            .set("border-radius", "8px");
                     container.add(item);
                 });
     }
@@ -672,15 +649,11 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
                 row.setWidthFull();
                 row.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
                 row.setAlignItems(Alignment.CENTER);
+                row.addClassName("hover-row");
                 row.getStyle()
                         .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
                         .set("border-radius", "8px")
-                        .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
-                        .set("transition", "background 0.12s");
-                row.getElement().executeJs(
-                    "this.addEventListener('mouseenter',()=>this.style.background='var(--lumo-contrast-5pct)');" +
-                    "this.addEventListener('mouseleave',()=>this.style.background='');"
-                );
+                        .set("border-bottom", "1px solid var(--lumo-contrast-5pct)");
                 card.add(row);
                 groupSum = groupSum.add(converted);
             }
@@ -749,52 +722,19 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         accountsLayout.add(card);
     }
 
-    private Div createMetricCard(String title, BigDecimal amount, VaadinIcon iconType, String background) {
-        Div card = new Div();
-        card.getStyle()
-                .set("flex", "1 1 260px").set("min-width", "220px")
-                .set("background", background)
-                .set("border-radius", "20px")
-                .set("padding", "var(--lumo-space-l)")
-                .set("box-shadow", "0 4px 20px rgba(0,0,0,0.15)")
-                .set("display", "flex").set("flex-direction", "column").set("gap", "var(--lumo-space-s)")
-                .set("position", "relative").set("overflow", "hidden");
-
-        // Decorative circle
-        Div circle = new Div();
-        circle.getStyle()
-                .set("position", "absolute").set("top", "-20px").set("right", "-20px")
-                .set("width", "100px").set("height", "100px").set("border-radius", "50%")
-                .set("background", "rgba(255,255,255,0.12)");
-        card.add(circle);
-
-        // Icon
-        Icon ico = iconType.create();
-        ico.getStyle().set("color", "rgba(255,255,255,0.85)").set("font-size", "20px");
-
-        Span titleSpan = new Span(title.toUpperCase());
-        titleSpan.getStyle()
-                .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.1em")
-                .set("color", "rgba(255,255,255,0.8)");
-
-        Span valueSpan = new Span(formatCurrency(amount, currentUser.getDefaultCurrency()));
-        valueSpan.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)").set("font-weight", "800")
-                .set("color", "white").set("line-height", "1.1");
-
-        card.add(ico, titleSpan, valueSpan);
+    private com.cuenti.app.views.components.StatCard createMetricCard(String title, BigDecimal amount, VaadinIcon iconType) {
+        com.cuenti.app.views.components.StatCard card = new com.cuenti.app.views.components.StatCard(
+                iconType, title, formatCurrency(amount, currentUser.getDefaultCurrency()));
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            card.setTrend(false);
+        }
         return card;
     }
 
     private Div createCardContainer() {
         Div card = new Div();
         card.setWidthFull();
-        card.getStyle()
-                .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "20px")
-                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
-                .set("padding", "var(--lumo-space-l)")
-                .set("box-sizing", "border-box");
+        card.addClassName("card");
         return card;
     }
 

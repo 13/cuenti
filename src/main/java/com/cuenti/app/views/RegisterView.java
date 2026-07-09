@@ -63,6 +63,7 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
         configureForm();
 
         H2 title = new H2(t("register.title", "Register"));
+        title.addClassName("page-title");
 
         RouterLink loginLink = new RouterLink(
                 t("register.already_registered", "Already registered? Login"),
@@ -73,17 +74,22 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
         footer.setWidthFull();
         footer.setJustifyContentMode(JustifyContentMode.CENTER);
 
-        add(title, createFormLayout(), footer);
+        com.vaadin.flow.component.html.Div card =
+                new com.vaadin.flow.component.html.Div(title, createFormLayout(), footer);
+        card.addClassName("auth-card");
+        card.getStyle().set("max-width", "760px");
+
+        add(card);
     }
 
     private void configureLayout() {
+        addClassName("auth-view");
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.START);
 
         setPadding(true);
         setSpacing(true);
-        //getStyle().set("overflow-y", "auto");
     }
 
     private void configureForm() {
@@ -180,8 +186,7 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
         );
 
         form.setColspan(submit, 2);
-        form.setWidth("min(720px, 90%)");
-        form.getStyle().set("margin", "0 auto");
+        form.setWidthFull();
 
         return form;
     }

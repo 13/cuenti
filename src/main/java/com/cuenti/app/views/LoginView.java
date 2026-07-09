@@ -2,6 +2,7 @@ package com.cuenti.app.views;
 
 import com.cuenti.app.service.GlobalSettingService;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.login.LoginForm;
@@ -41,23 +42,25 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
 
     Span logoText = new Span(getTranslation("app.name"));
     logoText.getStyle()
+            .set("font-family", "var(--cuenti-font-heading)")
             .set("font-size", "var(--lumo-font-size-xxl)")
             .set("font-weight", "700")
             .set("color", "var(--lumo-header-text-color)")
             .set("margin-top", "-20px");
 
-    add(logo, logoText, loginForm, registerLink);
+    Div card = new Div(logo, logoText, loginForm, registerLink);
+    card.addClassName("auth-card");
+
+    add(card);
   }
 
   private void configureLayout() {
+    addClassName("auth-view");
     setSizeFull();
     setAlignItems(Alignment.CENTER);
     setJustifyContentMode(JustifyContentMode.START);
     setPadding(true);
     setSpacing(true);
-
-    // Allow scrolling on small screens
-    getStyle().set("overflow-y", "auto");
   }
 
   private void configureLoginForm() {
@@ -94,7 +97,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
     // Keep responsive CSS as well
     logo.getStyle().set("width", "clamp(56px, 40%, 200px)");
     logo.getStyle().set("max-width", "120px");
-    logo.getStyle().set("margin", "40px 0 15px 0");
+    logo.getStyle().set("margin", "8px 0 15px 0");
     logo.getElement().setAttribute("alt", getTranslation("app.name"));
     return logo;
   }

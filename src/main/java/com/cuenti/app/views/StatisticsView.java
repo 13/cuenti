@@ -67,11 +67,10 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
 
-        addClassName("statistics-view");
+        addClassNames("statistics-view", "page-scroll");
         setWidthFull();
         setPadding(true);
         setSpacing(true);
-        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
 
         reportableAccounts = accountService.getAccountsByUser(currentUser).stream()
                 .filter(a -> !a.isExcludeFromReports())
@@ -94,10 +93,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                 .set("margin-bottom", "var(--lumo-space-xs)");
 
         Span title = new Span(getTranslation("statistics.title"));
-        title.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)")
-                .set("font-weight", "700")
-                .set("color", "var(--lumo-header-text-color)");
+        title.addClassName("page-title");
         header.add(title);
 
         HorizontalLayout filters = createTimeFilter();
@@ -107,14 +103,10 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
 
         Div card = new Div();
         card.setSizeFull();
+        card.addClassName("card");
         card.getStyle()
-                .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "20px")
-                .set("padding", "var(--lumo-space-l)")
-                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("box-sizing", "border-box")
                 .set("gap", "var(--lumo-space-m)");
         card.add(filters, tabs, contentContainer);
         add(header, card);
@@ -129,8 +121,8 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                 .set("flex-wrap", "wrap")
                 .set("gap", "var(--lumo-space-s)")
                 .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("border-radius", "12px");
+                .set("background", "var(--cuenti-surface-muted)")
+                .set("border-radius", "var(--lumo-border-radius-l)");
 
         timeRangeSelect = new Select<>();
         timeRangeSelect.setLabel(getTranslation("statistics.time_range"));
@@ -971,26 +963,18 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                 : 0;
         bar.setWidth("14px");
         bar.setHeight(Math.max(2, height) + "px");
+        bar.addClassNames("chart-bar", "chart-bar--solid");
         bar.getStyle()
-                .set("background", "linear-gradient(to top, " + colorBottom + ", " + colorTop + ")")
-                .set("border-radius", "3px 3px 0 0")
-                .set("transition", "opacity 0.15s");
-        bar.getElement().executeJs(
-                "this.addEventListener('mouseenter', () => this.style.opacity='0.75');" +
-                "this.addEventListener('mouseleave', () => this.style.opacity='1');"
-        );
+                .set("background", "linear-gradient(to top, " + colorBottom + ", " + colorTop + ")");
         return bar;
     }
 
     private Div createSummaryCard(String title, BigDecimal amount, String color) {
         Div card = new Div();
+        card.addClassName("card");
         card.getStyle()
                 .set("flex", "1 1 200px")
                 .set("min-width", "180px")
-                .set("background", "var(--lumo-base-color)")
-                .set("border-radius", "16px")
-                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
-                .set("box-shadow", "0 1px 6px rgba(0,0,0,0.07)")
                 .set("border-left", "4px solid " + color)
                 .set("display", "flex")
                 .set("flex-direction", "column")
@@ -1107,12 +1091,8 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                 .set("border-radius", "8px")
                 .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
                 .set("font-size", "var(--lumo-font-size-s)")
-                .set("align-items", "center")
-                .set("transition", "background 0.12s");
-        row.getElement().executeJs(
-                "this.addEventListener('mouseenter', () => this.style.background='var(--lumo-contrast-5pct)');" +
-                "this.addEventListener('mouseleave', () => this.style.background='');"
-        );
+                .set("align-items", "center");
+        row.addClassName("hover-row");
 
         Span labelSpan = new Span(label);
         labelSpan.getStyle()
@@ -1201,13 +1181,8 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         row.getStyle()
                 .set("padding", "var(--lumo-space-xs) var(--lumo-space-s) var(--lumo-space-xs) var(--lumo-space-xl)")
                 .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("align-items", "center")
-                .set("transition", "background 0.12s");
-        row.getElement().executeJs(
-                "this.addEventListener('mouseenter', () => this.style.background='var(--lumo-contrast-10pct)');" +
-                "this.addEventListener('mouseleave', () => this.style.background='var(--lumo-contrast-5pct)');"
-        );
+                .set("align-items", "center");
+        row.addClassName("hover-row--tinted");
 
         Div dot = new Div();
         dot.getStyle()
@@ -1246,12 +1221,8 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                 .set("border-radius", "8px")
                 .set("border-bottom", "1px solid var(--lumo-contrast-5pct)")
                 .set("font-size", "var(--lumo-font-size-s)")
-                .set("align-items", "center")
-                .set("transition", "background 0.12s");
-        row.getElement().executeJs(
-                "this.addEventListener('mouseenter', () => this.style.background='var(--lumo-contrast-5pct)');" +
-                "this.addEventListener('mouseleave', () => this.style.background='');"
-        );
+                .set("align-items", "center");
+        row.addClassName("hover-row");
 
         Span labelSpan = new Span(label);
         labelSpan.getStyle()
@@ -1294,12 +1265,8 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         row.getStyle()
                 .set("margin-bottom", "var(--lumo-space-m)")
                 .set("padding", "var(--lumo-space-s)")
-                .set("border-radius", "8px")
-                .set("transition", "background 0.12s");
-        row.getElement().executeJs(
-                "this.addEventListener('mouseenter', () => this.style.background='var(--lumo-contrast-5pct)');" +
-                "this.addEventListener('mouseleave', () => this.style.background='');"
-        );
+                .set("border-radius", "8px");
+        row.addClassName("hover-row");
 
         HorizontalLayout info = new HorizontalLayout();
         info.setWidthFull();

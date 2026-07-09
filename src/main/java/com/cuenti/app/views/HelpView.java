@@ -21,16 +21,17 @@ public class HelpView extends VerticalLayout implements HasDynamicTitle {
 
 
     public HelpView() {
+        addClassName("page-scroll");
         setWidthFull();
         setAlignItems(Alignment.CENTER);
         setPadding(false);
         setSpacing(false);
-        getStyle().set("background", "var(--lumo-contrast-5pct)").set("padding", "var(--lumo-space-m)").set("overflow-y", "auto");
+        getStyle().set("padding", "var(--lumo-space-m)").set("gap", "var(--lumo-space-m)");
 
         Span title = new Span(getTranslation("help.title"));
+        title.addClassName("page-title");
         title.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)").set("font-weight", "700")
-                .set("color", "var(--lumo-header-text-color)").set("align-self", "flex-start")
+                .set("align-self", "flex-start")
                 .set("max-width", "860px").set("width", "100%");
         add(title);
 
@@ -117,10 +118,9 @@ public class HelpView extends VerticalLayout implements HasDynamicTitle {
         ));
 
         Div card = new Div(accordion);
+        card.addClassName("card");
         card.getStyle()
-                .set("background", "var(--lumo-base-color)")
-                .set("border-radius", "20px")
-                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
+                .set("padding", "0")
                 .set("overflow", "hidden")
                 .set("max-width", "860px").set("width", "100%");
         add(card);

@@ -38,7 +38,8 @@ public class AboutView extends VerticalLayout implements HasDynamicTitle {
         setAlignItems(Alignment.CENTER);
         setPadding(false);
         setSpacing(false);
-        getStyle().set("background", "var(--lumo-contrast-5pct)").set("padding", "var(--lumo-space-l)").set("overflow-y", "auto");
+        addClassName("page-scroll");
+        getStyle().set("padding", "var(--lumo-space-l)");
 
         String version   = getVersion();
         String buildDate = getBuildDate();
@@ -46,10 +47,8 @@ public class AboutView extends VerticalLayout implements HasDynamicTitle {
 
         // ── Outer card ─────────────────────────────────────────────
         Div card = new Div();
+        card.addClassName("card");
         card.getStyle()
-                .set("background", "var(--lumo-base-color)")
-                .set("border-radius", "20px")
-                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
                 .set("padding", "var(--lumo-space-xl)")
                 .set("max-width", "680px").set("width", "100%")
                 .set("display", "flex").set("flex-direction", "column")
@@ -84,7 +83,7 @@ public class AboutView extends VerticalLayout implements HasDynamicTitle {
         Div techCard = new Div();
         techCard.setWidthFull();
         techCard.getStyle()
-                .set("background","var(--lumo-contrast-5pct)").set("border-radius","16px")
+                .set("background","var(--cuenti-surface-muted)").set("border-radius","var(--lumo-border-radius-l)")
                 .set("padding","var(--lumo-space-m) var(--lumo-space-l)")
                 .set("display","flex").set("flex-direction","column").set("gap","var(--lumo-space-xs)");
         Span techTitle = new Span(getTranslation("about.tech_title").toUpperCase());

@@ -60,7 +60,6 @@ public class MainLayout extends AppLayout {
         }
 
         applyTheme();
-        injectNavStyles();
         setPrimarySection(Section.DRAWER);
         createHeader();
         createDrawer();
@@ -97,71 +96,6 @@ public class MainLayout extends AppLayout {
         }
     }
 
-    // ── Injected nav styles ────────────────────────────────────────────────────
-
-    private void injectNavStyles() {
-        UI.getCurrent().getElement().executeJs(
-            "if (!document.getElementById('cuenti-nav-styles')) {" +
-            "  const s = document.createElement('style');" +
-            "  s.id = 'cuenti-nav-styles';" +
-            "  s.textContent = '" +
-            "    .nav-item {" +
-            "      display: flex; align-items: center; gap: 10px;" +
-            "      width: 100%; box-sizing: border-box;" +
-            "      padding: 9px 16px; margin: 1px 0; border-radius: 10px;" +
-            "      text-decoration: none !important; color: var(--lumo-secondary-text-color);" +
-            "      font-size: var(--lumo-font-size-s); font-weight: 500;" +
-            "      transition: background 0.12s, color 0.12s;" +
-            "    }" +
-            "    .nav-item:hover, .nav-item:visited, .nav-item:focus {" +
-            "      text-decoration: none !important;" +
-            "      background: var(--lumo-contrast-5pct);" +
-            "      color: var(--lumo-body-text-color);" +
-            "    }" +
-            "    .nav-item[highlight] {" +
-            "      background: var(--lumo-primary-color-10pct, rgba(26,119,242,0.1));" +
-            "      color: var(--lumo-primary-color);" +
-            "      font-weight: 600;" +
-            "    }" +
-            "    [theme~=dark] .nav-item[highlight] {" +
-            "      color: white;" +
-            "    }" +
-            "    .nav-item vaadin-icon {" +
-            "      width: 18px; height: 18px; flex-shrink: 0; color: currentColor;" +
-            "    }" +
-            "    .nav-section-header {" +
-            "      display: flex; align-items: center;" +
-            "      padding: 16px 16px 4px; cursor: pointer; user-select: none;" +
-            "    }" +
-            "    .nav-section-header:hover .nav-section-label {" +
-            "      color: var(--lumo-secondary-text-color);" +
-            "    }" +
-            "    .nav-section-label {" +
-            "      font-size: 10px; font-weight: 700;" +
-            "      letter-spacing: 0.09em; text-transform: uppercase;" +
-            "      color: var(--lumo-tertiary-text-color); flex-grow: 1;" +
-            "    }" +
-            "    .nav-section-chevron {" +
-            "      width: 14px !important; height: 14px !important;" +
-            "      flex-shrink: 0; color: var(--lumo-tertiary-text-color);" +
-            "      transition: transform 0.2s ease;" +
-            "    }" +
-            "    .nav-divider {" +
-            "      height: 1px; background: var(--lumo-contrast-10pct); margin: 6px 16px;" +
-            "    }" +
-            "    vaadin-app-layout::part(navbar) {" +
-            "      padding: 0;" +
-            "      height: 52px;" +
-            "      min-height: 52px;" +
-            "      box-shadow: none;" +
-            "      border-bottom: 1px solid var(--lumo-contrast-10pct);" +
-            "    }" +
-            "  ';" +
-            "  document.head.appendChild(s);" +
-            "}"
-        );
-    }
-
     // ── Header (top navbar) ────────────────────────────────────────────────────
 
     private void createHeader() {
@@ -174,6 +108,7 @@ public class MainLayout extends AppLayout {
         Button themeBtn = new Button(themeIcon);
         themeBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
         themeBtn.getElement().setProperty("title", getTranslation("layout.toggle_theme"));
+        themeBtn.getElement().setAttribute("aria-label", getTranslation("layout.toggle_theme"));
         themeBtn.getStyle().set("color", "var(--lumo-secondary-text-color)");
         themeBtn.addClickListener(e -> {
             toggleTheme();
@@ -186,12 +121,7 @@ public class MainLayout extends AppLayout {
         String initials = uname.length() >= 2 ? uname.substring(0, 2).toUpperCase() : uname.toUpperCase();
 
         Span avatar = new Span(initials);
-        avatar.getStyle()
-                .set("width", "28px").set("height", "28px").set("border-radius", "50%")
-                .set("background", "var(--lumo-primary-color)").set("color", "white")
-                .set("font-size", "11px").set("font-weight", "700").set("letter-spacing", "0.03em")
-                .set("display", "flex").set("align-items", "center")
-                .set("justify-content", "center").set("flex-shrink", "0");
+        avatar.addClassName("user-avatar");
 
         Span userSpan = new Span(uname);
         userSpan.getStyle()
@@ -201,6 +131,7 @@ public class MainLayout extends AppLayout {
         Button logoutBtn = new Button(new Icon(VaadinIcon.SIGN_OUT));
         logoutBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
         logoutBtn.getElement().setProperty("title", getTranslation("nav.logout"));
+        logoutBtn.getElement().setAttribute("aria-label", getTranslation("nav.logout"));
         logoutBtn.getStyle().set("color", "var(--lumo-secondary-text-color)");
         logoutBtn.addClickListener(e -> {
             // Persist current theme and locale to cookies so the login page can apply the same settings after logout
@@ -215,14 +146,8 @@ public class MainLayout extends AppLayout {
 
         RouterLink userLink = new RouterLink();
         userLink.setRoute(SettingsUserView.class);
-        userLink.getStyle()
-                .set("display", "flex").set("align-items", "center")
-                .set("gap", "var(--lumo-space-xs)")
-                .set("text-decoration", "none")
-                .set("border-radius", "var(--lumo-border-radius-m)")
-                .set("padding", "2px 4px")
-                .set("cursor", "pointer");
-        userLink.getElement().getStyle().set("color", "inherit");
+        userLink.addClassName("user-link");
+        userLink.getElement().setAttribute("aria-label", getTranslation("settings.user_title"));
         userLink.add(avatar, userSpan);
 
         HorizontalLayout right = new HorizontalLayout(themeBtn, userLink, logoutBtn);

@@ -97,12 +97,11 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         this.startDate = now.withDayOfYear(1);
         this.endDate = now.with(TemporalAdjusters.lastDayOfYear());
 
-        addClassName("vehicles-view");
+        addClassNames("vehicles-view", "page-scroll");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("background", "var(--lumo-contrast-5pct)")
                 .set("padding", "var(--lumo-space-m)")
                 .set("overflow", "hidden");
 
@@ -139,10 +138,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
     private void setupUI() {
         // Page header
         Span title = new Span(getTranslation("vehicles.title"));
-        title.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)")
-                .set("font-weight", "700")
-                .set("color", "var(--lumo-header-text-color)");
+        title.addClassName("page-title");
 
         summaryContainer.setWidthFull();
         configureGrid();
@@ -150,14 +146,10 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         // Outer card
         Div card = new Div();
         card.setSizeFull();
+        card.addClassName("card");
         card.getStyle()
-                .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "20px")
-                .set("padding", "var(--lumo-space-l)")
-                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("box-sizing", "border-box")
                 .set("gap", "var(--lumo-space-m)");
 
         card.add(createToolbar(), summaryContainer, grid);
@@ -179,8 +171,8 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         toolbar.setWidthFull();
         toolbar.getStyle()
                 .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("border-radius", "12px")
+                .set("background", "var(--cuenti-surface-muted)")
+                .set("border-radius", "var(--lumo-border-radius-l)")
                 .set("box-sizing", "border-box");
         return toolbar;
     }
@@ -558,8 +550,8 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         Div trendSection = new Div();
         trendSection.setWidthFull();
         trendSection.getStyle()
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("border-radius", "16px")
+                .set("background", "var(--cuenti-surface-muted)")
+                .set("border-radius", "var(--lumo-border-radius-l)")
                 .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
                 .set("box-sizing", "border-box")
                 .set("margin-top", "var(--lumo-space-s)");
@@ -633,12 +625,9 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
 
     private Div createSummaryCard(String title, String value, VaadinIcon iconType, String accentColor) {
         Div card = new Div();
+        card.addClassName("card");
         card.getStyle()
                 .set("flex", "1 1 150px").set("min-width", "140px")
-                .set("background", "var(--lumo-base-color)")
-                .set("border-radius", "16px")
-                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
-                .set("box-shadow", "0 1px 6px rgba(0,0,0,0.07)")
                 .set("border-left", "4px solid " + accentColor)
                 .set("display", "flex").set("flex-direction", "column").set("gap", "var(--lumo-space-xs)");
 

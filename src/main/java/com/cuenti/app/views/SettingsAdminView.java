@@ -67,8 +67,8 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
         toggleRow.getStyle()
                 .set("display", "flex").set("flex-wrap", "wrap").set("gap", "var(--lumo-space-l)")
                 .set("padding", "var(--lumo-space-m)")
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("border-radius", "12px");
+                .set("background", "var(--cuenti-surface-muted)")
+                .set("border-radius", "var(--lumo-border-radius-l)");
 
         toggleCard.add(toggleRow);
         container.add(toggleCard);

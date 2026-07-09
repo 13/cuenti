@@ -61,11 +61,11 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
 
+        addClassName("page-scroll");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("background", "var(--lumo-contrast-5pct)")
                 .set("padding", "var(--lumo-space-m)")
                 .set("overflow", "hidden");
 
@@ -75,10 +75,7 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
 
     private void setupUI() {
         Span title = new Span(getTranslation("assets.title"));
-        title.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)")
-                .set("font-weight", "700")
-                .set("color", "var(--lumo-header-text-color)");
+        title.addClassName("page-title");
         
         searchField.setPlaceholder(getTranslation("transactions.search"));
         searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
@@ -104,8 +101,8 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         toolbar.setSpacing(false);
         toolbar.getStyle()
                 .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("border-radius", "12px")
+                .set("background", "var(--cuenti-surface-muted)")
+                .set("border-radius", "var(--lumo-border-radius-l)")
                 .set("gap", "var(--lumo-space-s)");
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
@@ -167,11 +164,8 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         // Always use card layout
         Div card = new Div();
         card.setSizeFull();
+        card.addClassName("card");
         card.getStyle()
-                .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "20px")
-                .set("padding", "var(--lumo-space-l)")
-                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
                 .set("display", "flex")
                 .set("flex-direction", "column")
                 .set("gap", "var(--lumo-space-s)")
@@ -186,7 +180,6 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         dialog.setWidth("min(440px, 96vw)");
         dialog.setResizable(false);
         dialog.getElement().getStyle()
-                .set("--lumo-border-radius-l", "20px")
                 .set("overflow-x", "hidden");
         dialog.setHeaderTitle(asset.getId() == null ? getTranslation("assets.add") : getTranslation("assets.edit"));
 

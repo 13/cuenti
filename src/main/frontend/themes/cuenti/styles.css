@@ -1,3 +1,215 @@
+/* ============================================================================
+   Cuenti Design System
+   ----------------------------------------------------------------------------
+   Enterprise finance SaaS look built on Lumo design tokens.
+   - Trust blue primary, profit green / loss red semantics
+   - Lexend for headings, Source Sans 3 for body (system-font fallback)
+   - Light and dark theme variants
+   - Reusable utility classes consumed by the Java views
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+
+/* ----------------------------------------------------------------------------
+   1. Design tokens — shared
+   ---------------------------------------------------------------------------- */
+html {
+  --cuenti-font-heading: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --lumo-font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Type scale */
+  --lumo-font-size-xxxl: 2rem;
+  --lumo-font-size-xxl: 1.5rem;
+  --lumo-font-size-xl: 1.25rem;
+  --lumo-font-size-l: 1.125rem;
+  --lumo-font-size-m: 1rem;
+  --lumo-font-size-s: 0.875rem;
+  --lumo-font-size-xs: 0.8125rem;
+  --lumo-font-size-xxs: 0.75rem;
+
+  /* Shape */
+  --lumo-border-radius-s: 0.375rem;
+  --lumo-border-radius-m: 0.5rem;
+  --lumo-border-radius-l: 0.75rem;
+
+  /* Semantic colors (identical hue both themes; contrast tuned per theme below) */
+  --lumo-success-color: #059669;
+  --lumo-error-color: #dc2626;
+
+  /* Elevation scale */
+  --cuenti-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --cuenti-shadow-raised: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+/* Light theme */
+html, [theme~="light"] {
+  --lumo-primary-color: #1e40af;
+  --lumo-primary-text-color: #1e40af;
+  --lumo-primary-color-50pct: rgba(30, 64, 175, 0.5);
+  --lumo-primary-color-10pct: rgba(30, 64, 175, 0.1);
+  --lumo-success-text-color: #047857;
+  --lumo-error-text-color: #b91c1c;
+  --cuenti-surface-muted: #f8fafc;
+}
+
+/* Dark theme — deep navy, lighter primary for contrast */
+[theme~="dark"] {
+  --lumo-base-color: #0f172a;
+  --lumo-primary-color: #3b82f6;
+  --lumo-primary-text-color: #60a5fa;
+  --lumo-primary-color-50pct: rgba(59, 130, 246, 0.5);
+  --lumo-primary-color-10pct: rgba(59, 130, 246, 0.14);
+  --lumo-success-text-color: #34d399;
+  --lumo-error-text-color: #f87171;
+  --cuenti-surface-muted: #101a34;
+  --cuenti-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --cuenti-shadow-raised: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Headings use the display face */
+h1, h2, h3, h4, h5, h6,
+.page-title, .card-title, .stat-value {
+  font-family: var(--cuenti-font-heading);
+}
+
+/* ----------------------------------------------------------------------------
+   2. Page scaffolding
+   ---------------------------------------------------------------------------- */
+.page-scroll {
+  overflow-y: auto;
+  background: var(--cuenti-surface-muted);
+}
+
+.page-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--lumo-space-m);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lumo-space-m);
+}
+
+.page-container--narrow {
+  max-width: 860px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--lumo-space-s);
+}
+
+.page-title {
+  font-size: var(--lumo-font-size-xxl);
+  font-weight: 700;
+  color: var(--lumo-header-text-color);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.page-subtitle {
+  font-size: var(--lumo-font-size-s);
+  color: var(--lumo-secondary-text-color);
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------------------
+   3. Cards
+   ---------------------------------------------------------------------------- */
+.card {
+  background: var(--lumo-base-color);
+  border: 1px solid var(--lumo-contrast-10pct);
+  border-radius: var(--lumo-border-radius-l);
+  box-shadow: var(--cuenti-shadow-card);
+  padding: var(--lumo-space-m);
+  box-sizing: border-box;
+}
+
+.card-title {
+  font-size: var(--lumo-font-size-l);
+  font-weight: 600;
+  color: var(--lumo-header-text-color);
+  margin: 0 0 var(--lumo-space-s) 0;
+}
+
+/* Metric tile */
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lumo-space-xs);
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.stat-label {
+  font-size: var(--lumo-font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lumo-secondary-text-color);
+  display: flex;
+  align-items: center;
+  gap: var(--lumo-space-xs);
+}
+
+.stat-label vaadin-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--lumo-primary-text-color);
+}
+
+.stat-value {
+  font-size: var(--lumo-font-size-xxl);
+  font-weight: 700;
+  color: var(--lumo-header-text-color);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-caption {
+  font-size: var(--lumo-font-size-xs);
+  color: var(--lumo-secondary-text-color);
+}
+
+/* ----------------------------------------------------------------------------
+   4. Toolbar (search / filters / primary action row)
+   ---------------------------------------------------------------------------- */
+.toolbar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--lumo-space-s);
+}
+
+.toolbar-spacer {
+  flex-grow: 1;
+}
+
+/* ----------------------------------------------------------------------------
+   5. Semantic amounts & badges
+   ---------------------------------------------------------------------------- */
+.amount-positive {
+  color: var(--lumo-success-text-color);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-negative {
+  color: var(--lumo-error-text-color);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-neutral {
+  color: var(--lumo-body-text-color);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .tag-badge {
   display: inline-flex;
   align-items: center;
@@ -11,6 +223,275 @@
   color: var(--tag-fg, var(--lumo-base-color));
 }
 
+/* Bar chart bars (dashboard cash-flow chart) */
+.chart-bar {
+  border-radius: 3px 3px 0 0;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.chart-bar:hover,
+.chart-bar[highlight] {
+  opacity: 1;
+}
+
+/* Solid variant: full opacity at rest, dims on hover (statistics charts) */
+.chart-bar--solid {
+  opacity: 1;
+}
+
+.chart-bar--solid:hover {
+  opacity: 0.75;
+}
+
+/* Row hover highlight (list-style rows inside cards) */
+.hover-row {
+  transition: background 0.12s;
+}
+
+.hover-row:hover {
+  background: var(--lumo-contrast-5pct);
+}
+
+/* Tinted variant: rests on contrast-5pct, deepens on hover */
+.hover-row--tinted {
+  background: var(--lumo-contrast-5pct);
+  transition: background 0.12s;
+}
+
+.hover-row--tinted:hover {
+  background: var(--lumo-contrast-10pct);
+}
+
+/* ----------------------------------------------------------------------------
+   6. Empty state
+   ---------------------------------------------------------------------------- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--lumo-space-s);
+  padding: var(--lumo-space-xl);
+  text-align: center;
+  color: var(--lumo-secondary-text-color);
+}
+
+.empty-state vaadin-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--lumo-contrast-30pct);
+}
+
+.empty-state-title {
+  font-size: var(--lumo-font-size-m);
+  font-weight: 600;
+  color: var(--lumo-body-text-color);
+}
+
+/* ----------------------------------------------------------------------------
+   7. App shell: navbar + drawer navigation (moved from MainLayout executeJs)
+   ---------------------------------------------------------------------------- */
+vaadin-app-layout::part(navbar) {
+  padding: 0;
+  height: 52px;
+  min-height: 52px;
+  box-shadow: none;
+  border-bottom: 1px solid var(--lumo-contrast-10pct);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 16px;
+  margin: 1px 0;
+  border-radius: 10px;
+  text-decoration: none !important;
+  color: var(--lumo-secondary-text-color);
+  font-size: var(--lumo-font-size-s);
+  font-weight: 500;
+  transition: background 0.12s, color 0.12s;
+}
+
+.nav-item:hover,
+.nav-item:visited,
+.nav-item:focus {
+  text-decoration: none !important;
+  background: var(--lumo-contrast-5pct);
+  color: var(--lumo-body-text-color);
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid var(--lumo-primary-color-50pct);
+  outline-offset: -2px;
+}
+
+.nav-item[highlight] {
+  background: var(--lumo-primary-color-10pct);
+  color: var(--lumo-primary-text-color);
+  font-weight: 600;
+}
+
+[theme~="dark"] .nav-item[highlight] {
+  color: white;
+}
+
+.nav-item vaadin-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+.nav-section-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 16px 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.nav-section-header:hover .nav-section-label {
+  color: var(--lumo-secondary-text-color);
+}
+
+.nav-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--lumo-tertiary-text-color);
+  flex-grow: 1;
+}
+
+.nav-section-chevron {
+  width: 14px !important;
+  height: 14px !important;
+  flex-shrink: 0;
+  color: var(--lumo-tertiary-text-color);
+  transition: transform 0.2s ease;
+}
+
+.nav-divider {
+  height: 1px;
+  background: var(--lumo-contrast-10pct);
+  margin: 6px 16px;
+}
+
+/* Header widgets */
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--lumo-primary-color);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.user-link {
+  display: flex;
+  align-items: center;
+  gap: var(--lumo-space-xs);
+  text-decoration: none;
+  border-radius: var(--lumo-border-radius-m);
+  padding: 2px 6px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.user-link:hover {
+  background: var(--lumo-contrast-5pct);
+}
+
+/* ----------------------------------------------------------------------------
+   8. Auth pages (login / register)
+   ---------------------------------------------------------------------------- */
+.auth-view {
+  overflow-y: auto;
+  background: var(--cuenti-surface-muted);
+}
+
+.auth-card {
+  margin-top: clamp(8px, 7vh, 88px);
+  background: var(--lumo-base-color);
+  border: 1px solid var(--lumo-contrast-10pct);
+  border-radius: var(--lumo-border-radius-l);
+  box-shadow: var(--cuenti-shadow-raised);
+  padding: var(--lumo-space-l);
+  width: 100%;
+  max-width: 400px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.auth-card vaadin-login-form,
+.auth-card vaadin-login-form-wrapper {
+  width: 100%;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* ----------------------------------------------------------------------------
+   9. Grid polish
+   ---------------------------------------------------------------------------- */
+vaadin-grid {
+  --lumo-size-xl: 3rem;
+  border-radius: var(--lumo-border-radius-m);
+}
+
+vaadin-grid::part(header-cell) {
+  font-size: var(--lumo-font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--lumo-secondary-text-color);
+}
+
+/* ----------------------------------------------------------------------------
+   10. Responsive
+   ---------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .page-container {
+    padding: var(--lumo-space-s);
+    gap: var(--lumo-space-s);
+  }
+
+  .page-title {
+    font-size: var(--lumo-font-size-xl);
+  }
+
+  .stat-value {
+    font-size: var(--lumo-font-size-xl);
+  }
+
+  .toolbar > * {
+    flex-grow: 1;
+  }
+}
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   11. Misc fixes
+   ---------------------------------------------------------------------------- */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {

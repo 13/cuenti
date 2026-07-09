@@ -96,12 +96,13 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
 
+        addClassName("page-scroll");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
         getStyle()
-                .set("background", "var(--lumo-contrast-5pct)")
                 .set("padding", "var(--lumo-space-m)")
+                .set("gap", "var(--lumo-space-s)")
                 .set("overflow", "hidden");
         
         setupUI();
@@ -110,10 +111,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
     private void setupUI() {
         Span title = new Span(getTranslation("transactions.title"));
-        title.getStyle()
-                .set("font-size", "var(--lumo-font-size-xxl)")
-                .set("font-weight", "700")
-                .set("color", "var(--lumo-header-text-color)");
+        title.addClassName("page-title");
 
         accountSelector.setPlaceholder(getTranslation("dialog.account"));
         // Build items including a pseudo "All Accounts" entry which shows transactions from all accounts
@@ -181,7 +179,6 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
         Button addButton = new Button(getTranslation("transactions.new"), VaadinIcon.PLUS.create(), e -> openTransactionDialog(new Transaction()));
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        addButton.getStyle().set("border-radius", "8px");
 
         setupTabs();
 
@@ -197,9 +194,10 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         toolbar.setAlignItems(Alignment.CENTER);
         toolbar.setJustifyContentMode(JustifyContentMode.BETWEEN);
         toolbar.getStyle()
+                .set("flex-wrap", "wrap")
                 .set("padding", "var(--lumo-space-s) var(--lumo-space-m)")
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("border-radius", "12px");
+                .set("background", "var(--cuenti-surface-muted)")
+                .set("border-radius", "var(--lumo-border-radius-l)");
 
         // Type tabs row — full width below toolbar
         typeTabs.setWidthFull();
@@ -213,14 +211,10 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
         Div card = new Div();
         card.setSizeFull();
+        card.addClassName("card");
         card.getStyle()
-                .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "20px")
-                .set("padding", "var(--lumo-space-l)")
-                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
                 .set("display", "flex")
                 .set("flex-direction", "column")
-                .set("box-sizing", "border-box")
                 .set("gap", "var(--lumo-space-s)");
         card.add(toolbar, typeTabs, grid);
         add(card);
@@ -676,7 +670,6 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         dialog.setWidth("min(700px, 96vw)");
         dialog.setResizable(false);
         dialog.getElement().getStyle()
-                .set("--lumo-border-radius-l", "20px")
                 .set("padding", "0")
                 .set("overflow-x", "hidden");
 
@@ -706,7 +699,9 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         Div accentBar = new Div();
         accentBar.setWidthFull();
         accentBar.setHeight("4px");
-        accentBar.getStyle().set("border-radius", "20px 20px 0 0").set("transition", "background 0.2s");
+        accentBar.getStyle()
+                .set("border-radius", "var(--lumo-border-radius-l) var(--lumo-border-radius-l) 0 0")
+                .set("transition", "background 0.2s");
 
         Runnable[] selectType = {null};
         selectType[0] = () -> {

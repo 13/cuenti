@@ -19,21 +19,15 @@ abstract class BaseSettingsView extends VerticalLayout {
                 .orElseThrow(() -> new IllegalStateException("User not authenticated"));
         this.currentUser = userService.findByUsername(username);
 
+        addClassName("page-scroll");
         setWidthFull();
         setAlignItems(Alignment.CENTER);
         setPadding(false);
         setSpacing(false);
-        getStyle()
-                .set("background", "var(--lumo-contrast-5pct)")
-                .set("padding", "var(--lumo-space-m)")
-                .set("overflow-y", "auto");
+        getStyle().set("padding", "var(--lumo-space-m)");
 
-        container.setWidthFull();
-        container.setMaxWidth("860px");
-        container.getStyle()
-                .set("display", "flex")
-                .set("flex-direction", "column")
-                .set("gap", "var(--lumo-space-m)");
+        container.addClassNames("page-container", "page-container--narrow");
+        container.getStyle().set("padding", "0");
 
         add(container);
     }
@@ -41,12 +35,8 @@ abstract class BaseSettingsView extends VerticalLayout {
     protected Div createCard() {
         Div card = new Div();
         card.setWidthFull();
+        card.addClassName("card");
         card.getStyle()
-                .set("background", "var(--lumo-base-color)")
-                .set("border-radius", "20px")
-                .set("padding", "var(--lumo-space-l)")
-                .set("box-shadow", "0 2px 12px rgba(0,0,0,0.06)")
-                .set("box-sizing", "border-box")
                 .set("display", "flex").set("flex-direction", "column")
                 .set("gap", "var(--lumo-space-m)");
         return card;

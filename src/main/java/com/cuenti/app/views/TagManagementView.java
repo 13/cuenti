@@ -43,7 +43,7 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
     private final User currentUser;
 
     private final Grid<Tag> grid = new Grid<>(Tag.class, false);
-    private final TextField searchField = new TextField();
+    final TextField searchField = new TextField(); // package-visible for tests
 
     public TagManagementView(TagService tagService, UserService userService, SecurityUtils securityUtils) {
         this.tagService = tagService;
@@ -80,10 +80,10 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
         Button addButton = new Button(getTranslation("tags.add"), VaadinIcon.PLUS.create(), e -> openTagDialog(new Tag()));
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        HorizontalLayout toolbar = new HorizontalLayout(searchField, addButton);
+        HorizontalLayout toolbar = new HorizontalLayout(addButton);
         toolbar.setWidthFull();
+        toolbar.setJustifyContentMode(JustifyContentMode.END);
         toolbar.setAlignItems(Alignment.CENTER);
-        toolbar.expand(searchField);
         toolbar.setSpacing(false);
         toolbar.addClassName("card-toolbar");
         toolbar.getStyle().set("gap", "var(--vaadin-gap-s)");
@@ -95,6 +95,14 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
         grid.setEmptyStateComponent(new com.cuenti.app.views.components.EmptyStateNotice(
                 VaadinIcon.TAGS, getTranslation("empty.title"), null, emptyAdd));
         grid.addItemDoubleClickListener(e -> openTagDialog(e.getItem()));
+
+        // Demo-style per-column filter: search lives in the grid header
+        searchField.setWidthFull();
+        grid.addAttachListener(e -> {
+            if (grid.getHeaderRows().size() < 2 && !grid.getColumns().isEmpty()) {
+                grid.appendHeaderRow().getCell(grid.getColumns().get(0)).setComponent(searchField);
+            }
+        });
         grid.setSizeFull();
         grid.addColumn(Tag::getName).setHeader(getTranslation("tags.name")).setSortable(true).setAutoWidth(true);
 
@@ -164,7 +172,7 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
         body.getStyle().set("padding","var(--vaadin-gap-m) var(--vaadin-gap-l)").set("box-sizing","border-box");
         dialog.add(body);
 
-        Button saveButton = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
+        Button saveButton = new Button(getTranslation("dialog.save"), e -> {
             if (binder.validate().isOk()) {
                 tagService.saveTag(tag); refreshGrid(); dialog.close();
                 com.cuenti.app.views.components.UiNotifier.success(getTranslation("tags.saved"));

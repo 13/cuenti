@@ -218,7 +218,7 @@ public class BudgetManagementView extends VerticalLayout implements HasDynamicTi
                 .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l)");
         dialog.add(body);
 
-        Button saveButton = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
+        Button saveButton = new Button(getTranslation("dialog.save"), e -> {
             Category category = categoryCombo.getValue();
             BigDecimal limit = limitField.getValue();
             if (category == null || limit == null || limit.compareTo(BigDecimal.ZERO) <= 0) {

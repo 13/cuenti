@@ -670,7 +670,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .set("overflow-x", "hidden").set("box-sizing", "border-box");
 
         // ── Footer ────────────────────────────────────────────────────
-        Button save = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
+        Button save = new Button(getTranslation("dialog.save"), e -> {
             if (binder.validate().isOk()) {
                 st.setType(selectedType.get());
                 st.setUser(currentUser);

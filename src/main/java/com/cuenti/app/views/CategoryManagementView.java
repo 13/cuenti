@@ -86,10 +86,10 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
         Button addButton = new Button(getTranslation("categories.add"), VaadinIcon.PLUS.create(), e -> openCategoryDialog(new Category()));
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        HorizontalLayout toolbar = new HorizontalLayout(searchField, addButton);
+        HorizontalLayout toolbar = new HorizontalLayout(addButton);
         toolbar.setWidthFull();
+        toolbar.setJustifyContentMode(JustifyContentMode.END);
         toolbar.setAlignItems(Alignment.CENTER);
-        toolbar.expand(searchField);
         toolbar.setSpacing(false);
         toolbar.addClassName("card-toolbar");
         toolbar.getStyle().set("gap", "var(--vaadin-gap-s)");
@@ -101,6 +101,14 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
         grid.setEmptyStateComponent(new com.cuenti.app.views.components.EmptyStateNotice(
                 VaadinIcon.SITEMAP, getTranslation("empty.title"), null, emptyAdd));
         grid.addItemDoubleClickListener(e -> openCategoryDialog(e.getItem()));
+
+        // Demo-style per-column filter: search lives in the grid header
+        searchField.setWidthFull();
+        grid.addAttachListener(e -> {
+            if (grid.getHeaderRows().size() < 2 && !grid.getColumns().isEmpty()) {
+                grid.appendHeaderRow().getCell(grid.getColumns().get(0)).setComponent(searchField);
+            }
+        });
         grid.addColumn(Category::getFullName).setHeader(getTranslation("categories.name")).setSortable(true).setAutoWidth(true);
         
         grid.addComponentColumn(category -> {
@@ -253,7 +261,7 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
         body.add(nameField, typeGroup, parentCombo);
         dialog.add(body);
 
-        Button saveButton = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
+        Button saveButton = new Button(getTranslation("dialog.save"), e -> {
             if (binder.validate().isOk()) {
                 try {
                     categoryService.saveCategory(category); refreshGrid(); dialog.close();

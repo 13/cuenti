@@ -32,6 +32,14 @@ class UC106BudgetsTest extends SpringBrowserlessTest {
                 && vaadinIcon.equals(i.getElement().getAttribute("icon"));
     }
 
+    /** The dialog's primary (Save) button — demo-style primaries carry no icon. */
+    private Button dialogSaveButton() {
+        Dialog dialog = $(Dialog.class).single();
+        return $(Button.class, dialog)
+                .withCondition(b -> b.getElement().getThemeList().contains("primary"))
+                .single();
+    }
+
     @Test
     @UseCase(id = "UC-106", scenario = "Create and Delete Budget")
     void createBudget_thenDelete() {
@@ -48,7 +56,7 @@ class UC106BudgetsTest extends SpringBrowserlessTest {
         Object first = categoryTester.getSuggestionItems().get(0);
         categoryTester.selectItem(((com.cuenti.app.model.Category) first).getFullName());
         test($(BigDecimalField.class).single()).setValue(new BigDecimal("300"));
-        test($(Button.class).withCondition(icon("vaadin:check")).single()).click();
+        test(dialogSaveButton()).click();
 
         assertThat(test(grid).size()).isEqualTo(before + 1);
 
@@ -69,7 +77,7 @@ class UC106BudgetsTest extends SpringBrowserlessTest {
         var categoryTester = test(category);
         Object first = categoryTester.getSuggestionItems().get(0);
         categoryTester.selectItem(((com.cuenti.app.model.Category) first).getFullName());
-        test($(Button.class).withCondition(icon("vaadin:check")).single()).click();
+        test(dialogSaveButton()).click();
 
         assertThat($(BigDecimalField.class).single().isInvalid()).isTrue();
         assertThat($(Dialog.class).exists()).isTrue();

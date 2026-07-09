@@ -102,10 +102,10 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
         Button addButton = new Button(getTranslation("accounts.add"), new Icon(VaadinIcon.PLUS), e -> openAccountDialog(new Account()));
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        HorizontalLayout toolbar = new HorizontalLayout(searchField, addButton);
+        HorizontalLayout toolbar = new HorizontalLayout(addButton);
         toolbar.setWidthFull();
+        toolbar.setJustifyContentMode(JustifyContentMode.END);
         toolbar.setAlignItems(Alignment.CENTER);
-        toolbar.expand(searchField);
         toolbar.setSpacing(false);
         toolbar.addClassName("card-toolbar");
         toolbar.getStyle().set("gap", "var(--vaadin-gap-s)");
@@ -145,6 +145,14 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
         grid.setEmptyStateComponent(new com.cuenti.app.views.components.EmptyStateNotice(
                 VaadinIcon.WALLET, getTranslation("empty.title"), null, emptyAdd));
         grid.addItemDoubleClickListener(e -> openAccountDialog(e.getItem()));
+
+        // Demo-style per-column filter: search lives in the grid header
+        searchField.setWidthFull();
+        grid.addAttachListener(e -> {
+            if (grid.getHeaderRows().size() < 2 && !grid.getColumns().isEmpty()) {
+                grid.appendHeaderRow().getCell(grid.getColumns().get(0)).setComponent(searchField);
+            }
+        });
 
         // Name + group stacked
         grid.addComponentColumn(acc -> {
@@ -342,7 +350,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
         body.getStyle().set("display","flex").set("flex-direction","column").set("overflow-x","hidden").set("box-sizing","border-box");
         dialog.add(body);
 
-        Button saveButton = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
+        Button saveButton = new Button(getTranslation("dialog.save"), e -> {
             if (!binder.validate().isOk()) return;
             accountService.adjustStartBalance(account, startBalanceField.getValue());
             accountService.saveAccount(account);

@@ -227,8 +227,8 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
 
         Span pill = new Span(user.getEnabled()
                 ? getTranslation("settings.enabled") : getTranslation("settings.disabled"));
-        pill.addClassName("tag-badge");
-        pill.getStyle().set("--tag-bg", user.getEnabled() ? "var(--aura-green)" : "var(--aura-red)");
+        pill.addClassName("pill-tint");
+        pill.getStyle().set("--pill-color", user.getEnabled() ? "var(--aura-green)" : "var(--aura-red)");
         userPanel.setPill(pill);
 
         Div content = userPanel.content();

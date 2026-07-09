@@ -1533,13 +1533,13 @@ public class TransactionHistoryView extends VerticalLayout
                 t.getPayee() != null && !t.getPayee().isBlank() ? t.getPayee() : "#" + t.getId());
 
         Span pill = new Span(getTranslation("transaction.type." + t.getType().name().toLowerCase()));
-        pill.addClassName("tag-badge");
+        pill.addClassName("pill-tint");
         String pillColor = switch (t.getType()) {
             case INCOME -> "var(--cuenti-chart-income)";
             case EXPENSE -> "var(--cuenti-chart-expense)";
             case TRANSFER -> "var(--aura-accent-color)";
         };
-        pill.getStyle().set("--tag-bg", pillColor);
+        pill.getStyle().set("--pill-color", pillColor);
         detailPanel.setPill(pill);
 
         Div content = detailPanel.content();

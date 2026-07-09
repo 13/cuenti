@@ -174,7 +174,7 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
         body.add(name, row1, row2);
         dialog.add(body);
 
-        Button saveButton = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
+        Button saveButton = new Button(getTranslation("dialog.save"), e -> {
             if (binder.validate().isOk()) {
                 currencyService.saveCurrency(currency); refreshGrid(); dialog.close();
                 com.cuenti.app.views.components.UiNotifier.success(getTranslation("currencies.saved"));

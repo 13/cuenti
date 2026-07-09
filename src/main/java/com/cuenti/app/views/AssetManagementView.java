@@ -97,10 +97,9 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         });
         updatePricesButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
-        HorizontalLayout toolbar = new HorizontalLayout(searchField, addButton, updatePricesButton);
+        HorizontalLayout toolbar = new HorizontalLayout(updatePricesButton, addButton);
         toolbar.setWidthFull();
         toolbar.setAlignItems(Alignment.CENTER);
-        toolbar.expand(searchField);
         toolbar.setSpacing(false);
         toolbar.addClassName("card-toolbar");
         toolbar.getStyle().set("gap", "var(--vaadin-gap-s)");
@@ -112,6 +111,14 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         grid.setEmptyStateComponent(new com.cuenti.app.views.components.EmptyStateNotice(
                 VaadinIcon.CHART_3D, getTranslation("empty.title"), null, emptyAdd));
         grid.addItemDoubleClickListener(e -> openAssetDialog(e.getItem()));
+
+        // Demo-style per-column filter: search lives in the grid header
+        searchField.setWidthFull();
+        grid.addAttachListener(e -> {
+            if (grid.getHeaderRows().size() < 2 && !grid.getColumns().isEmpty()) {
+                grid.appendHeaderRow().getCell(grid.getColumns().get(0)).setComponent(searchField);
+            }
+        });
         grid.setSizeFull();
         
         grid.addColumn(Asset::getSymbol).setHeader(getTranslation("assets.symbol")).setSortable(true).setAutoWidth(true);
@@ -223,7 +230,7 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         body.add(symRow, name);
         dialog.add(body);
 
-        Button saveButton = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
+        Button saveButton = new Button(getTranslation("dialog.save"), e -> {
             if (binder.validate().isOk()) {
                 assetService.saveAsset(asset); refreshGrid(); dialog.close();
                 com.cuenti.app.views.components.UiNotifier.success(getTranslation("assets.saved"));

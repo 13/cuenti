@@ -34,11 +34,9 @@ class UC101ManageTagsTest extends SpringBrowserlessTest {
                 && vaadinIcon.equals(i.getElement().getAttribute("icon"));
     }
 
-    /** The grid filter field is the only TextField with a placeholder on this view. */
+    /** The grid filter lives in the grid header row (invisible to $ queries). */
     private TextField searchField() {
-        return $(TextField.class)
-                .withCondition(f -> f.getPlaceholder() != null && !f.getPlaceholder().isEmpty())
-                .single();
+        return ((TagManagementView) getCurrentView()).searchField;
     }
 
     /** The tag dialog's name field has no placeholder (unlike the grid filter). */
@@ -54,10 +52,18 @@ class UC101ManageTagsTest extends SpringBrowserlessTest {
         return $(Button.class, cell).withCondition(icon("vaadin:trash")).single();
     }
 
+    /** The dialog's primary (Save) button — demo-style primaries carry no icon. */
+    private Button dialogSaveButton() {
+        Dialog dialog = $(Dialog.class).single();
+        return $(Button.class, dialog)
+                .withCondition(b -> b.getElement().getThemeList().contains("primary"))
+                .single();
+    }
+
     private void createTag(String name) {
         test($(Button.class).withCondition(icon("vaadin:plus")).single()).click();
         test(dialogNameField()).setValue(name);
-        test($(Button.class).withCondition(icon("vaadin:check")).single()).click();
+        test(dialogSaveButton()).click();
     }
 
     @Test
@@ -68,7 +74,7 @@ class UC101ManageTagsTest extends SpringBrowserlessTest {
         test($(Button.class).withCondition(icon("vaadin:plus")).single()).click();
         assertThat($(Dialog.class).exists()).isTrue();
 
-        test($(Button.class).withCondition(icon("vaadin:check")).single()).click();
+        test(dialogSaveButton()).click();
 
         assertThat(dialogNameField().isInvalid()).isTrue();
         assertThat($(Dialog.class).exists()).isTrue();

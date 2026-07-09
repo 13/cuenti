@@ -77,6 +77,11 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
         toolbar.setJustifyContentMode(JustifyContentMode.END);
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+        com.vaadin.flow.component.button.Button emptyAdd =
+                new com.vaadin.flow.component.button.Button(getTranslation("empty.hint"), e -> openCurrencyDialog(new Currency()));
+        emptyAdd.addThemeVariants(com.vaadin.flow.component.button.ButtonVariant.LUMO_TERTIARY);
+        grid.setEmptyStateComponent(new com.cuenti.app.views.components.EmptyStateNotice(
+                VaadinIcon.MONEY, getTranslation("empty.title"), null, emptyAdd));
         grid.addItemDoubleClickListener(e -> openCurrencyDialog(e.getItem()));
         grid.addColumn(Currency::getCode).setHeader(getTranslation("currencies.code")).setSortable(true).setAutoWidth(true);
         grid.addColumn(Currency::getName).setHeader(getTranslation("currencies.name")).setSortable(true).setAutoWidth(true);
@@ -88,6 +93,8 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
         grid.addComponentColumn(currency -> {
             Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> openCurrencyDialog(currency));
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            editBtn.setTooltipText(getTranslation("transactions.edit"));
+            editBtn.getElement().setAttribute("aria-label", getTranslation("transactions.edit"));
 
             Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e ->
                 DeleteConfirm.show(
@@ -102,6 +109,8 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
                         UiNotifier.success(getTranslation("currencies.deleted"));
                     }));
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+            deleteBtn.setTooltipText(getTranslation("transactions.delete"));
+            deleteBtn.getElement().setAttribute("aria-label", getTranslation("transactions.delete"));
 
             return new HorizontalLayout(editBtn, deleteBtn);
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
@@ -165,8 +174,7 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
         Button saveButton = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
             if (binder.validate().isOk()) {
                 currencyService.saveCurrency(currency); refreshGrid(); dialog.close();
-                Notification.show(getTranslation("currencies.saved"), 2000, Notification.Position.BOTTOM_END)
-                    .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_SUCCESS);
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("currencies.saved"));
             }
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);

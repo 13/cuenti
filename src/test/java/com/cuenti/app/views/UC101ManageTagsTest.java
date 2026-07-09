@@ -75,6 +75,62 @@ class UC101ManageTagsTest extends SpringBrowserlessTest {
     }
 
     @Test
+    @UseCase(id = "UC-101", scenario = "A3: Empty Grid Shows Empty State")
+    void filteredOutGrid_hasEmptyStateComponent() {
+        navigate(TagManagementView.class);
+        Grid<?> grid = $(Grid.class).single();
+
+        assertThat(grid.getEmptyStateComponent())
+                .isInstanceOf(com.cuenti.app.views.components.EmptyStateNotice.class);
+
+        test(searchField()).setValue("definitely-no-such-tag-xyz");
+        assertThat(test(grid).size()).isEqualTo(0);
+    }
+
+    @Test
+    @UseCase(id = "UC-101", scenario = "A4: Row Buttons Accessible")
+    void rowActionButtons_haveAriaLabels() {
+        navigate(TagManagementView.class);
+        createTag(TEST_TAG + "A11y");
+        test(searchField()).setValue(TEST_TAG + "A11y");
+        Grid<?> grid = $(Grid.class).single();
+
+        Button trash = trashButton(grid, 0);
+        assertThat(trash.getElement().getAttribute("aria-label")).isNotBlank();
+
+        // cleanup through the UI
+        test(trash).click();
+        test($(ConfirmDialog.class).single()).confirm();
+    }
+
+    @Test
+    @UseCase(id = "UC-101", scenario = "A5: Undo Restores Deleted Tag")
+    void undoAfterDelete_restoresTag() {
+        navigate(TagManagementView.class);
+        createTag(TEST_TAG + "Undo");
+        test(searchField()).setValue(TEST_TAG + "Undo");
+        Grid<?> grid = $(Grid.class).single();
+        assertThat(test(grid).size()).isEqualTo(1);
+
+        test(trashButton(grid, 0)).click();
+        test($(ConfirmDialog.class).single()).confirm();
+        assertThat(test(grid).size()).isEqualTo(0);
+
+        // Undo action lives inside the delete notification (the earlier
+        // "saved" toast may still be open, so scan all notifications)
+        Button undo = $(Notification.class).all().stream()
+                .flatMap(n -> $(Button.class, n).all().stream())
+                .findFirst().orElseThrow();
+        test(undo).click();
+        assertThat(test(grid).size()).isEqualTo(1);
+
+        // cleanup: delete again, this time for good
+        test(trashButton(grid, 0)).click();
+        test($(ConfirmDialog.class).single()).confirm();
+        assertThat(test(grid).size()).isEqualTo(0);
+    }
+
+    @Test
     @UseCase(id = "UC-101", scenario = "A2: Delete Requires Confirmation")
     void deleteTag_showsConfirmation_cancelKeeps_confirmRemoves() {
         navigate(TagManagementView.class);

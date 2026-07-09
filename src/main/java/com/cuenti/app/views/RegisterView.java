@@ -201,34 +201,17 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
                     model.getLastName().trim()
             );
 
-            Notification success = Notification.show(
-                    t("register.success",
-                            "Registration successful! Please login."),
-                    3000,
-                    Notification.Position.TOP_CENTER
-            );
-            success.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            com.cuenti.app.views.components.UiNotifier.success(t("register.success", "Registration successful! Please login."));
 
             UI.getCurrent().navigate(LoginView.class);
 
         } catch (IllegalArgumentException e) {
-            Notification n = Notification.show(
-                    e.getMessage(),
-                    3000,
-                    Notification.Position.TOP_CENTER
-            );
-            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            com.cuenti.app.views.components.UiNotifier.error(e.getMessage());
 
         } catch (Exception e) {
             log.error("Registration error", e);
 
-            Notification n = Notification.show(
-                    t("register.error",
-                            "Registration failed. Please try again."),
-                    3000,
-                    Notification.Position.TOP_CENTER
-            );
-            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            com.cuenti.app.views.components.UiNotifier.error(t("register.error", "Registration failed. Please try again."));
         }
     }
 

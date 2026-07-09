@@ -90,10 +90,10 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
             if (bytes == null) return;
             try {
                 jsonExportImportService.importUserData(currentUser, new ByteArrayInputStream(bytes));
-                Notification.show(getTranslation("settings.json_import_success"), 3000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.json_import_success"));
                 com.vaadin.flow.component.UI.getCurrent().getPage().executeJs("setTimeout(() => location.reload(), 2000)");
             } catch (Exception ex) {
-                Notification.show(getTranslation("settings.json_import_failed", ex.getMessage()), 5000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.json_import_failed", ex.getMessage()));
             }
         });
 
@@ -134,14 +134,14 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
             byte[] bytes = trData.getAndSet(null);
             if (bytes == null) return;
             if (cashAccountCombo.isEmpty() || assetAccountCombo.isEmpty()) {
-                Notification.show(getTranslation("settings.tr_select_accounts"), 3000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.tr_select_accounts"));
                 return;
             }
             try {
                 tradeRepublicImportService.importCsv(new ByteArrayInputStream(bytes), cashAccountCombo.getValue(), assetAccountCombo.getValue());
-                Notification.show(getTranslation("settings.tr_success"), 2000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.tr_success"));
             } catch (Exception ex) {
-                Notification.show(getTranslation("settings.import_failed", ex.getMessage()), 5000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.import_failed", ex.getMessage()));
             }
         });
 
@@ -162,9 +162,9 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
             if (bytes == null) return;
             try {
                 xhbImportService.importXhb(new ByteArrayInputStream(bytes), currentUser);
-                Notification.show(getTranslation("settings.import_success"), 2000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.import_success"));
             } catch (Exception ex) {
-                Notification.show(getTranslation("settings.import_failed", ex.getMessage()), 5000, Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.import_failed", ex.getMessage()));
             }
         });
 

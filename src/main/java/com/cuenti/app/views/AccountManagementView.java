@@ -141,6 +141,11 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
 
     private void configureGrid() {
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+        com.vaadin.flow.component.button.Button emptyAdd =
+                new com.vaadin.flow.component.button.Button(getTranslation("empty.hint"), e -> openAccountDialog(new Account()));
+        emptyAdd.addThemeVariants(com.vaadin.flow.component.button.ButtonVariant.LUMO_TERTIARY);
+        grid.setEmptyStateComponent(new com.cuenti.app.views.components.EmptyStateNotice(
+                VaadinIcon.WALLET, getTranslation("empty.title"), null, emptyAdd));
         grid.addItemDoubleClickListener(e -> openAccountDialog(e.getItem()));
 
         // Name + group stacked
@@ -191,7 +196,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
             editButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             editButton.setTooltipText(getTranslation("transactions.edit"));
             
-            Button deleteButton = new Button(new Icon(VaadinIcon.TRASH), e ->
+            editButton.getElement().setAttribute("aria-label", getTranslation("transactions.edit"));Button deleteButton = new Button(new Icon(VaadinIcon.TRASH), e ->
                 DeleteConfirm.show(
                     getTranslation("dialog.confirm_delete"),
                     getTranslation("dialog.confirm_delete_message") + " \"" + account.getAccountName() + "\"?",
@@ -202,7 +207,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
             deleteButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
             deleteButton.setTooltipText(getTranslation("transactions.delete"));
             
-            return new HorizontalLayout(editButton, deleteButton);
+            deleteButton.getElement().setAttribute("aria-label", getTranslation("transactions.delete"));return new HorizontalLayout(editButton, deleteButton);
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
 
         // Drag and Drop for sorting (only enabled when not filtering)
@@ -343,8 +348,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
             accountService.adjustStartBalance(account, startBalanceField.getValue());
             accountService.saveAccount(account);
             updateList(); dialog.close();
-            Notification.show(getTranslation("accounts.saved"), 2000, Notification.Position.BOTTOM_END)
-                    .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_SUCCESS);
+            com.cuenti.app.views.components.UiNotifier.success(getTranslation("accounts.saved"));
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         Button cancelButton = new Button(getTranslation("dialog.cancel"), e -> dialog.close());

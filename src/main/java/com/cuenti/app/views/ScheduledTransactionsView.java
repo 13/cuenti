@@ -255,8 +255,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
             Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
                 scheduledService.delete(st);
                 refreshGrids();
-                Notification.show(getTranslation("scheduled.deleted"), 2000, Notification.Position.BOTTOM_END)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                com.cuenti.app.views.components.UiNotifier.error(getTranslation("scheduled.deleted"));
             });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
             deleteBtn.getElement().setAttribute("title", getTranslation("transactions.actions"));
@@ -341,16 +340,14 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
             Button postBtn = new Button(getTranslation("scheduled.post"), VaadinIcon.CHECK.create(), e -> {
                 scheduledService.post(st.getId());
                 refreshGrids();
-                Notification.show(getTranslation("scheduled.posted"), 2000, Notification.Position.BOTTOM_END)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("scheduled.posted"));
             });
             postBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_SUCCESS);
 
             Button skipBtn = new Button(getTranslation("scheduled.skip"), VaadinIcon.STEP_FORWARD.create(), e -> {
                 scheduledService.skip(st.getId());
                 refreshGrids();
-                Notification.show(getTranslation("scheduled.skipped"), 2000, Notification.Position.BOTTOM_END)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("scheduled.skipped"));
             });
             skipBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
@@ -679,8 +676,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 scheduledService.save(st);
                 refreshGrids();
                 dialog.close();
-                Notification n = Notification.show(getTranslation("dialog.saved"), 2000, Notification.Position.BOTTOM_END);
-                n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("dialog.saved"));
             }
         });
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);

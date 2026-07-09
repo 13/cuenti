@@ -70,8 +70,7 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
 
         Button updateInfo = new Button(getTranslation("settings.update_profile"), VaadinIcon.CHECK.create(), e -> {
             userService.updateUserInfo(currentUser, firstName.getValue(), lastName.getValue(), email.getValue());
-            Notification n = Notification.show(getTranslation("settings.profile_updated"), 2000, Notification.Position.BOTTOM_END);
-            n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.profile_updated"));
         });
         updateInfo.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
@@ -110,8 +109,7 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
         Button saveLocalization = new Button(getTranslation("settings.save"), VaadinIcon.CHECK.create(), e -> {
             userService.updateDefaultCurrency(currentUser, currencyComboBox.getValue().getCode());
             userService.updateLocale(currentUser, localeComboBox.getValue());
-            Notification n = Notification.show(getTranslation("settings.saved"), 2000, Notification.Position.BOTTOM_END);
-            n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.saved"));
             UI.getCurrent().getPage().reload();
         });
         saveLocalization.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -140,14 +138,13 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
             if (userService.checkPassword(currentUser, oldPass.getValue())) {
                 if (newPass.getValue().equals(confirmPass.getValue()) && newPass.getValue().length() >= 6) {
                     userService.updatePassword(currentUser, newPass.getValue());
-                    Notification n = Notification.show(getTranslation("settings.saved"), 2000, Notification.Position.BOTTOM_END);
-                    n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                    com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.saved"));
                     oldPass.clear(); newPass.clear(); confirmPass.clear();
                 } else {
-                    Notification.show(getTranslation("settings.passwords_not_match"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.passwords_not_match"));
                 }
             } else {
-                Notification.show(getTranslation("settings.incorrect_old_password"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.incorrect_old_password"));
             }
         });
         changePass.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -175,7 +172,7 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
             Button delBtn = new Button(getTranslation("settings.delete_everything"), VaadinIcon.TRASH.create(), ev -> {
                 profileCleanupService.cleanupUserData(currentUser);
                 confirmDialog.close();
-                Notification.show(getTranslation("settings.wiped"), 3000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.wiped"));
                 UI.getCurrent().navigate(DashboardView.class);
             });
             delBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);

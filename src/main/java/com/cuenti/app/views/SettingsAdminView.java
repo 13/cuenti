@@ -137,10 +137,10 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
             Button resetBtn = new Button(VaadinIcon.KEY.create(), e -> openAdminPasswordDialog(u));
             resetBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             resetBtn.setTooltipText(getTranslation("settings.force_password_change"));
-            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> openDeleteUserDialog(u));
+            resetBtn.getElement().setAttribute("aria-label", getTranslation("settings.force_password_change"));Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> openDeleteUserDialog(u));
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
             deleteBtn.setTooltipText(getTranslation("settings.delete_user"));
-            deleteBtn.setEnabled(!u.getUsername().equals(currentUser.getUsername()) && !u.getUsername().equals("demo"));
+            deleteBtn.getElement().setAttribute("aria-label", getTranslation("settings.delete_user"));deleteBtn.setEnabled(!u.getUsername().equals(currentUser.getUsername()) && !u.getUsername().equals("demo"));
             HorizontalLayout hl = new HorizontalLayout(resetBtn, deleteBtn);
             hl.setSpacing(false); hl.getStyle().set("gap", "var(--vaadin-gap-xs)");
             return hl;
@@ -181,15 +181,15 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
         Button save = new Button(getTranslation("settings.create_user"), e -> {
             try {
                 if (username.isEmpty() || email.isEmpty() || password.isEmpty() || firstName.isEmpty() || lastName.isEmpty()) {
-                    Notification.show(getTranslation("settings.all_fields_required"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.all_fields_required"));
                     return;
                 }
                 if (!password.getValue().equals(confirmPassword.getValue())) {
-                    Notification.show(getTranslation("settings.passwords_not_match"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.passwords_not_match"));
                     return;
                 }
                 if (password.getValue().length() < 6) {
-                    Notification.show(getTranslation("settings.passwords_not_match"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.passwords_not_match"));
                     return;
                 }
                 userService.registerUser(username.getValue(), email.getValue(), password.getValue(), firstName.getValue(), lastName.getValue());
@@ -197,7 +197,7 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
                 Notification.show(getTranslation("settings.user_created"));
                 dialog.close();
             } catch (Exception ex) {
-                Notification.show(getTranslation("settings.error_prefix") + ex.getMessage(), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.error_prefix") + ex.getMessage());
             }
         });
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -220,9 +220,9 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
             if (p1.getValue().equals(p2.getValue()) && !p1.getValue().isBlank()) {
                 userService.updatePassword(user, p1.getValue());
                 d.close();
-                Notification.show(getTranslation("settings.saved"), 2000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.saved"));
             } else {
-                Notification.show(getTranslation("settings.passwords_not_match"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.passwords_not_match"));
             }
         });
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -265,12 +265,10 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
             try {
                 userService.deleteUser(user);
                 userGrid.setItems(userService.findAll());
-                Notification.show(getTranslation("settings.user_deleted", "User deleted successfully"), 3000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.user_deleted", "User deleted successfully"));
                 confirmDialog.close();
             } catch (Exception ex) {
-                Notification.show(getTranslation("settings.user_delete_failed", "Failed to delete user: ") + ex.getMessage(), 5000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.user_delete_failed", "Failed to delete user: ") + ex.getMessage());
             }
         });
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);

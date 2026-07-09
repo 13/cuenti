@@ -97,6 +97,11 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
                 .set("gap", "var(--vaadin-gap-s)");
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+        com.vaadin.flow.component.button.Button emptyAdd =
+                new com.vaadin.flow.component.button.Button(getTranslation("empty.hint"), e -> openCategoryDialog(new Category()));
+        emptyAdd.addThemeVariants(com.vaadin.flow.component.button.ButtonVariant.LUMO_TERTIARY);
+        grid.setEmptyStateComponent(new com.cuenti.app.views.components.EmptyStateNotice(
+                VaadinIcon.SITEMAP, getTranslation("empty.title"), null, emptyAdd));
         grid.addItemDoubleClickListener(e -> openCategoryDialog(e.getItem()));
         grid.addColumn(Category::getFullName).setHeader(getTranslation("categories.name")).setSortable(true).setAutoWidth(true);
         
@@ -113,6 +118,8 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
         grid.addComponentColumn(category -> {
             Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> openCategoryDialog(category));
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            editBtn.setTooltipText(getTranslation("transactions.edit"));
+            editBtn.getElement().setAttribute("aria-label", getTranslation("transactions.edit"));
 
              Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
                  ConfirmDialog dialog = new ConfirmDialog();
@@ -124,15 +131,22 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
                      try {
                          categoryService.deleteCategory(category);
                          refreshGrid();
-                         Notification.show(getTranslation("categories.deleted"), 2000, Notification.Position.BOTTOM_END)
-                                 .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_ERROR);
+                         com.cuenti.app.views.components.UiNotifier.successWithAction(
+                                 getTranslation("categories.deleted"),
+                                 getTranslation("action.undo"), () -> {
+                                     category.setId(null);
+                                     categoryService.saveCategory(category);
+                                     refreshGrid();
+                                 });
                      } catch (Exception ex) {
-                         Notification.show(getTranslation("error.delete_failed"), 5000, Notification.Position.MIDDLE);
+                         com.cuenti.app.views.components.UiNotifier.error(getTranslation("error.delete_failed"));
                      }
                  });
                  dialog.open();
              });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+            deleteBtn.setTooltipText(getTranslation("transactions.delete"));
+            deleteBtn.getElement().setAttribute("aria-label", getTranslation("transactions.delete"));
 
             return new HorizontalLayout(editBtn, deleteBtn);
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
@@ -244,8 +258,7 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
             if (binder.validate().isOk()) {
                 try {
                     categoryService.saveCategory(category); refreshGrid(); dialog.close();
-                    Notification.show(getTranslation("categories.saved"), 2000, Notification.Position.BOTTOM_END)
-                    .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_SUCCESS);
+                    com.cuenti.app.views.components.UiNotifier.success(getTranslation("categories.saved"));
                 } catch (IllegalArgumentException ex) {
                     Notification.show(ex.getMessage(), 5000, Notification.Position.MIDDLE);
                 }

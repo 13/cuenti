@@ -92,8 +92,7 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         Button updatePricesButton = new Button(VaadinIcon.REFRESH.create(), e -> {
             assetService.updateCurrentUserAssetPrices();
             refreshGrid();
-            Notification.show(getTranslation("assets.prices_updated"), 2000, Notification.Position.BOTTOM_END)
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            com.cuenti.app.views.components.UiNotifier.success(getTranslation("assets.prices_updated"));
         });
         updatePricesButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
@@ -109,6 +108,11 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
                 .set("gap", "var(--vaadin-gap-s)");
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+        com.vaadin.flow.component.button.Button emptyAdd =
+                new com.vaadin.flow.component.button.Button(getTranslation("empty.hint"), e -> openAssetDialog(new Asset()));
+        emptyAdd.addThemeVariants(com.vaadin.flow.component.button.ButtonVariant.LUMO_TERTIARY);
+        grid.setEmptyStateComponent(new com.cuenti.app.views.components.EmptyStateNotice(
+                VaadinIcon.CHART_3D, getTranslation("empty.title"), null, emptyAdd));
         grid.addItemDoubleClickListener(e -> openAssetDialog(e.getItem()));
         grid.setSizeFull();
         
@@ -145,6 +149,8 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         grid.addComponentColumn(asset -> {
             Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> openAssetDialog(asset));
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            editBtn.setTooltipText(getTranslation("transactions.edit"));
+            editBtn.getElement().setAttribute("aria-label", getTranslation("transactions.edit"));
             
             Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e ->
                 DeleteConfirm.show(
@@ -163,6 +169,8 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
                         }
                     }));
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+            deleteBtn.setTooltipText(getTranslation("transactions.delete"));
+            deleteBtn.getElement().setAttribute("aria-label", getTranslation("transactions.delete"));
             
             return new HorizontalLayout(editBtn, deleteBtn);
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
@@ -218,8 +226,7 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         Button saveButton = new Button(getTranslation("dialog.save"), VaadinIcon.CHECK.create(), e -> {
             if (binder.validate().isOk()) {
                 assetService.saveAsset(asset); refreshGrid(); dialog.close();
-                Notification.show(getTranslation("assets.saved"), 2000, Notification.Position.BOTTOM_END)
-                    .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_SUCCESS);
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("assets.saved"));
             }
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);

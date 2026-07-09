@@ -13,6 +13,7 @@ import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.grid.GridSortOrder;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -161,6 +162,11 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
         Button addButton = new Button(getTranslation("transactions.new"), VaadinIcon.PLUS.create(), e -> openTransactionDialog(new Transaction()));
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        addButton.setTooltipText("Alt+N");
+        // Alt+N opens the new-transaction dialog (Alt modifier so plain typing in filters is unaffected)
+        com.vaadin.flow.component.Shortcuts.addShortcutListener(this,
+                () -> openTransactionDialog(new Transaction()),
+                com.vaadin.flow.component.Key.KEY_N, com.vaadin.flow.component.KeyModifier.ALT);
 
         setupTabs();
 
@@ -170,8 +176,26 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         filtersRow.setSpacing(false);
         filtersRow.getStyle().set("gap", "var(--vaadin-gap-s)").set("flex-wrap", "wrap");
 
-        // Top toolbar: filters left, add button right
-        HorizontalLayout toolbar = new HorizontalLayout(filtersRow, addButton);
+        // CSV export of the currently filtered rows
+        Anchor exportAnchor = new Anchor(
+                com.vaadin.flow.server.streams.DownloadHandler.fromInputStream(event -> {
+                    byte[] bytes = buildCsv().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                    return new com.vaadin.flow.server.streams.DownloadResponse(
+                            new java.io.ByteArrayInputStream(bytes), "transactions.csv",
+                            "text/csv;charset=utf-8", bytes.length);
+                }), "");
+        Button exportButton = new Button(getTranslation("transactions.export"), VaadinIcon.DOWNLOAD.create());
+        exportButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        exportAnchor.add(exportButton);
+        exportAnchor.getElement().setAttribute("download", true);
+
+        HorizontalLayout actionsRow = new HorizontalLayout(exportAnchor, addButton);
+        actionsRow.setAlignItems(Alignment.CENTER);
+        actionsRow.setSpacing(false);
+        actionsRow.getStyle().set("gap", "var(--vaadin-gap-s)");
+
+        // Top toolbar: filters left, actions right
+        HorizontalLayout toolbar = new HorizontalLayout(filtersRow, actionsRow);
         toolbar.setWidthFull();
         toolbar.setAlignItems(Alignment.CENTER);
         toolbar.setJustifyContentMode(JustifyContentMode.BETWEEN);
@@ -251,6 +275,11 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
     private void setupGrid() {
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+        com.vaadin.flow.component.button.Button emptyAdd =
+                new com.vaadin.flow.component.button.Button(getTranslation("empty.hint"), e -> openTransactionDialog(new Transaction()));
+        emptyAdd.addThemeVariants(com.vaadin.flow.component.button.ButtonVariant.LUMO_TERTIARY);
+        grid.setEmptyStateComponent(new com.cuenti.app.views.components.EmptyStateNotice(
+                VaadinIcon.LIST, getTranslation("empty.title"), null, emptyAdd));
         grid.addItemDoubleClickListener(e -> openTransactionDialog(e.getItem()));
         grid.setSizeFull();
 
@@ -423,11 +452,11 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                         upBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
                         upBtn.setEnabled(idx > 0);
                         upBtn.setTooltipText(getTranslation("transactions.move_up"));
-                        Button downBtn = new Button(VaadinIcon.ARROW_DOWN.create(), e -> moveTransaction(t, 1));
+                        upBtn.getElement().setAttribute("aria-label", getTranslation("transactions.move_up"));Button downBtn = new Button(VaadinIcon.ARROW_DOWN.create(), e -> moveTransaction(t, 1));
                         downBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
                         downBtn.setEnabled(idx < sameDay.size() - 1);
                         downBtn.setTooltipText(getTranslation("transactions.move_down"));
-                        hl.add(upBtn, downBtn);
+                        downBtn.getElement().setAttribute("aria-label", getTranslation("transactions.move_down"));hl.add(upBtn, downBtn);
                     }
                 }
             }
@@ -436,11 +465,11 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             editBtn.setTooltipText(getTranslation("transactions.edit"));
 
-            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> confirmDelete(t));
+            editBtn.getElement().setAttribute("aria-label", getTranslation("transactions.edit"));Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> confirmDelete(t));
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
             deleteBtn.setTooltipText(getTranslation("transactions.delete"));
 
-            hl.add(editBtn, deleteBtn);
+            deleteBtn.getElement().setAttribute("aria-label", getTranslation("transactions.delete"));hl.add(editBtn, deleteBtn);
             return hl;
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
 
@@ -471,8 +500,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
             transactionService.deleteTransaction(t);
             confirmDialog.close();
             refreshGrid();
-            Notification n = Notification.show(getTranslation("transactions.deleted"), 2000, Notification.Position.BOTTOM_END);
-            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            com.cuenti.app.views.components.UiNotifier.error(getTranslation("transactions.deleted"));
         });
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
 
@@ -745,7 +773,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         // Split toggle button — next to amount
         Button splitToggleBtn = new Button(VaadinIcon.PIE_CHART.create());
         splitToggleBtn.setTooltipText(getTranslation("transactions.split_transaction"));
-        splitToggleBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        splitToggleBtn.getElement().setAttribute("aria-label", getTranslation("transactions.split_transaction"));splitToggleBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
         splitToggleBtn.getStyle().set("flex-shrink", "0");
 
         HorizontalLayout amountRow = new HorizontalLayout(amountField, splitToggleBtn);
@@ -1124,11 +1152,11 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                 transaction.getId() == null ? VaadinIcon.CHECK.create() : VaadinIcon.CHECK.create(),
                 e -> {
                     if (accountCombo.isEmpty()) {
-                        Notification.show(getTranslation("accounts.name_required"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                        com.cuenti.app.views.components.UiNotifier.error(getTranslation("accounts.name_required"));
                         return;
                     }
                     if (amountField.getValue() == null || amountField.getValue().compareTo(BigDecimal.ZERO) <= 0) {
-                        Notification.show(getTranslation("dialog.amount_positive"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                        com.cuenti.app.views.components.UiNotifier.error(getTranslation("dialog.amount_positive"));
                         return;
                     }
                     Transaction saveTx = currentFormTransaction[0];
@@ -1136,19 +1164,18 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                     for (TransactionSplit s : currentSplits) saveTx.addSplit(s);
                     saveFromTabs(saveTx, hiddenTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsCombo);
                     refreshGrid(); dialog.close();
-                    Notification n = Notification.show(getTranslation("transactions.saved"), 2000, Notification.Position.BOTTOM_END);
-                    n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                    com.cuenti.app.views.components.UiNotifier.success(getTranslation("transactions.saved"));
                 });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         String addKeepLabel = transaction.getId() == null ? getTranslation("dialog.add_keep") : getTranslation("dialog.save_keep");
         Button addKeepButton = new Button(addKeepLabel, e -> {
             if (accountCombo.isEmpty()) {
-                Notification.show(getTranslation("accounts.name_required"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                com.cuenti.app.views.components.UiNotifier.error(getTranslation("accounts.name_required"));
                 return;
             }
             if (amountField.getValue() == null || amountField.getValue().compareTo(BigDecimal.ZERO) <= 0) {
-                Notification.show(getTranslation("dialog.amount_positive"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
+                com.cuenti.app.views.components.UiNotifier.error(getTranslation("dialog.amount_positive"));
                 return;
             }
             Transaction keepTx = currentFormTransaction[0];
@@ -1156,8 +1183,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
             for (TransactionSplit s : currentSplits) keepTx.addSplit(s);
             saveFromTabs(keepTx, hiddenTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsCombo);
             refreshGrid();
-            Notification n = Notification.show(getTranslation("transactions.saved"), 2000, Notification.Position.BOTTOM_END);
-            n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            com.cuenti.app.views.components.UiNotifier.success(getTranslation("transactions.saved"));
             currentFormTransaction[0] = new Transaction();
             currentSplits.clear();
             updateTotalAmount(currentSplits, amountField, categoryCombo);
@@ -1286,6 +1312,32 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
     @Override
     public Locale getLocale() {
         return Locale.forLanguageTag(currentUser.getLocale());
+    }
+
+    /** Exports the currently filtered and sorted rows. Package-visible for tests. */
+    String buildCsv() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Date,Type,Payee,Account,Category,Tags,Amount,Memo\n");
+        grid.getListDataView().getItems().forEach(t -> {
+            Account acc = t.getType() == Transaction.TransactionType.INCOME ? t.getToAccount() : t.getFromAccount();
+            String category = t.getCategory() != null ? t.getCategory().getFullName() : "";
+            sb.append(csv(t.getTransactionDate().format(getDateTimeFormatter()))).append(',')
+              .append(csv(t.getType() != null ? t.getType().name() : "")).append(',')
+              .append(csv(t.getPayee())).append(',')
+              .append(csv(acc != null ? acc.getAccountName() : "")).append(',')
+              .append(csv(category)).append(',')
+              .append(csv(t.getTags())).append(',')
+              .append(t.getAmount() != null ? t.getAmount().toPlainString() : "").append(',')
+              .append(csv(t.getMemo())).append('\n');
+        });
+        return sb.toString();
+    }
+
+    private static String csv(String value) {
+        if (value == null) return "";
+        String escaped = value.replace("\"", "\"\"");
+        return (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n"))
+                ? "\"" + escaped + "\"" : escaped;
     }
 
     private String formatCurrency(BigDecimal amount) {

@@ -300,8 +300,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
     private void saveDefaultCategory() {
         Category selected = categorySelect.getValue();
         if (selected == null) {
-            Notification n = Notification.show(getTranslation("vehicles.save_default_none"), 2500, Notification.Position.BOTTOM_END);
-            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            com.cuenti.app.views.components.UiNotifier.error(getTranslation("vehicles.save_default_none"));
             return;
         }
 
@@ -309,8 +308,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         currentUser.setDefaultVehicleCategoryId(selected.getId());
         refreshDefaultButtonState();
 
-        Notification n = Notification.show(getTranslation("vehicles.save_default_success"), 2000, Notification.Position.BOTTOM_END);
-        n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        com.cuenti.app.views.components.UiNotifier.success(getTranslation("vehicles.save_default_success"));
     }
 
     private void refreshDefaultButtonState() {

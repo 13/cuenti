@@ -1,7 +1,11 @@
 package com.cuenti.app.views.components;
 
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 
 /**
  * Standard toast notifications so every view uses the same duration,
@@ -29,6 +33,28 @@ public final class UiNotifier {
 
     public static void info(String message) {
         show(message, NotificationVariant.LUMO_CONTRAST);
+    }
+
+    /**
+     * Success toast with an inline action (e.g. "Undo"). Stays longer than a
+     * plain success toast so the user can react.
+     */
+    public static void successWithAction(String message, String actionLabel, Runnable onAction) {
+        Notification n = new Notification();
+        n.setDuration(6000);
+        n.setPosition(Notification.Position.BOTTOM_END);
+        n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+
+        Button action = new Button(actionLabel, e -> {
+            onAction.run();
+            n.close();
+        });
+        action.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+
+        HorizontalLayout layout = new HorizontalLayout(new Span(message), action);
+        layout.setAlignItems(HorizontalLayout.Alignment.CENTER);
+        n.add(layout);
+        n.open();
     }
 
     private static void show(String message, NotificationVariant variant) {

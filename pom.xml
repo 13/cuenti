@@ -15,7 +15,7 @@
 
     <groupId>com.cuenti</groupId>
     <artifactId>cuenti</artifactId>
-    <version>0.3.0</version>
+    <version>1.0.0</version>
 
     <name>Cuenti</name>
     <description>Personal Finance</description>
@@ -151,6 +151,19 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test-classic</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Vaadin Browserless Testing (server-side UI tests, official since Vaadin 25.1) -->
+        <dependency>
+            <groupId>com.vaadin</groupId>
+            <artifactId>browserless-test-junit6</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
 

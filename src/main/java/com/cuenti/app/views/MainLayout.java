@@ -68,13 +68,11 @@ public class MainLayout extends AppLayout {
 
     private void updateAssetPricesAsync() {
         if (currentUser != null) {
-            new Thread(() -> {
-                try {
-                    assetService.updateUserAssetPrices(currentUser);
-                } catch (Exception e) {
-                    log.error("Error updating asset prices for user: {}", currentUser.getUsername(), e);
-                }
-            }).start();
+            try {
+                assetService.updateUserAssetPricesThrottled(currentUser);
+            } catch (Exception e) {
+                log.error("Error updating asset prices for user: {}", currentUser.getUsername(), e);
+            }
         }
     }
 

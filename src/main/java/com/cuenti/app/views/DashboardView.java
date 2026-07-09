@@ -788,14 +788,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
     }
 
     private String formatCurrency(BigDecimal amount, String currencyCode) {
-        if (amount == null) return "";
-        NumberFormat formatter = NumberFormat.getCurrencyInstance(getLocale());
-        try {
-            java.util.Currency currency = java.util.Currency.getInstance(currencyCode);
-            formatter.setCurrency(currency);
-        } catch (Exception e) {
-        }
-        return formatter.format(amount);
+        return com.cuenti.app.util.CurrencyFormat.format(amount, currencyCode, getLocale());
     }
 
     private String getTimeRangeLabel(String range) {

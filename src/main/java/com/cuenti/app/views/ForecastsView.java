@@ -512,10 +512,7 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
     }
 
     private String formatCurrency(BigDecimal amount) {
-        NumberFormat formatter = NumberFormat.getCurrencyInstance(Locale.forLanguageTag(currentUser.getLocale()));
-        try {
-            formatter.setCurrency(java.util.Currency.getInstance(currentUser.getDefaultCurrency()));
-        } catch (Exception ignored) {}
-        return formatter.format(amount);
+        return com.cuenti.app.util.CurrencyFormat.format(amount, currentUser.getDefaultCurrency(),
+                Locale.forLanguageTag(currentUser.getLocale()));
     }
 }

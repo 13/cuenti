@@ -6,6 +6,9 @@ import com.cuenti.app.security.SecurityUtils;
 import com.cuenti.app.service.CurrencyService;
 import com.cuenti.app.service.UserService;
 import com.vaadin.flow.component.button.Button;
+import com.cuenti.app.views.components.DeleteConfirm;
+import com.cuenti.app.views.components.UiNotifier;
+
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
@@ -74,6 +77,7 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
         toolbar.setJustifyContentMode(JustifyContentMode.END);
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+        grid.addItemDoubleClickListener(e -> openCurrencyDialog(e.getItem()));
         grid.addColumn(Currency::getCode).setHeader(getTranslation("currencies.code")).setSortable(true).setAutoWidth(true);
         grid.addColumn(Currency::getName).setHeader(getTranslation("currencies.name")).setSortable(true).setAutoWidth(true);
         grid.addColumn(Currency::getSymbol).setHeader(getTranslation("currencies.symbol")).setAutoWidth(true);
@@ -85,12 +89,18 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
             Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> openCurrencyDialog(currency));
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
-            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
-                currencyService.deleteCurrency(currency);
-                refreshGrid();
-                Notification.show(getTranslation("currencies.deleted"), 2000, Notification.Position.BOTTOM_END)
-                        .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_ERROR);
-            });
+            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e ->
+                DeleteConfirm.show(
+                    getTranslation("dialog.confirm_delete"),
+                    getTranslation("dialog.confirm_delete_message") + " \"" + currency.getCode() + "\"?",
+                    getTranslation("dialog.delete"),
+                    getTranslation("dialog.cancel"),
+                    getTranslation("error.delete_failed"),
+                    () -> {
+                        currencyService.deleteCurrency(currency);
+                        refreshGrid();
+                        UiNotifier.success(getTranslation("currencies.deleted"));
+                    }));
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
 
             return new HorizontalLayout(editBtn, deleteBtn);
@@ -164,6 +174,7 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
         cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
+        code.focus();
     }
 
     private Div rowDiv(com.vaadin.flow.component.Component... children) {

@@ -8,6 +8,9 @@ import com.cuenti.app.service.AccountService;
 import com.cuenti.app.service.CurrencyService;
 import com.cuenti.app.service.UserService;
 import com.vaadin.flow.component.button.Button;
+import com.cuenti.app.views.components.DeleteConfirm;
+import com.cuenti.app.views.components.UiNotifier;
+
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -138,6 +141,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
 
     private void configureGrid() {
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+        grid.addItemDoubleClickListener(e -> openAccountDialog(e.getItem()));
 
         // Name + group stacked
         grid.addComponentColumn(acc -> {
@@ -187,7 +191,14 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
             editButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             editButton.setTooltipText(getTranslation("transactions.edit"));
             
-            Button deleteButton = new Button(new Icon(VaadinIcon.TRASH), e -> deleteAccount(account));
+            Button deleteButton = new Button(new Icon(VaadinIcon.TRASH), e ->
+                DeleteConfirm.show(
+                    getTranslation("dialog.confirm_delete"),
+                    getTranslation("dialog.confirm_delete_message") + " \"" + account.getAccountName() + "\"?",
+                    getTranslation("dialog.delete"),
+                    getTranslation("dialog.cancel"),
+                    getTranslation("error.delete_failed"),
+                    () -> deleteAccount(account)));
             deleteButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
             deleteButton.setTooltipText(getTranslation("transactions.delete"));
             
@@ -340,6 +351,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
         cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
+        nameField.focus();
     }
 
     private Div dialogSection(String label) {
@@ -365,7 +377,6 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
     private void deleteAccount(Account account) {
         accountService.deleteAccount(account);
         updateList();
-        Notification.show(getTranslation("accounts.deleted"), 2000, Notification.Position.BOTTOM_END)
-                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        UiNotifier.success(getTranslation("accounts.deleted"));
     }
 }

@@ -11,6 +11,9 @@ import com.cuenti.app.service.PayeeService;
 import com.cuenti.app.service.TagService;
 import com.cuenti.app.service.UserService;
 import com.vaadin.flow.component.button.Button;
+import com.cuenti.app.views.components.DeleteConfirm;
+import com.cuenti.app.views.components.UiNotifier;
+
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
@@ -105,6 +108,7 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
                 .set("gap", "var(--vaadin-gap-s)");
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+        grid.addItemDoubleClickListener(e -> openPayeeDialog(e.getItem()));
         grid.addColumn(Payee::getName).setHeader(getTranslation("payees.name")).setSortable(true).setAutoWidth(true);
         grid.addColumn(Payee::getNotes).setHeader(getTranslation("payees.notes")).setAutoWidth(true).setSortable(true);
         grid.addColumn(p -> p.getDefaultCategory() != null ? p.getDefaultCategory().getFullName() : "").setHeader(getTranslation("payees.default_category")).setAutoWidth(true).setSortable(true);
@@ -117,12 +121,18 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             editBtn.setTooltipText(getTranslation("transactions.edit"));
 
-            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
-                payeeService.deletePayee(payee);
-                refreshGrid();
-                Notification.show(getTranslation("payees.deleted"), 2000, Notification.Position.BOTTOM_END)
-                        .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_ERROR);
-            });
+            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e ->
+                DeleteConfirm.show(
+                    getTranslation("dialog.confirm_delete"),
+                    getTranslation("dialog.confirm_delete_message") + " \"" + payee.getName() + "\"?",
+                    getTranslation("dialog.delete"),
+                    getTranslation("dialog.cancel"),
+                    getTranslation("error.delete_failed"),
+                    () -> {
+                        payeeService.deletePayee(payee);
+                        refreshGrid();
+                        UiNotifier.success(getTranslation("payees.deleted"));
+                    }));
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
             deleteBtn.setTooltipText(getTranslation("transactions.delete"));
 
@@ -279,6 +289,7 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
+        name.focus();
     }
 
     private void refreshGrid() {

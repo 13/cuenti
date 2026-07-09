@@ -97,6 +97,7 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
                 .set("gap", "var(--vaadin-gap-s)");
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+        grid.addItemDoubleClickListener(e -> openCategoryDialog(e.getItem()));
         grid.addColumn(Category::getFullName).setHeader(getTranslation("categories.name")).setSortable(true).setAutoWidth(true);
         
         grid.addComponentColumn(category -> {
@@ -255,6 +256,7 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
         cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
+        nameField.focus();
     }
 
     private boolean isDescendant(Category potentialParent, Category category) {

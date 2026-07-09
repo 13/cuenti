@@ -6,6 +6,9 @@ import com.cuenti.app.security.SecurityUtils;
 import com.cuenti.app.service.TagService;
 import com.cuenti.app.service.UserService;
 import com.vaadin.flow.component.button.Button;
+import com.cuenti.app.views.components.DeleteConfirm;
+import com.cuenti.app.views.components.UiNotifier;
+
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
@@ -88,6 +91,7 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
                 .set("gap", "var(--vaadin-gap-s)");
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+        grid.addItemDoubleClickListener(e -> openTagDialog(e.getItem()));
         grid.setSizeFull();
         grid.addColumn(Tag::getName).setHeader(getTranslation("tags.name")).setSortable(true).setAutoWidth(true);
 
@@ -95,12 +99,18 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
             Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> openTagDialog(tag));
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
-            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
-                tagService.deleteTag(tag);
-                refreshGrid();
-                Notification.show(getTranslation("tags.deleted"), 2000, Notification.Position.BOTTOM_END)
-                        .addThemeVariants(com.vaadin.flow.component.notification.NotificationVariant.LUMO_ERROR);
-            });
+            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e ->
+                DeleteConfirm.show(
+                    getTranslation("dialog.confirm_delete"),
+                    getTranslation("dialog.confirm_delete_message") + " \"" + tag.getName() + "\"?",
+                    getTranslation("dialog.delete"),
+                    getTranslation("dialog.cancel"),
+                    getTranslation("error.delete_failed"),
+                    () -> {
+                        tagService.deleteTag(tag);
+                        refreshGrid();
+                        UiNotifier.success(getTranslation("tags.deleted"));
+                    }));
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
 
             return new HorizontalLayout(editBtn, deleteBtn);
@@ -149,10 +159,12 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
             }
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveButton.addClickShortcut(com.vaadin.flow.component.Key.ENTER);
         Button cancelButton = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
         cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
+        nameField.focus();
     }
 
     private void refreshGrid() {

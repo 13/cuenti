@@ -137,16 +137,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         dateFrom.setLocale(getLocale());
 
         if (currentUser.getLocale().equals("de-DE")) {
-            DatePicker.DatePickerI18n i18nFrom = new DatePicker.DatePickerI18n();
-            i18nFrom.setDateFormat("dd.MM.yyyy");
-            i18nFrom.setMonthNames(List.of("Januar", "Februar", "März", "April", "Mai", "Juni",
-                                     "Juli", "August", "September", "Oktober", "November", "Dezember"));
-            i18nFrom.setWeekdays(List.of("Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"));
-            i18nFrom.setWeekdaysShort(List.of("So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"));
-            i18nFrom.setToday("Heute");
-            i18nFrom.setCancel("Abbrechen");
-            i18nFrom.setFirstDayOfWeek(1);
-            dateFrom.setI18n(i18nFrom);
+            dateFrom.setI18n(com.cuenti.app.views.components.LocalizedDatePicker.germanI18n());
         }
         dateFrom.setValue(now.with(TemporalAdjusters.firstDayOfMonth()));
 
@@ -157,16 +148,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         dateTo.setLocale(getLocale());
 
         if (currentUser.getLocale().equals("de-DE")) {
-            DatePicker.DatePickerI18n i18nTo = new DatePicker.DatePickerI18n();
-            i18nTo.setDateFormat("dd.MM.yyyy");
-            i18nTo.setMonthNames(List.of("Januar", "Februar", "März", "April", "Mai", "Juni",
-                                     "Juli", "August", "September", "Oktober", "November", "Dezember"));
-            i18nTo.setWeekdays(List.of("Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"));
-            i18nTo.setWeekdaysShort(List.of("So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"));
-            i18nTo.setToday("Heute");
-            i18nTo.setCancel("Abbrechen");
-            i18nTo.setFirstDayOfWeek(1);
-            dateTo.setI18n(i18nTo);
+            dateTo.setI18n(com.cuenti.app.views.components.LocalizedDatePicker.germanI18n());
         }
         dateTo.setValue(now.with(TemporalAdjusters.lastDayOfMonth()));
 
@@ -269,6 +251,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
     private void setupGrid() {
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+        grid.addItemDoubleClickListener(e -> openTransactionDialog(e.getItem()));
         grid.setSizeFull();
 
         // 1. Type + icon avatar
@@ -1306,12 +1289,6 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
     }
 
     private String formatCurrency(BigDecimal amount) {
-        if (amount == null) return "";
-        NumberFormat formatter = NumberFormat.getCurrencyInstance(getLocale());
-        try {
-            java.util.Currency currency = java.util.Currency.getInstance(currentUser.getDefaultCurrency());
-            formatter.setCurrency(currency);
-        } catch (Exception e) {}
-        return formatter.format(amount);
+        return com.cuenti.app.util.CurrencyFormat.format(amount, currentUser.getDefaultCurrency(), getLocale());
     }
 }

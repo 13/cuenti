@@ -13,6 +13,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,8 +21,12 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -122,6 +127,39 @@ public class AssetService {
         } catch (Exception e) {
             log.error("Error fetching price for asset: " + asset.getSymbol(), e);
         }
+    }
+
+    /** Per-user throttle so navigating between views doesn't refetch prices on every page load. */
+    private static final Duration PRICE_UPDATE_THROTTLE = Duration.ofMinutes(15);
+    private final Map<Long, Instant> lastUserPriceUpdate = new ConcurrentHashMap<>();
+
+    /**
+     * Async, throttled variant used by the UI on navigation: runs on Spring's
+     * task executor (no ad-hoc threads) and skips the update when prices were
+     * already refreshed for this user within the throttle window. The hourly
+     * scheduled job keeps prices fresh in between.
+     */
+    @Async
+    @Transactional
+    public void updateUserAssetPricesThrottled(User user) {
+        if (!markPriceUpdateDue(user.getId(), Instant.now())) {
+            log.debug("Skipping asset price update for user {} (throttled)", user.getUsername());
+            return;
+        }
+        updateUserAssetPrices(user);
+    }
+
+    /**
+     * Returns true and records the run when a price update is due for the
+     * user, false while still inside the throttle window.
+     */
+    boolean markPriceUpdateDue(Long userId, Instant now) {
+        Instant last = lastUserPriceUpdate.get(userId);
+        if (last != null && now.isBefore(last.plus(PRICE_UPDATE_THROTTLE))) {
+            return false;
+        }
+        lastUserPriceUpdate.put(userId, now);
+        return true;
     }
 
     /**

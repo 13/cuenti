@@ -7,6 +7,9 @@ import com.cuenti.app.service.AssetService;
 import com.cuenti.app.service.ExchangeRateService;
 import com.cuenti.app.service.UserService;
 import com.vaadin.flow.component.button.Button;
+import com.cuenti.app.views.components.DeleteConfirm;
+import com.cuenti.app.views.components.UiNotifier;
+
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -106,6 +109,7 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
                 .set("gap", "var(--vaadin-gap-s)");
 
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+        grid.addItemDoubleClickListener(e -> openAssetDialog(e.getItem()));
         grid.setSizeFull();
         
         grid.addColumn(Asset::getSymbol).setHeader(getTranslation("assets.symbol")).setSortable(true).setAutoWidth(true);
@@ -142,20 +146,22 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
             Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> openAssetDialog(asset));
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             
-            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
-                try {
-                    assetService.deleteAsset(asset);
-                    refreshGrid();
-                    Notification.show(getTranslation("assets.deleted"), 3000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                } catch (IllegalStateException ex) {
-                    Notification.show(ex.getMessage(), 5000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                } catch (Exception ex) {
-                    Notification.show(getTranslation("error.generic"), 3000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                }
-            });
+            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e ->
+                DeleteConfirm.show(
+                    getTranslation("dialog.confirm_delete"),
+                    getTranslation("dialog.confirm_delete_message") + " \"" + asset.getName() + "\"?",
+                    getTranslation("dialog.delete"),
+                    getTranslation("dialog.cancel"),
+                    getTranslation("error.delete_failed"),
+                    () -> {
+                        try {
+                            assetService.deleteAsset(asset);
+                            refreshGrid();
+                            UiNotifier.success(getTranslation("assets.deleted"));
+                        } catch (IllegalStateException ex) {
+                            UiNotifier.error(ex.getMessage());
+                        }
+                    }));
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
             
             return new HorizontalLayout(editBtn, deleteBtn);
@@ -221,6 +227,7 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         dialog.getFooter().add(cancelButton, saveButton);
         dialog.open();
+        symbol.focus();
     }
 
     private void refreshGrid() {
@@ -238,13 +245,7 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
     }
 
      private String formatCurrency(BigDecimal amount, String currencyCode) {
-         if (amount == null) return "";
-         NumberFormat formatter = NumberFormat.getCurrencyInstance(getLocale());
-         try {
-             java.util.Currency currency = java.util.Currency.getInstance(currencyCode);
-             formatter.setCurrency(currency);
-         } catch (Exception e) {}
-         return formatter.format(amount);
+         return com.cuenti.app.util.CurrencyFormat.format(amount, currencyCode, getLocale());
      }
 
      private String getAssetTypeLabel(Asset.AssetType type) {

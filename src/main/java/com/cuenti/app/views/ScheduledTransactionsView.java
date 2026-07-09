@@ -195,6 +195,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
 
     private void setupTemplateGrid() {
         templateGrid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
+        templateGrid.addItemDoubleClickListener(e -> openEditDialog(e.getItem()));
         templateGrid.setAllRowsVisible(true);
 
         // Account
@@ -834,12 +835,8 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
     }
 
     private String formatCurrency(BigDecimal amount) {
-        if (amount == null) return "";
-        NumberFormat formatter = NumberFormat.getCurrencyInstance(Locale.GERMANY);
-        try {
-            java.util.Currency currency = java.util.Currency.getInstance(currentUser.getDefaultCurrency());
-            formatter.setCurrency(currency);
-        } catch (Exception e) {}
-        return formatter.format(amount);
+        // Was hardcoded to Locale.GERMANY; aligned with the user's locale like all other views
+        return com.cuenti.app.util.CurrencyFormat.format(amount, currentUser.getDefaultCurrency(),
+                Locale.forLanguageTag(currentUser.getLocale()));
     }
 }

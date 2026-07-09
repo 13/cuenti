@@ -50,3 +50,9 @@ build/
 
 # env
 .env
+
+# Local verification artifacts
+.playwright-mcp/
+*.png.bak
+tsconfig.json.*.bak
+/v252-*.png

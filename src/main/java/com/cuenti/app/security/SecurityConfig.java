@@ -26,6 +26,7 @@ import org.springframework.security.web.firewall.StrictHttpFirewall;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final LoginRateLimitFilter loginRateLimitFilter;
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
@@ -64,7 +65,10 @@ public class SecurityConfig {
     @Bean
     @Order(2)
     public SecurityFilterChain vaadinSecurityFilterChain(HttpSecurity http) throws Exception {
-        http.authorizeHttpRequests(auth -> auth.requestMatchers("/images/**").permitAll());
+        http.authorizeHttpRequests(auth -> auth
+                .requestMatchers("/images/**").permitAll()
+                .requestMatchers("/actuator/health").permitAll());
+        http.addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         http.with(VaadinSecurityConfigurer.vaadin(), c -> c.loginView(LoginView.class));
         return http.build();

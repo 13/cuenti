@@ -39,12 +39,18 @@ public class MainLayout extends AppLayout {
     private final SecurityUtils securityUtils;
     private final UserService userService;
     private final AssetService assetService;
+    private final com.cuenti.app.views.components.QuickSearchDialog quickSearch;
     private User currentUser;
 
-    public MainLayout(SecurityUtils securityUtils, UserService userService, AssetService assetService) {
+    public MainLayout(SecurityUtils securityUtils, UserService userService, AssetService assetService,
+                      com.cuenti.app.service.PayeeService payeeService,
+                      com.cuenti.app.service.CategoryService categoryService,
+                      com.cuenti.app.service.TagService tagService) {
         this.securityUtils = securityUtils;
         this.userService = userService;
         this.assetService = assetService;
+        this.quickSearch = new com.cuenti.app.views.components.QuickSearchDialog(
+                payeeService, categoryService, tagService);
 
         String username = securityUtils.getAuthenticatedUsername().orElse(null);
         if (username != null) {
@@ -146,7 +152,16 @@ public class MainLayout extends AppLayout {
         userLink.getElement().setAttribute("aria-label", getTranslation("settings.user_title"));
         userLink.add(avatar, userSpan);
 
-        HorizontalLayout right = new HorizontalLayout(themeBtn, userLink, logoutBtn);
+        Button searchBtn = new Button(new Icon(VaadinIcon.SEARCH));
+        searchBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        searchBtn.getElement().setProperty("title", getTranslation("search.global_title") + " (Ctrl+K)");
+        searchBtn.getElement().setAttribute("aria-label", getTranslation("search.global_title"));
+        searchBtn.getStyle().set("color", "var(--vaadin-text-color-secondary)");
+        searchBtn.addClickListener(e -> quickSearch.open());
+        com.vaadin.flow.component.Shortcuts.addShortcutListener(this, quickSearch::open,
+                com.vaadin.flow.component.Key.KEY_K, com.vaadin.flow.component.KeyModifier.CONTROL);
+
+        HorizontalLayout right = new HorizontalLayout(searchBtn, themeBtn, userLink, logoutBtn);
         right.setAlignItems(FlexComponent.Alignment.CENTER);
         right.setSpacing(false);
         right.getStyle().set("gap", "var(--vaadin-gap-xs)");
@@ -198,6 +213,7 @@ public class MainLayout extends AppLayout {
                 new SideNavItem(getTranslation("nav.scheduled"),    ScheduledTransactionsView.class, VaadinIcon.CALENDAR_CLOCK.create()),
                 new SideNavItem(getTranslation("nav.statistics"),   StatisticsView.class,            VaadinIcon.CHART.create()),
                 new SideNavItem(getTranslation("nav.forecasts"),    ForecastsView.class,             VaadinIcon.TRENDING_UP.create()),
+                new SideNavItem(getTranslation("nav.budgets"),      BudgetManagementView.class,      VaadinIcon.PIGGY_BANK.create()),
                 new SideNavItem(getTranslation("nav.vehicles"),     VehiclesView.class,              VaadinIcon.CAR.create()));
 
         SideNav management = navSection(getTranslation("nav.management"), false,

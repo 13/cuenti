@@ -93,8 +93,37 @@ public class AssetService {
         assetRepository.delete(toDelete);
     }
 
+    private HttpHeaders browserHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        return headers;
+    }
+
+    private void applyPriceResponse(Asset asset, String response) {
+        JsonNode root = objectMapper.readTree(response);
+        JsonNode resultArr = root.path("chart").path("result");
+        if (resultArr.isArray() && !resultArr.isEmpty()) {
+            JsonNode meta = resultArr.get(0).path("meta");
+            if (!meta.isMissingNode()) {
+                asset.setCurrentPrice(BigDecimal.valueOf(meta.path("regularMarketPrice").asDouble()));
+                asset.setCurrency(meta.path("currency").asText());
+                asset.setLastUpdate(LocalDateTime.now());
+                assetRepository.save(asset);
+                log.info("Updated price for {} after retry", asset.getSymbol());
+            }
+        }
+    }
+
+    /** Prices younger than this are not refetched. */
+    private static final java.time.Duration PRICE_FRESHNESS = java.time.Duration.ofMinutes(10);
+
     @Transactional
     public void updatePrice(Asset asset) {
+        if (asset.getLastUpdate() != null && asset.getCurrentPrice() != null
+                && asset.getLastUpdate().isAfter(LocalDateTime.now().minus(PRICE_FRESHNESS))) {
+            log.debug("Skipping fresh price for {}", asset.getSymbol());
+            return;
+        }
         String url = String.format("https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1d&range=1d", asset.getSymbol());
         
         try {
@@ -123,7 +152,19 @@ public class AssetService {
                 }
             }
         } catch (HttpClientErrorException.TooManyRequests e) {
-            log.warn("Rate limited (429) by Yahoo Finance for symbol: {}. Skipping for now.", asset.getSymbol());
+            // back off with jitter and retry once; give up until the next cycle otherwise
+            long delayMs = 3000 + java.util.concurrent.ThreadLocalRandom.current().nextLong(3000);
+            log.warn("Rate limited (429) for {}. Backing off {} ms.", asset.getSymbol(), delayMs);
+            try {
+                Thread.sleep(delayMs);
+                ResponseEntity<String> retry = restTemplate.exchange(url, HttpMethod.GET,
+                        new HttpEntity<>(browserHeaders()), String.class);
+                applyPriceResponse(asset, retry.getBody());
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            } catch (Exception retryEx) {
+                log.warn("Retry after 429 failed for {}: {}", asset.getSymbol(), retryEx.getMessage());
+            }
         } catch (Exception e) {
             log.error("Error fetching price for asset: " + asset.getSymbol(), e);
         }
@@ -139,7 +180,7 @@ public class AssetService {
      * already refreshed for this user within the throttle window. The hourly
      * scheduled job keeps prices fresh in between.
      */
-    @Async
+    @Async("priceExecutor")
     @Transactional
     public void updateUserAssetPricesThrottled(User user) {
         if (!markPriceUpdateDue(user.getId(), Instant.now())) {

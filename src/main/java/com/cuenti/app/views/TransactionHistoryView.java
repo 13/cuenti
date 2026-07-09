@@ -50,7 +50,14 @@ import java.util.stream.Collectors;
 
 @Route(value = "transactions", layout = MainLayout.class)
 @PermitAll
-public class TransactionHistoryView extends VerticalLayout implements HasDynamicTitle {
+public class TransactionHistoryView extends VerticalLayout
+        implements HasDynamicTitle, com.vaadin.flow.router.AfterNavigationObserver {
+
+    @Override
+    public void afterNavigation(com.vaadin.flow.router.AfterNavigationEvent event) {
+        event.getLocation().getQueryParameters().getSingleParameter("q")
+                .ifPresent(searchField::setValue);
+    }
 
     @Override
     public String getPageTitle() {
@@ -93,6 +100,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
     private final ComboBox<String> headerCategoryFilter = new ComboBox<>();
     private final java.util.Set<Long> firstOfDayIds = new java.util.HashSet<>();
     private boolean dayGroupingActive = true;
+    private boolean mixedCurrencies;
     private com.vaadin.flow.component.grid.FooterRow footerRow;
     private Runnable reapplyColumns = () -> {};
     private final Map<String, com.vaadin.flow.component.contextmenu.MenuItem> columnMenuItems = new HashMap<>();
@@ -155,7 +163,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         dateFrom.setWidth("150px");
         dateFrom.setLocale(getLocale());
 
-        if (currentUser.getLocale().equals("de-DE")) {
+        if (currentUser.getLocale() != null && currentUser.getLocale().startsWith("de")) {
             dateFrom.setI18n(com.cuenti.app.views.components.LocalizedDatePicker.germanI18n());
         }
         dateFrom.setValue(now.with(TemporalAdjusters.firstDayOfMonth()));
@@ -166,7 +174,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         dateTo.setWidth("150px");
         dateTo.setLocale(getLocale());
 
-        if (currentUser.getLocale().equals("de-DE")) {
+        if (currentUser.getLocale() != null && currentUser.getLocale().startsWith("de")) {
             dateTo.setI18n(com.cuenti.app.views.components.LocalizedDatePicker.germanI18n());
         }
         dateTo.setValue(now.with(TemporalAdjusters.lastDayOfMonth()));
@@ -437,6 +445,13 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
         // 7. Balance
         balanceCol = grid.addComponentColumn(t -> {
+            Account selectedForBalance = accountSelector.getValue();
+            if (mixedCurrencies && isAllAccountsSelected(selectedForBalance)) {
+                Span na = new Span("—");
+                na.getElement().setAttribute("title", getTranslation("transactions.balance_mixed"));
+                na.getStyle().set("color", "var(--vaadin-text-color-disabled)");
+                return na;
+            }
             BigDecimal bal = balanceCache.getOrDefault(t.getId(), BigDecimal.ZERO);
             Span s = new Span(formatCurrency(bal));
             s.getStyle()
@@ -686,6 +701,14 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         List<Transaction> window = transactionService.getTransactionsFiltered(
                 currentUser, accountFilter, selectedTypeFilter, from, to);
 
+        // The SQL running balance sums raw amounts; that's only meaningful in
+        // one currency. Per-account view is always single-currency.
+        mixedCurrencies = accountService.getAccountsByUser(currentUser).stream()
+                .map(Account::getCurrency)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count() > 1;
+
         // Running balance computed in the database over the full history;
         // only the visible window's offsets are shifted by start balances.
         BigDecimal offset;
@@ -859,7 +882,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         // ── Date picker ───────────────────────────────────────────────
         DatePicker datePicker = new DatePicker(getTranslation("dialog.date"));
         datePicker.setLocale(getLocale());
-        if (currentUser.getLocale().equals("de-DE")) {
+        if (currentUser.getLocale() != null && currentUser.getLocale().startsWith("de")) {
             DatePicker.DatePickerI18n i18n = new DatePicker.DatePickerI18n();
             i18n.setDateFormat("dd.MM.yyyy");
             i18n.setMonthNames(List.of("Januar", "Februar", "März", "April", "Mai", "Juni",
@@ -1389,15 +1412,21 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         Account selected = accountSelector.getValue();
         boolean allSelected = isAllAccountsSelected(selected);
         BigDecimal net = BigDecimal.ZERO;
+        String targetCurrency = currentUser.getDefaultCurrency();
         for (Transaction t : visible) {
             BigDecimal amount = t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO;
+            Account currencySource = t.getType() == Transaction.TransactionType.INCOME
+                    ? t.getToAccount() : t.getFromAccount();
+            BigDecimal converted = currencySource != null
+                    ? exchangeRateService.convert(amount, currencySource.getCurrency(), targetCurrency)
+                    : amount;
             if (t.getType() == Transaction.TransactionType.INCOME) {
-                net = net.add(amount);
+                net = net.add(converted);
             } else if (t.getType() == Transaction.TransactionType.EXPENSE) {
-                net = net.subtract(amount);
+                net = net.subtract(converted);
             } else if (!allSelected && selected != null) {
-                if (t.getToAccount() != null && t.getToAccount().getId().equals(selected.getId())) net = net.add(amount);
-                if (t.getFromAccount() != null && t.getFromAccount().getId().equals(selected.getId())) net = net.subtract(amount);
+                if (t.getToAccount() != null && t.getToAccount().getId().equals(selected.getId())) net = net.add(converted);
+                if (t.getFromAccount() != null && t.getFromAccount().getId().equals(selected.getId())) net = net.subtract(converted);
             }
         }
 
@@ -1478,6 +1507,11 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                 .set("gap", "var(--vaadin-gap-xs)").set("padding", "var(--vaadin-gap-xs) 0")
                 .set("width", "100%");
         return card;
+    }
+
+    /** Current global search term. Package-visible for tests. */
+    String searchFieldValue() {
+        return searchField.getValue();
     }
 
     /** Exports the currently filtered and sorted rows. Package-visible for tests. */

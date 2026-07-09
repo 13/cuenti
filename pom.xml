@@ -15,7 +15,7 @@
 
     <groupId>com.cuenti</groupId>
     <artifactId>cuenti</artifactId>
-    <version>1.5.0</version>
+    <version>2.0.0</version>
 
     <name>Cuenti</name>
     <description>Personal Finance</description>
@@ -80,6 +80,16 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Schema migrations (production runs validate + Flyway) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
         <!-- DevTools -->

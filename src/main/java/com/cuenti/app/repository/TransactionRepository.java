@@ -47,6 +47,18 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "ORDER BY t.transactionDate DESC, t.sortOrder DESC")
     List<Transaction> findByUser(@Param("user") User user);
 
+    /** Expense totals per category in a period (budget tracking). */
+    @Query("SELECT t.category.id, SUM(t.amount) FROM Transaction t " +
+           "WHERE (t.fromAccount.user = :user OR t.toAccount.user = :user) " +
+           "AND t.type = :expenseType " +
+           "AND t.category IS NOT NULL " +
+           "AND t.transactionDate >= :from AND t.transactionDate <= :to " +
+           "GROUP BY t.category.id")
+    List<Object[]> sumExpensesByCategory(@Param("user") User user,
+                                         @Param("from") java.time.LocalDateTime from,
+                                         @Param("to") java.time.LocalDateTime to,
+                                         @Param("expenseType") Transaction.TransactionType expenseType);
+
     /**
      * Filtered window for the transaction grid: account/type/date pushed to
      * the database so the UI no longer loads the full history.

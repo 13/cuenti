@@ -216,13 +216,34 @@ public class UserService implements UserDetailsService {
         log.info("Default assets created for user: {}", user.getUsername());
     }
 
+    private static final String SESSION_USER_KEY = "cuenti.session.user";
+
     /**
-     * Find a user by username.
+     * Find a user by username. Cached per Vaadin session so navigation doesn't
+     * hit the database on every page; mutating methods evict the cache.
      */
     @Transactional(readOnly = true)
     public User findByUsername(String username) {
-        return userRepository.findByUsername(username)
+        com.vaadin.flow.server.VaadinSession session = com.vaadin.flow.server.VaadinSession.getCurrent();
+        if (session != null) {
+            Object cached = session.getAttribute(SESSION_USER_KEY);
+            if (cached instanceof User u && u.getUsername().equals(username)) {
+                return u;
+            }
+        }
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+        if (session != null) {
+            session.setAttribute(SESSION_USER_KEY, user);
+        }
+        return user;
+    }
+
+    private void evictSessionUser() {
+        com.vaadin.flow.server.VaadinSession session = com.vaadin.flow.server.VaadinSession.getCurrent();
+        if (session != null) {
+            session.setAttribute(SESSION_USER_KEY, null);
+        }
     }
 
     /**
@@ -238,6 +259,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public User saveUser(User user) {
+        evictSessionUser();
         return userRepository.save(user);
     }
 
@@ -246,6 +268,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updateUserInfo(User user, String firstName, String lastName, String email) {
+        evictSessionUser();
         user.setFirstName(firstName);
         user.setLastName(lastName);
         user.setEmail(email);
@@ -264,6 +287,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updatePassword(User user, String newPassword) {
+        evictSessionUser();
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
     }
@@ -273,6 +297,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updateDefaultCurrency(User user, String currencyCode) {
+        evictSessionUser();
         user.setDefaultCurrency(currencyCode);
         userRepository.save(user);
     }
@@ -282,6 +307,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updateDarkMode(User user, boolean darkMode) {
+        evictSessionUser();
         user.setDarkMode(darkMode);
         userRepository.save(user);
     }
@@ -291,6 +317,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updateLocale(User user, String locale) {
+        evictSessionUser();
         user.setLocale(locale);
         userRepository.save(user);
     }
@@ -300,6 +327,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updateApiEnabled(User user, boolean enabled) {
+        evictSessionUser();
         user.setApiEnabled(enabled);
         userRepository.save(user);
     }
@@ -309,6 +337,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updateDefaultVehicleCategory(User user, Long categoryId) {
+        evictSessionUser();
         user.setDefaultVehicleCategoryId(categoryId);
         userRepository.save(user);
     }

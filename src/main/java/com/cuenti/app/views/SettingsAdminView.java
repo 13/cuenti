@@ -189,7 +189,7 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
                     com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.passwords_not_match"));
                     return;
                 }
-                if (password.getValue().length() < 6) {
+                if (password.getValue().length() < 8) {
                     com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.passwords_not_match"));
                     return;
                 }

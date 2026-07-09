@@ -146,8 +146,8 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
                         "Password is required"))
                 .withValidator(new StringLengthValidator(
                         t("register.validation.password_length",
-                                "Password must be between 6 and 128 characters"),
-                        6, 128))
+                                "Password must be between 8 and 128 characters"),
+                        8, 128))
                 .bind(RegistrationModel::getPassword,
                         RegistrationModel::setPassword);
 

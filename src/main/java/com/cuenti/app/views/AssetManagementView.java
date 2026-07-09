@@ -242,7 +242,8 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
     }
 
     private DateTimeFormatter getDateTimeFormatter() {
-        String pattern = currentUser.getLocale().equals("de-DE") ? "dd.MM.yyyy HH:mm" : "MM/dd/yyyy HH:mm";
+        String pattern = currentUser.getLocale() != null && currentUser.getLocale().startsWith("de")
+                ? "dd.MM.yyyy HH:mm" : "MM/dd/yyyy HH:mm";
         return DateTimeFormatter.ofPattern(pattern);
     }
 

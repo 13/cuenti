@@ -47,6 +47,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
     private final TransactionService transactionService;
     private final AssetService assetService;
     private final ExchangeRateService exchangeRateService;
+    private final com.cuenti.app.service.BudgetService budgetService;
     private final User currentUser;
 
     private final FlexLayout metricsLayout = new FlexLayout();
@@ -61,7 +62,9 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
 
     public DashboardView(AccountService accountService, UserService userService,
                          TransactionService transactionService, AssetService assetService,
-                         ExchangeRateService exchangeRateService, SecurityUtils securityUtils) {
+                         ExchangeRateService exchangeRateService, SecurityUtils securityUtils,
+                         com.cuenti.app.service.BudgetService budgetService) {
+        this.budgetService = budgetService;
         this.accountService = accountService;
         this.transactionService = transactionService;
         this.assetService = assetService;
@@ -101,8 +104,9 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         createAssetPerformanceSection();
         createAccountList(accounts);
         createCharts(userTransactions);
+        Div budgetsSection = createBudgetsSection();
 
-        container.add(pageTitle, metricsLayout, assetPerformanceLayout, chartsLayout, accountsLayout);
+        container.add(pageTitle, metricsLayout, assetPerformanceLayout, chartsLayout, budgetsSection, accountsLayout);
         add(container);
     }
 
@@ -568,6 +572,67 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
                             .set("border-radius", "8px");
                     container.add(item);
                 });
+    }
+
+    /** Budgets overview: top budgets by usage with progress bars (this month). */
+    private Div createBudgetsSection() {
+        Div wrapper = new Div();
+        wrapper.setWidthFull();
+
+        List<com.cuenti.app.model.Budget> budgets = budgetService.getBudgets(currentUser);
+        if (budgets.isEmpty()) {
+            return wrapper;
+        }
+        Map<Long, BigDecimal> spent = budgetService.getSpentThisMonth(currentUser);
+
+        Div card = createCardContainer();
+        card.add(createSectionHeader("dashboard.budgets", VaadinIcon.PIGGY_BANK));
+
+        budgets.stream()
+                .sorted(Comparator.comparingDouble((com.cuenti.app.model.Budget b) -> usage(b, spent)).reversed())
+                .limit(6)
+                .forEach(b -> {
+                    double ratio = usage(b, spent);
+                    boolean over = ratio > 1.0;
+
+                    Span name = new Span(b.getCategory().getFullName());
+                    name.getStyle().set("font-size", "var(--aura-font-size-s)").set("font-weight", "500");
+
+                    Span figures = new Span(formatCurrency(spent.getOrDefault(b.getCategory().getId(), BigDecimal.ZERO),
+                                    currentUser.getDefaultCurrency())
+                            + " / " + formatCurrency(b.getMonthlyLimit(), currentUser.getDefaultCurrency()));
+                    figures.getStyle().set("font-size", "var(--aura-font-size-xs)")
+                            .set("color", over ? "var(--aura-red-text)" : "var(--vaadin-text-color-secondary)")
+                            .set("font-variant-numeric", "tabular-nums");
+
+                    HorizontalLayout head = new HorizontalLayout(name, figures);
+                    head.setWidthFull();
+                    head.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+                    head.setAlignItems(Alignment.BASELINE);
+
+                    com.vaadin.flow.component.progressbar.ProgressBar bar =
+                            new com.vaadin.flow.component.progressbar.ProgressBar(0, 1, Math.min(1.0, ratio));
+                    bar.setWidthFull();
+                    if (over) {
+                        bar.getStyle().set("--vaadin-progress-bar-fill-background", "var(--aura-red)");
+                    } else if (ratio > 0.85) {
+                        bar.getStyle().set("--vaadin-progress-bar-fill-background", "var(--aura-orange)");
+                    }
+
+                    Div row = new Div(head, bar);
+                    row.getStyle().set("display", "flex").set("flex-direction", "column")
+                            .set("gap", "4px").set("padding", "var(--vaadin-gap-xs) 0");
+                    card.add(row);
+                });
+
+        wrapper.add(card);
+        return wrapper;
+    }
+
+    private double usage(com.cuenti.app.model.Budget b, Map<Long, BigDecimal> spent) {
+        if (b.getMonthlyLimit() == null || b.getMonthlyLimit().compareTo(BigDecimal.ZERO) <= 0) return 0;
+        return spent.getOrDefault(b.getCategory().getId(), BigDecimal.ZERO)
+                .divide(b.getMonthlyLimit(), 4, RoundingMode.HALF_UP).doubleValue();
     }
 
     private void createAccountList(List<Account> accounts) {

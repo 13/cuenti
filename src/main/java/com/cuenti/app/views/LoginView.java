@@ -1,10 +1,14 @@
 package com.cuenti.app.views;
 
+import com.cuenti.app.repository.UserRepository;
 import com.cuenti.app.service.GlobalSettingService;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.login.LoginForm;
 import com.vaadin.flow.component.login.LoginI18n;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -13,11 +17,13 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
-import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
-import java.util.Locale;
 
-/** Login view for user authentication. Default language set to English. */
+/**
+ * Two-stage login in the StarPass style: a compact branded card with a
+ * primary demo sign-in, and an expandable username/password form behind
+ * "Other sign-in options".
+ */
 @Route("login")
 @AnonymousAllowed
 public class LoginView extends VerticalLayout implements BeforeEnterObserver, HasDynamicTitle {
@@ -31,34 +37,102 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
   private final RouterLink registerLink = new RouterLink();
   private final GlobalSettingService globalSettingService;
 
-  public LoginView(GlobalSettingService globalSettingService) {
+  private final Div primaryStage = new Div();
+  private final Div formStage = new Div();
+
+  public LoginView(GlobalSettingService globalSettingService, UserRepository userRepository) {
     this.globalSettingService = globalSettingService;
 
     configureLayout();
     configureLoginForm();
     configureRegisterLink();
 
-    Image logo = createLogo();
+    boolean demoAvailable = userRepository.existsByUsername("demo");
+
+    // ── Brand ────────────────────────────────────────────────────────
+    Image logo = new Image("images/Cuenti.png", getTranslation("app.name"));
+    logo.getElement().setAttribute("alt", getTranslation("app.name"));
+    Div logoTile = new Div(logo);
+    logoTile.addClassName("auth-logo-tile");
 
     Span logoText = new Span(getTranslation("app.name"));
     logoText.addClassName("auth-brand-text");
 
-    Div brand = new Div(logo, logoText);
+    Div brand = new Div(logoTile, logoText);
     brand.addClassName("auth-brand");
 
-    Div card = new Div(brand, loginForm, registerLink);
-    card.addClassName("auth-card");
+    // ── Stage 1: primary options ─────────────────────────────────────
+    primaryStage.addClassName("auth-stage");
 
+    if (demoAvailable) {
+      Button demoButton = new Button(getTranslation("login.demo_user"), VaadinIcon.LOCK.create(),
+              e -> submitDemoLogin());
+      demoButton.addClassName("auth-primary-btn");
+      demoButton.setWidthFull();
+      primaryStage.add(demoButton);
+    }
+
+    Button otherOptions = new Button(getTranslation("login.other_options"),
+            e -> showForm(true));
+    otherOptions.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+    primaryStage.add(otherOptions);
+
+    // Without a demo account the form IS the primary option
+    if (!demoAvailable) {
+      primaryStage.setVisible(false);
+    }
+
+    // ── Stage 2: username/password form ──────────────────────────────
+    formStage.addClassName("auth-stage");
+
+    Button backButton = new Button(getTranslation("login.back"),
+            VaadinIcon.ARROW_CIRCLE_LEFT_O.create(), e -> showForm(false));
+    backButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+    backButton.getStyle().set("align-self", "flex-start");
+    if (!demoAvailable) {
+      backButton.setVisible(false);
+    }
+
+    Span demoHint = new Span(getTranslation("login.demo_hint"));
+    demoHint.addClassName("auth-footnote");
+    demoHint.setVisible(demoAvailable);
+
+    formStage.add(backButton, loginForm, registerLink, demoHint);
+    formStage.setVisible(!demoAvailable);
+
+    Div card = new Div(brand, primaryStage, formStage);
+    card.addClassName("auth-card");
     add(card);
+  }
+
+  private void showForm(boolean form) {
+    formStage.setVisible(form);
+    primaryStage.setVisible(!form);
+  }
+
+  /** Fills the (slotted, light-DOM) login form with demo credentials and submits. */
+  private void submitDemoLogin() {
+    showForm(true);
+    loginForm.getElement().executeJs(
+        "const u = this.querySelector('input[name=\"username\"]');" +
+        "const p = this.querySelector('input[name=\"password\"]');" +
+        "if (u && p) {" +
+        "  u.value = 'demo';" +
+        "  p.value = 'demo123';" +
+        "  u.dispatchEvent(new Event('input', {bubbles: true}));" +
+        "  p.dispatchEvent(new Event('input', {bubbles: true}));" +
+        "  this.querySelector('vaadin-button[slot=\"submit\"]')?.click();" +
+        "}"
+    );
   }
 
   private void configureLayout() {
     addClassName("auth-view");
     setSizeFull();
     setAlignItems(Alignment.CENTER);
-    setJustifyContentMode(JustifyContentMode.START);
+    setJustifyContentMode(JustifyContentMode.CENTER);
     setPadding(true);
-    setSpacing(true);
+    setSpacing(false);
   }
 
   private void configureLoginForm() {
@@ -76,27 +150,13 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
 
     // Disable auto-focus on username field
     loginForm.getElement().setAttribute("no-autofocus", true);
-
   }
 
   private void configureRegisterLink() {
     registerLink.setRoute(RegisterView.class);
     registerLink.setText(getTranslation("login.register_link"));
     registerLink.getElement().setAttribute("aria-label", "Register new account");
-  }
-
-  private Image createLogo() {
-    Image logo = new Image("images/Cuenti.png", getTranslation("app.name"));
-    logo.getElement().setAttribute("srcset",
-            "images/Cuenti.png 120w, images/Cuenti.png 800w");
-    // When viewport is <=480px use ~120px image, otherwise use up to 200px.
-    logo.getElement().setAttribute("sizes",
-            "(max-width: 480px) 120px, 200px");
-    // Keep responsive CSS as well
-    logo.getStyle().set("width", "clamp(56px, 40%, 200px)");
-    logo.getStyle().set("max-width", "120px");
-    logo.getElement().setAttribute("alt", getTranslation("app.name"));
-    return logo;
+    registerLink.getStyle().set("align-self", "center");
   }
 
   @Override
@@ -107,9 +167,12 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
     ThemePreference.applyLocaleFromCookie(ui);
     ThemePreference.applyThemeFromCookie(ui);
 
-    // Handle login error (?error)
+    // Handle login error (?error): jump straight to the form so it's visible
     boolean error = event.getLocation().getQueryParameters().getParameters().containsKey("error");
     loginForm.setError(error);
+    if (error) {
+      showForm(true);
+    }
 
     // Feature toggle: registration enabled
     registerLink.setVisible(globalSettingService.isRegistrationEnabled());

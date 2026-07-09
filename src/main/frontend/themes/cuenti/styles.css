@@ -420,21 +420,29 @@ vaadin-app-layout::part(navbar) {
 }
 
 .auth-card {
-  margin-top: clamp(8px, 7vh, 88px);
+  margin-top: 0;
   background: var(--aura-surface-color-solid);
   border: 1px solid var(--vaadin-border-color-secondary);
   border-radius: var(--vaadin-radius-l);
   box-shadow: var(--aura-shadow-m);
   padding: var(--vaadin-padding-l, 1.5rem);
   width: 100%;
-  max-width: 400px;
+  max-width: 380px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-/* Brand block: logo and app name vertically stacked, properly centered */
+/* Soft radial wash like the StarPass login canvas */
+.auth-view {
+  background:
+    radial-gradient(circle at 15% 85%, color-mix(in srgb, var(--aura-accent-color) 10%, transparent), transparent 40%),
+    radial-gradient(circle at 85% 10%, color-mix(in srgb, var(--aura-accent-color) 7%, transparent), transparent 45%),
+    var(--aura-background-color);
+}
+
+/* Brand block: logo tile and app name vertically stacked */
 .auth-brand {
   display: flex;
   flex-direction: column;
@@ -443,8 +451,62 @@ vaadin-app-layout::part(navbar) {
   padding: var(--vaadin-padding-m) 0 var(--vaadin-padding-s);
 }
 
-.auth-brand img {
+.auth-logo-tile {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--aura-surface-color-solid);
+  border: 1px solid var(--vaadin-border-color-secondary);
+  box-shadow: var(--aura-shadow-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-logo-tile img {
+  width: 36px;
+  height: auto;
   display: block;
+}
+
+/* Login stages */
+.auth-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--vaadin-gap-s);
+  width: 100%;
+  padding-top: var(--vaadin-gap-s);
+}
+
+/* Dark ink primary button (StarPass style) */
+.auth-primary-btn {
+  --vaadin-button-background: light-dark(#1f2433, #e8ecf5);
+  --vaadin-button-text-color: light-dark(#ffffff, #16192a);
+  background: light-dark(#1f2433, #e8ecf5) !important;
+  color: light-dark(#ffffff, #16192a) !important;
+  font-weight: 600;
+}
+
+.auth-primary-btn:hover {
+  background: light-dark(#2a3044, #f4f6fb) !important;
+}
+
+.auth-footnote {
+  font-size: var(--aura-font-size-xs);
+  color: var(--vaadin-text-color-secondary);
+  text-align: center;
+  padding-top: var(--vaadin-gap-xs);
+  border-top: 1px solid var(--cuenti-divider);
+}
+
+/* Login form: flat inside the card, dark submit button */
+.auth-card vaadin-login-form vaadin-button[slot="submit"] {
+  --vaadin-button-background: light-dark(#1f2433, #e8ecf5);
+  --vaadin-button-text-color: light-dark(#ffffff, #16192a);
+  background: light-dark(#1f2433, #e8ecf5) !important;
+  color: light-dark(#ffffff, #16192a) !important;
+  font-weight: 600;
 }
 
 .auth-brand-text {

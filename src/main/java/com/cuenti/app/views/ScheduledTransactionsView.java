@@ -217,7 +217,8 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
 
         // Amount
         templateGrid.addComponentColumn(st -> createAmountSpan(st.getAmount(), st.getType()))
-                .setHeader(getTranslation("dialog.amount")).setAutoWidth(true).setSortable(true)
+                .setHeader(getTranslation("dialog.amount"))
+                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END).setAutoWidth(true).setSortable(true)
                 .setComparator(Comparator.comparing(ScheduledTransaction::getAmount));
 
         // Recurrence pill
@@ -233,8 +234,11 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .setComparator(Comparator.comparing(ScheduledTransaction::getNextOccurrence));
 
         // Tags
+        com.vaadin.flow.component.grid.Grid.Column<ScheduledTransaction> templateTagsCol =
         templateGrid.addComponentColumn(this::buildTagBadges)
                 .setHeader(getTranslation("dialog.tags")).setAutoWidth(true);
+        com.cuenti.app.views.components.ResponsiveGridColumns.hideBelow(768, templateGrid,
+                java.util.List.of(templateTagsCol));
 
         // Enabled toggle styled as a pill
         templateGrid.addComponentColumn(st -> {
@@ -329,12 +333,16 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
 
         // Amount
         pendingGrid.addComponentColumn(st -> createAmountSpan(st.getAmount(), st.getType()))
-                .setHeader(getTranslation("dialog.amount")).setAutoWidth(true).setSortable(true)
+                .setHeader(getTranslation("dialog.amount"))
+                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END).setAutoWidth(true).setSortable(true)
                 .setComparator(Comparator.comparing(ScheduledTransaction::getAmount));
 
         // Tags
+        com.vaadin.flow.component.grid.Grid.Column<ScheduledTransaction> pendingTagsCol =
         pendingGrid.addComponentColumn(this::buildTagBadges)
                 .setHeader(getTranslation("dialog.tags")).setAutoWidth(true);
+        com.cuenti.app.views.components.ResponsiveGridColumns.hideBelow(768, pendingGrid,
+                java.util.List.of(pendingTagsCol));
 
         // Actions: Post (primary), Skip (subtle), Edit (icon)
         pendingGrid.addComponentColumn(st -> {
@@ -366,6 +374,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
 
     private void openEditDialog(ScheduledTransaction st) {
         Dialog dialog = new Dialog();
+        dialog.setCloseOnOutsideClick(false);
         dialog.setWidth("min(700px, 96vw)");
         dialog.setResizable(false);
         dialog.getElement().getStyle()

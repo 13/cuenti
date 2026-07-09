@@ -252,6 +252,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
 
     private void openAccountDialog(Account account) {
         Dialog dialog = new Dialog();
+        dialog.setCloseOnOutsideClick(false);
         dialog.setWidth("min(560px, 96vw)");
         dialog.setResizable(false);
         dialog.getElement().getStyle()

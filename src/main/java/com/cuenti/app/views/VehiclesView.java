@@ -338,6 +338,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
                 .setComparator(java.util.Comparator.comparing(e -> e.date));
 
         // Odometer
+        com.vaadin.flow.component.grid.Grid.Column<FuelEntry> odoCol =
         grid.addComponentColumn(e -> {
             Span s = new Span(e.odometer != null ? e.odometer.setScale(0, RoundingMode.HALF_UP) + " km" : "—");
             s.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
@@ -372,6 +373,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
                 .setComparator(java.util.Comparator.comparing(e -> e.amount));
 
         // Price / L
+        com.vaadin.flow.component.grid.Grid.Column<FuelEntry> pplCol =
         grid.addComponentColumn(e -> {
             Span s = new Span(e.pricePerLiter != null ? formatCurrency(e.pricePerLiter) + "/L" : "—");
             s.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
@@ -399,6 +401,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
                 .setComparator(java.util.Comparator.comparing(e -> e.consumption != null ? e.consumption : BigDecimal.ZERO));
 
         // fullTank
+        com.vaadin.flow.component.grid.Grid.Column<FuelEntry> fullTankCol =
         grid.addComponentColumn(e -> {
             if (e.fullTank) {
                 Icon icon = VaadinIcon.CHECK.create();
@@ -418,12 +421,17 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         .setComparator(e -> e.fullTank);
 
         // Station
+        com.vaadin.flow.component.grid.Grid.Column<FuelEntry> stationCol =
         grid.addComponentColumn(e -> {
                     Span s = new Span(e.station != null ? e.station : "—");
                     s.getStyle().set("font-weight", "500").set("font-size", "var(--aura-font-size-s)");
                     return s;
                 }).setHeader(getTranslation("vehicles.station")).setFlexGrow(1).setSortable(true)
                 .setComparator(java.util.Comparator.comparing(e -> e.station != null ? e.station : ""));
+
+        // Phones: keep date/distance/liters/amount/consumption
+        com.cuenti.app.views.components.ResponsiveGridColumns.hideBelow(768, grid,
+                java.util.List.of(odoCol, pplCol, fullTankCol, stationCol));
 
     }
 

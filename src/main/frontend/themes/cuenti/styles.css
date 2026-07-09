@@ -405,6 +405,53 @@ vaadin-grid::part(header-cell) {
   color: var(--vaadin-text-color-secondary);
 }
 
+/* Numbers in grid cells align vertically */
+vaadin-grid::part(cell) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------------------------------
+   9b. Dialogs & overlays — one look everywhere
+   ---------------------------------------------------------------------------- */
+vaadin-dialog-overlay::part(header) {
+  border-bottom: 1px solid var(--vaadin-border-color-secondary);
+}
+
+vaadin-dialog-overlay::part(title) {
+  font-family: var(--aura-font-family);
+  font-size: var(--aura-font-size-l);
+  font-weight: 600;
+}
+
+vaadin-dialog-overlay::part(footer) {
+  border-top: 1px solid var(--vaadin-border-color-secondary);
+  background: var(--cuenti-surface-muted);
+}
+
+/* Phones: dialogs become bottom sheets */
+@media (max-width: 600px) {
+  vaadin-dialog-overlay::part(overlay) {
+    position: fixed;
+    inset-block-end: 0;
+    inset-inline: 0;
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    border-radius: var(--vaadin-radius-l) var(--vaadin-radius-l) 0 0;
+  }
+
+  vaadin-confirm-dialog-overlay::part(overlay) {
+    position: fixed;
+    inset-block-end: 0;
+    inset-inline: 0;
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--vaadin-radius-l) var(--vaadin-radius-l) 0 0;
+  }
+}
+
 /* ----------------------------------------------------------------------------
    10. Responsive
    ---------------------------------------------------------------------------- */

@@ -167,6 +167,7 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
 
     private void openCategoryDialog(Category category) {
         Dialog dialog = new Dialog();
+        dialog.setCloseOnOutsideClick(false);
         dialog.setWidth("min(460px, 96vw)");
         dialog.setResizable(false);
         dialog.getElement().getStyle()

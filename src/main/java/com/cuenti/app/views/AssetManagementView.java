@@ -141,7 +141,8 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
             Span price = new Span(formatCurrency(displayPrice, currentUser.getDefaultCurrency()));
             price.getStyle().set("font-weight","700").set("font-size","var(--aura-font-size-s)").set("color","var(--aura-accent-color)");
             return price;
-        }).setHeader(getTranslation("assets.price") + " (" + currentUser.getDefaultCurrency() + ")").setSortable(true).setAutoWidth(true);
+        }).setHeader(getTranslation("assets.price") + " (" + currentUser.getDefaultCurrency() + ")")
+                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END).setSortable(true).setAutoWidth(true);
 
         grid.addColumn(asset -> asset.getLastUpdate() != null ? 
                 asset.getLastUpdate().format(getDateTimeFormatter()) : "-")
@@ -192,6 +193,7 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
 
     private void openAssetDialog(Asset asset) {
         Dialog dialog = new Dialog();
+        dialog.setCloseOnOutsideClick(false);
         dialog.setWidth("min(440px, 96vw)");
         dialog.setResizable(false);
         dialog.getElement().getStyle()

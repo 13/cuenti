@@ -147,6 +147,7 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
 
     private void openTagDialog(Tag tag) {
         Dialog dialog = new Dialog();
+        dialog.setCloseOnOutsideClick(false);
         dialog.setWidth("min(380px, 96vw)");
         dialog.setResizable(false);
         dialog.getElement().getStyle()

@@ -154,6 +154,7 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
 
     private void openAddUserDialog() {
         Dialog dialog = new Dialog();
+        dialog.setCloseOnOutsideClick(false);
         dialog.setHeaderTitle(getTranslation("settings.add_new_user"));
         dialog.setWidth("min(600px, 96vw)");
 

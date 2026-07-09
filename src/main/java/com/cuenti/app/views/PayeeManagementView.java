@@ -166,6 +166,7 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
 
     private void openPayeeDialog(Payee payee) {
         Dialog dialog = new Dialog();
+        dialog.setCloseOnOutsideClick(false);
         dialog.setWidth("min(560px, 96vw)");
         dialog.setResizable(false);
         dialog.getElement().getStyle()

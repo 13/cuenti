@@ -477,9 +477,27 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
             return hl;
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
 
-        // Phones: keep date/payee/amount/actions, hide secondary columns
-        com.cuenti.app.views.components.ResponsiveGridColumns.hideBelow(768, grid,
-                java.util.List.of(tagsCol, balanceCol, memoCol));
+        // Compact card column for phones (hidden on desktop)
+        com.vaadin.flow.component.grid.Grid.Column<Transaction> cardCol =
+                grid.addComponentColumn(this::createMobileCard).setFlexGrow(1);
+        cardCol.setVisible(false);
+
+        java.util.List<com.vaadin.flow.component.grid.Grid.Column<Transaction>> desktopCols =
+                new ArrayList<>(grid.getColumns());
+        desktopCols.remove(cardCol);
+        com.vaadin.flow.component.grid.Grid.Column<Transaction> actionsCol =
+                desktopCols.get(desktopCols.size() - 1);
+        java.util.List<com.vaadin.flow.component.grid.Grid.Column<Transaction>> secondaryCols =
+                java.util.List.of(tagsCol, balanceCol, memoCol);
+
+        // <520px: card layout · 520-767px: pruned table · >=768px: full table
+        grid.addAttachListener(e -> {
+            com.vaadin.flow.component.page.Page page = e.getUI().getPage();
+            page.retrieveExtendedClientDetails(d ->
+                    applyResponsiveColumns(d.getWindowInnerWidth(), cardCol, desktopCols, actionsCol, secondaryCols));
+            page.addBrowserWindowResizeListener(re ->
+                    applyResponsiveColumns(re.getWidth(), cardCol, desktopCols, actionsCol, secondaryCols));
+        });
 
         grid.setHeightFull();
     }
@@ -686,6 +704,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
     private void openTransactionDialog(Transaction transaction) {
         final Transaction[] currentFormTransaction = {transaction};
         Dialog dialog = new Dialog();
+        dialog.setCloseOnOutsideClick(false);
         dialog.setWidth("min(700px, 96vw)");
         dialog.setResizable(false);
         dialog.getElement().getStyle()
@@ -1320,6 +1339,61 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
     @Override
     public Locale getLocale() {
         return Locale.forLanguageTag(currentUser.getLocale());
+    }
+
+    private void applyResponsiveColumns(int width,
+            com.vaadin.flow.component.grid.Grid.Column<Transaction> cardCol,
+            java.util.List<com.vaadin.flow.component.grid.Grid.Column<Transaction>> desktopCols,
+            com.vaadin.flow.component.grid.Grid.Column<Transaction> actionsCol,
+            java.util.List<com.vaadin.flow.component.grid.Grid.Column<Transaction>> secondaryCols) {
+        boolean phone = width < 520;
+        boolean narrow = width < 768;
+        cardCol.setVisible(phone);
+        desktopCols.forEach(c -> c.setVisible(!phone));
+        if (!phone) {
+            secondaryCols.forEach(c -> c.setVisible(!narrow));
+        }
+    }
+
+    /** Stacked row card used below 520px: payee/account, date, signed amount. */
+    private Div createMobileCard(Transaction t) {
+        Account acc = t.getType() == Transaction.TransactionType.INCOME ? t.getToAccount() : t.getFromAccount();
+        String accName = acc != null ? acc.getAccountName() : "";
+        if (t.getType() == Transaction.TransactionType.TRANSFER && t.getFromAccount() != null && t.getToAccount() != null) {
+            accName = t.getFromAccount().getAccountName() + " → " + t.getToAccount().getAccountName();
+        }
+
+        Span payee = new Span(t.getPayee() != null ? t.getPayee() : "—");
+        payee.getStyle().set("font-weight", "600").set("font-size", "var(--aura-font-size-s)");
+
+        Span meta = new Span(t.getTransactionDate().format(getDateTimeFormatter()) + " · " + accName);
+        meta.getStyle().set("font-size", "var(--aura-font-size-xs)")
+                .set("color", "var(--vaadin-text-color-secondary)");
+
+        Div left = new Div(payee, meta);
+        left.getStyle().set("display", "flex").set("flex-direction", "column")
+                .set("gap", "2px").set("min-width", "0").set("flex", "1");
+
+        boolean isCredit = t.getType() == Transaction.TransactionType.INCOME;
+        String sign = isCredit ? "+" : "−";
+        Span amount = new Span(sign + formatCurrency(t.getAmount()));
+        amount.addClassName(t.getType() == Transaction.TransactionType.TRANSFER
+                ? "amount-neutral" : (isCredit ? "amount-positive" : "amount-negative"));
+        amount.getStyle().set("white-space", "nowrap").set("font-size", "var(--aura-font-size-s)");
+
+        Button edit = new Button(VaadinIcon.EDIT.create(), e -> openTransactionDialog(t));
+        edit.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        edit.getElement().setAttribute("aria-label", getTranslation("transactions.edit"));
+
+        Button del = new Button(VaadinIcon.TRASH.create(), e -> confirmDelete(t));
+        del.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
+        del.getElement().setAttribute("aria-label", getTranslation("transactions.delete"));
+
+        Div card = new Div(left, amount, edit, del);
+        card.getStyle().set("display", "flex").set("align-items", "center")
+                .set("gap", "var(--vaadin-gap-xs)").set("padding", "var(--vaadin-gap-xs) 0")
+                .set("width", "100%");
+        return card;
     }
 
     /** Exports the currently filtered and sorted rows. Package-visible for tests. */

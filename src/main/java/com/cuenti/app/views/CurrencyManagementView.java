@@ -132,6 +132,7 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
 
     private void openCurrencyDialog(Currency currency) {
         Dialog dialog = new Dialog();
+        dialog.setCloseOnOutsideClick(false);
         dialog.setWidth("min(500px, 96vw)");
         dialog.setResizable(false);
         dialog.getElement().getStyle()

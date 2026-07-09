@@ -201,10 +201,9 @@ public class MainLayout extends AppLayout {
 
         Div logoSection = new Div(logoContent);
         logoSection.getStyle()
-                .set("padding", "0 var(--vaadin-gap-xs)")
-                .set("border-bottom", "1px solid var(--vaadin-border-color-secondary)")
+                .set("padding", "var(--vaadin-gap-s) var(--vaadin-gap-s) var(--vaadin-gap-xs)")
                 .set("display", "flex").set("align-items", "center")
-                .set("height", "52px").set("flex-shrink", "0")
+                .set("flex-shrink", "0")
                 .set("box-sizing", "border-box");
 
         SideNav general = navSection(getTranslation("nav.general"), true,
@@ -244,8 +243,7 @@ public class MainLayout extends AppLayout {
         Div drawer = new Div(logoSection, nav);
         drawer.setHeightFull();
         drawer.getStyle()
-                .set("display", "flex").set("flex-direction", "column")
-                .set("background", "var(--aura-surface-color-solid)");
+                .set("display", "flex").set("flex-direction", "column");
 
         addToDrawer(drawer);
     }

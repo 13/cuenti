@@ -80,6 +80,23 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
     private List<Transaction> allAccountTransactions = new ArrayList<>();
     private Map<Long, BigDecimal> balanceCache = new HashMap<>();
 
+    private com.vaadin.flow.component.grid.Grid.Column<Transaction> dateCol;
+    private com.vaadin.flow.component.grid.Grid.Column<Transaction> payeeCol;
+    private com.vaadin.flow.component.grid.Grid.Column<Transaction> categoryCol;
+    private com.vaadin.flow.component.grid.Grid.Column<Transaction> amountCol;
+    private com.vaadin.flow.component.grid.Grid.Column<Transaction> tagsCol;
+    private com.vaadin.flow.component.grid.Grid.Column<Transaction> balanceCol;
+    private com.vaadin.flow.component.grid.Grid.Column<Transaction> memoCol;
+    private final Map<String, Boolean> colPrefs = new HashMap<>(Map.of(
+            "category", true, "tags", true, "balance", true, "memo", true));
+    final TextField headerPayeeFilter = new TextField(); // package-visible for tests
+    private final ComboBox<String> headerCategoryFilter = new ComboBox<>();
+    private final java.util.Set<Long> firstOfDayIds = new java.util.HashSet<>();
+    private boolean dayGroupingActive = true;
+    private com.vaadin.flow.component.grid.FooterRow footerRow;
+    private Runnable reapplyColumns = () -> {};
+    private final Map<String, com.vaadin.flow.component.contextmenu.MenuItem> columnMenuItems = new HashMap<>();
+
     public TransactionHistoryView(TransactionService transactionService, AccountService accountService,
                                   UserService userService, ExchangeRateService exchangeRateService, 
                                   CategoryService categoryService, AssetService assetService,
@@ -134,7 +151,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         LocalDate now = LocalDate.now();
         dateFrom.setPlaceholder(getTranslation("dialog.from"));
         dateFrom.setClearButtonVisible(true);
-        dateFrom.addValueChangeListener(e -> updateFilters());
+        dateFrom.addValueChangeListener(e -> refreshGrid());
         dateFrom.setWidth("150px");
         dateFrom.setLocale(getLocale());
 
@@ -145,7 +162,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
         dateTo.setPlaceholder(getTranslation("dialog.to"));
         dateTo.setClearButtonVisible(true);
-        dateTo.addValueChangeListener(e -> updateFilters());
+        dateTo.addValueChangeListener(e -> refreshGrid());
         dateTo.setWidth("150px");
         dateTo.setLocale(getLocale());
 
@@ -190,7 +207,36 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         exportAnchor.add(exportButton);
         exportAnchor.getElement().setAttribute("download", true);
 
-        HorizontalLayout actionsRow = new HorizontalLayout(exportAnchor, addButton);
+        com.vaadin.flow.component.menubar.MenuBar columnsMenu = new com.vaadin.flow.component.menubar.MenuBar();
+        columnsMenu.addThemeVariants(com.vaadin.flow.component.menubar.MenuBarVariant.LUMO_TERTIARY);
+        com.vaadin.flow.component.contextmenu.MenuItem columnsRoot =
+                columnsMenu.addItem(VaadinIcon.GRID_SMALL.create());
+        columnsRoot.add(new Span(getTranslation("table.columns")));
+        columnsRoot.getElement().setAttribute("aria-label", getTranslation("table.columns"));
+        com.vaadin.flow.component.contextmenu.SubMenu columnsSub = columnsRoot.getSubMenu();
+        java.util.LinkedHashMap<String, String> toggleable = new java.util.LinkedHashMap<>();
+        toggleable.put("category", getTranslation("transactions.category"));
+        toggleable.put("tags", getTranslation("dialog.tags"));
+        toggleable.put("balance", getTranslation("accounts.balance"));
+        toggleable.put("memo", getTranslation("dialog.memo"));
+        toggleable.forEach((key, label) -> {
+            com.vaadin.flow.component.contextmenu.MenuItem item = columnsSub.addItem(label);
+            item.setCheckable(true);
+            item.setChecked(colPrefs.getOrDefault(key, true));
+            item.setKeepOpen(true);
+            item.addClickListener(e -> {
+                colPrefs.put(key, item.isChecked());
+                reapplyColumns.run();
+                String serialized = colPrefs.entrySet().stream()
+                        .map(en -> en.getKey() + ":" + (en.getValue() ? "1" : "0"))
+                        .collect(Collectors.joining(","));
+                getUI().ifPresent(ui -> ui.getPage()
+                        .executeJs("localStorage.setItem('cuenti.tx.cols', $0)", serialized));
+            });
+            columnMenuItems.put(key, item);
+        });
+
+        HorizontalLayout actionsRow = new HorizontalLayout(columnsMenu, exportAnchor, addButton);
         actionsRow.setAlignItems(Alignment.CENTER);
         actionsRow.setSpacing(false);
         actionsRow.getStyle().set("gap", "var(--vaadin-gap-s)");
@@ -241,37 +287,30 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
             else if (selectedTab == expenses) selectedTypeFilter = Transaction.TransactionType.EXPENSE;
             else if (selectedTab == income) selectedTypeFilter = Transaction.TransactionType.INCOME;
             else if (selectedTab == transfers) selectedTypeFilter = Transaction.TransactionType.TRANSFER;
-            updateFilters();
+            refreshGrid();
         });
     }
 
     private void updateFilters() {
         ListDataProvider<Transaction> dataProvider = (ListDataProvider<Transaction>) grid.getDataProvider();
         String filter = searchField.getValue().toLowerCase();
-        Account selectedAccount = accountSelector.getValue();
-        boolean allAccountsSelected = (selectedAccount == null) ||
-                (selectedAccount.getId() != null && selectedAccount.getId().equals(-1L));
-        LocalDate from = dateFrom.getValue();
-        LocalDate to = dateTo.getValue();
-        
+
+        String payeeFilter = headerPayeeFilter.getValue() != null
+                ? headerPayeeFilter.getValue().toLowerCase() : "";
+        String categoryFilter = headerCategoryFilter.getValue();
+
         dataProvider.setFilter(t -> {
-            boolean accountMatch = allAccountsSelected ||
-                    (selectedAccount != null && t.getFromAccount() != null && t.getFromAccount().getId().equals(selectedAccount.getId())) ||
-                    (selectedAccount != null && t.getToAccount() != null && t.getToAccount().getId().equals(selectedAccount.getId()));
-
-            boolean dateMatch = true;
-            if (from != null && t.getTransactionDate().toLocalDate().isBefore(from)) dateMatch = false;
-            if (to != null && t.getTransactionDate().toLocalDate().isAfter(to)) dateMatch = false;
-
-            boolean typeMatch = selectedTypeFilter == null || t.getType() == selectedTypeFilter;
-            
-            boolean searchMatch = filter.isEmpty() || 
-                                 (t.getPayee() != null && t.getPayee().toLowerCase().contains(filter)) ||
-                                 (t.getMemo() != null && t.getMemo().toLowerCase().contains(filter)) ||
-                                 (t.getCategory() != null && t.getCategory().getFullName().toLowerCase().contains(filter));
-            
-            return accountMatch && dateMatch && typeMatch && searchMatch;
+            boolean searchMatch = filter.isEmpty()
+                    || (t.getPayee() != null && t.getPayee().toLowerCase().contains(filter))
+                    || (t.getMemo() != null && t.getMemo().toLowerCase().contains(filter))
+                    || (t.getCategory() != null && t.getCategory().getFullName().toLowerCase().contains(filter));
+            boolean payeeMatch = payeeFilter.isEmpty()
+                    || (t.getPayee() != null && t.getPayee().toLowerCase().contains(payeeFilter));
+            boolean categoryMatch = categoryFilter == null
+                    || (t.getCategory() != null && t.getCategory().getFullName().equals(categoryFilter));
+            return searchMatch && payeeMatch && categoryMatch;
         });
+        updateTotalsFooter();
     }
 
     private void setupGrid() {
@@ -306,9 +345,11 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
             return avatar;
         }).setHeader("").setWidth("48px").setFlexGrow(0);
 
-        // 2. Date
-        grid.addComponentColumn(t -> {
-            Span date = new Span(t.getTransactionDate().format(getDateTimeFormatter()));
+        // 2. Date — shown once per day while sorted by date (visual day grouping)
+        dateCol = grid.addComponentColumn(t -> {
+            String formatted = t.getTransactionDate().format(getDateTimeFormatter());
+            Span date = new Span(dayGroupingActive && !firstOfDayIds.contains(t.getId()) ? "" : formatted);
+            date.getElement().setAttribute("title", formatted);
             date.getStyle()
                     .set("font-size", "var(--aura-font-size-s)")
                     .set("color", "var(--vaadin-text-color-secondary)");
@@ -318,7 +359,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                 .setAutoWidth(true).setFlexGrow(0);
 
         // 3. Payee + account stacked
-        grid.addComponentColumn(t -> {
+        payeeCol = grid.addComponentColumn(t -> {
             Span payee = new Span(t.getPayee() != null ? t.getPayee() : "—");
             payee.getStyle().set("font-weight", "600").set("font-size", "var(--aura-font-size-s)");
 
@@ -342,7 +383,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                 .setAutoWidth(true);
 
         // 4. Category (plain text)
-        grid.addComponentColumn(t -> {
+        categoryCol = grid.addComponentColumn(t -> {
             String cat;
             if (t.getSplits() != null && !t.getSplits().isEmpty()) {
                 String s = getTranslation("transactions.split");
@@ -362,8 +403,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                 .setAutoWidth(true);
 
         // 5. Tags
-        com.vaadin.flow.component.grid.Grid.Column<Transaction> tagsCol =
-        grid.addComponentColumn(t -> {
+        tagsCol = grid.addComponentColumn(t -> {
             HorizontalLayout hl = new HorizontalLayout();
             hl.setSpacing(false);
             hl.getStyle().set("gap", "4px").set("flex-wrap", "wrap");
@@ -376,7 +416,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         }).setHeader(getTranslation("dialog.tags")).setAutoWidth(true).setFlexGrow(0);
 
         // 6. Amount – single column, coloured and signed
-        grid.addComponentColumn(t -> {
+        amountCol = grid.addComponentColumn(t -> {
             Account selected = accountSelector.getValue();
             boolean allSelected = (selected == null) || (selected.getId() != null && selected.getId().equals(-1L));
             boolean isCredit = (t.getType() == Transaction.TransactionType.INCOME)
@@ -399,8 +439,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                 .setAutoWidth(true).setFlexGrow(0);
 
         // 7. Balance
-        com.vaadin.flow.component.grid.Grid.Column<Transaction> balanceCol =
-        grid.addComponentColumn(t -> {
+        balanceCol = grid.addComponentColumn(t -> {
             BigDecimal bal = balanceCache.getOrDefault(t.getId(), BigDecimal.ZERO);
             Span s = new Span(formatCurrency(bal));
             s.getStyle()
@@ -413,8 +452,7 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
                 .setSortable(true).setAutoWidth(true).setFlexGrow(0);
 
         // 8. Memo — truncated
-        com.vaadin.flow.component.grid.Grid.Column<Transaction> memoCol =
-        grid.addComponentColumn(t -> {
+        memoCol = grid.addComponentColumn(t -> {
             if (t.getMemo() == null || t.getMemo().isBlank()) return new Span();
             Span s = new Span(t.getMemo());
             s.getStyle()
@@ -487,16 +525,67 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         desktopCols.remove(cardCol);
         com.vaadin.flow.component.grid.Grid.Column<Transaction> actionsCol =
                 desktopCols.get(desktopCols.size() - 1);
-        java.util.List<com.vaadin.flow.component.grid.Grid.Column<Transaction>> secondaryCols =
-                java.util.List.of(tagsCol, balanceCol, memoCol);
+
+
+        grid.setMultiSort(true);
+
+        // Per-column header filters
+        com.vaadin.flow.component.grid.HeaderRow filterRow = grid.appendHeaderRow();
+        headerPayeeFilter.setId("tx-payee-filter");
+        headerPayeeFilter.setPlaceholder(getTranslation("transactions.payee"));
+        headerPayeeFilter.setClearButtonVisible(true);
+        headerPayeeFilter.setValueChangeMode(ValueChangeMode.LAZY);
+        headerPayeeFilter.addValueChangeListener(e -> updateFilters());
+        headerPayeeFilter.setWidthFull();
+        headerPayeeFilter.addThemeVariants(com.vaadin.flow.component.textfield.TextFieldVariant.LUMO_SMALL);
+        filterRow.getCell(payeeCol).setComponent(headerPayeeFilter);
+
+        headerCategoryFilter.setPlaceholder(getTranslation("transactions.category"));
+        headerCategoryFilter.setClearButtonVisible(true);
+        headerCategoryFilter.setItems(categoryService.getAllCategories().stream()
+                .map(c -> c.getFullName()).sorted().collect(Collectors.toList()));
+        headerCategoryFilter.addValueChangeListener(e -> updateFilters());
+        headerCategoryFilter.setWidthFull();
+        filterRow.getCell(categoryCol).setComponent(headerCategoryFilter);
+
+
+        // Filtered totals footer
+        footerRow = grid.appendFooterRow();
+
+        // Day grouping only makes sense while ordered by date
+        grid.addSortListener(e -> {
+            dayGroupingActive = e.getSortOrder().isEmpty()
+                    || e.getSortOrder().get(0).getSorted() == dateCol;
+            updateTotalsFooter();
+        });
 
         // <520px: card layout · 520-767px: pruned table · >=768px: full table
+        int[] lastWidth = {1400};
+        Runnable reapply = () -> applyResponsiveColumns(lastWidth[0], cardCol, desktopCols, actionsCol);
+        this.reapplyColumns = reapply;
         grid.addAttachListener(e -> {
             com.vaadin.flow.component.page.Page page = e.getUI().getPage();
-            page.retrieveExtendedClientDetails(d ->
-                    applyResponsiveColumns(d.getWindowInnerWidth(), cardCol, desktopCols, actionsCol, secondaryCols));
-            page.addBrowserWindowResizeListener(re ->
-                    applyResponsiveColumns(re.getWidth(), cardCol, desktopCols, actionsCol, secondaryCols));
+            page.retrieveExtendedClientDetails(d -> {
+                lastWidth[0] = d.getWindowInnerWidth();
+                reapply.run();
+            });
+            page.addBrowserWindowResizeListener(re -> {
+                lastWidth[0] = re.getWidth();
+                reapply.run();
+            });
+            // restore user column preferences from the browser
+            page.executeJs("return localStorage.getItem('cuenti.tx.cols') || ''")
+                    .then(String.class, v -> {
+                        if (v != null && !v.isEmpty()) {
+                            for (String pair : v.split(",")) {
+                                String[] kv = pair.split(":");
+                                if (kv.length == 2) colPrefs.put(kv[0], "1".equals(kv[1]));
+                            }
+                            columnMenuItems.forEach((key, item) ->
+                                    item.setChecked(colPrefs.getOrDefault(key, true)));
+                            reapply.run();
+                        }
+                    });
         });
 
         grid.setHeightFull();
@@ -590,90 +679,42 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
 
     private void refreshGrid() {
         Account selected = accountSelector.getValue();
-        if (isAllAccountsSelected(selected)) {
-            List<Transaction> rawTransactions = transactionService.getTransactionsByUser(currentUser);
-            rebuildBalanceCacheForAllAccounts(rawTransactions);
-            // Store sorted transactions for display (descending order - latest on top)
-            allAccountTransactions = new ArrayList<>(rawTransactions);
-            allAccountTransactions.sort(Comparator.comparing(Transaction::getTransactionDate)
-                    .thenComparing(Transaction::getSortOrder)
-                    .reversed());
-            grid.setItems(allAccountTransactions);
-            updateFilters();
-            return;
+        Account accountFilter = isAllAccountsSelected(selected) ? null : selected;
+
+        LocalDateTime from = dateFrom.getValue() != null
+                ? dateFrom.getValue().atStartOfDay() : LocalDateTime.of(1970, 1, 1, 0, 0);
+        LocalDateTime to = dateTo.getValue() != null
+                ? dateTo.getValue().atTime(23, 59, 59) : LocalDateTime.of(9999, 12, 31, 23, 59, 59);
+
+        List<Transaction> window = transactionService.getTransactionsFiltered(
+                currentUser, accountFilter, selectedTypeFilter, from, to);
+
+        // Running balance computed in the database over the full history;
+        // only the visible window's offsets are shifted by start balances.
+        BigDecimal offset;
+        if (accountFilter == null) {
+            offset = accountService.getAccountsByUser(currentUser).stream()
+                    .map(Account::getStartBalance)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        } else {
+            offset = accountFilter.getStartBalance() != null ? accountFilter.getStartBalance() : BigDecimal.ZERO;
         }
+        balanceCache.clear();
+        transactionService.getRunningBalances(currentUser, accountFilter, selectedTypeFilter, from, to)
+                .forEach((id, bal) -> balanceCache.put(id, bal.add(offset)));
 
-        List<Transaction> rawTransactions = transactionService.getTransactionsByAccount(selected);
-        rebuildBalanceCacheForAccount(selected, rawTransactions);
-
-        // Store sorted transactions for display (descending order - latest on top)
-        allAccountTransactions = new ArrayList<>(rawTransactions);
+        allAccountTransactions = new ArrayList<>(window);
         allAccountTransactions.sort(Comparator.comparing(Transaction::getTransactionDate)
                 .thenComparing(Transaction::getSortOrder)
                 .reversed());
-
         grid.setItems(allAccountTransactions);
         updateFilters();
+        updateTotalsFooter();
     }
 
     private boolean isAllAccountsSelected(Account selected) {
         return selected == null || (selected.getId() != null && selected.getId().equals(-1L));
-    }
-
-    private void rebuildBalanceCacheForAllAccounts(List<Transaction> transactions) {
-        balanceCache.clear();
-
-        BigDecimal currentBalance = accountService.getAccountsByUser(currentUser).stream()
-                .map(Account::getStartBalance)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        List<Transaction> sortedForBalance = new ArrayList<>(transactions);
-        sortedForBalance.sort(Comparator.comparing(Transaction::getTransactionDate)
-                .thenComparing(Transaction::getSortOrder)
-                .thenComparing(Transaction::getId, Comparator.nullsLast(Comparator.naturalOrder())));
-
-        for (Transaction t : sortedForBalance) {
-            BigDecimal amount = t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO;
-            switch (t.getType()) {
-                case INCOME:
-                    currentBalance = currentBalance.add(amount);
-                    break;
-                case EXPENSE:
-                    currentBalance = currentBalance.subtract(amount);
-                    break;
-                case TRANSFER:
-                    break;
-            }
-            balanceCache.put(t.getId(), currentBalance);
-        }
-    }
-
-    private void rebuildBalanceCacheForAccount(Account selected, List<Transaction> transactions) {
-        balanceCache.clear();
-
-        if (selected == null) {
-            return;
-        }
-
-        List<Transaction> sortedForBalance = new ArrayList<>(transactions);
-        sortedForBalance.sort(Comparator.comparing(Transaction::getTransactionDate)
-                .thenComparing(Transaction::getSortOrder)
-                .thenComparing(Transaction::getId, Comparator.nullsLast(Comparator.naturalOrder())));
-
-        BigDecimal currentBalance = selected.getStartBalance() != null ? selected.getStartBalance() : BigDecimal.ZERO;
-        for (Transaction t : sortedForBalance) {
-            BigDecimal amount = t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO;
-            if (t.getType() == Transaction.TransactionType.INCOME && t.getToAccount() != null && t.getToAccount().getId().equals(selected.getId())) {
-                currentBalance = currentBalance.add(amount);
-            } else if (t.getType() == Transaction.TransactionType.EXPENSE && t.getFromAccount() != null && t.getFromAccount().getId().equals(selected.getId())) {
-                currentBalance = currentBalance.subtract(amount);
-            } else if (t.getType() == Transaction.TransactionType.TRANSFER) {
-                if (t.getFromAccount() != null && t.getFromAccount().getId().equals(selected.getId())) currentBalance = currentBalance.subtract(amount);
-                if (t.getToAccount() != null && t.getToAccount().getId().equals(selected.getId())) currentBalance = currentBalance.add(amount);
-            }
-            balanceCache.put(t.getId(), currentBalance);
-        }
     }
 
     private Icon getPaymentIcon(Transaction t) {
@@ -1341,17 +1382,63 @@ public class TransactionHistoryView extends VerticalLayout implements HasDynamic
         return Locale.forLanguageTag(currentUser.getLocale());
     }
 
+    /** Recomputes the filtered-sum footer and the first-row-per-day set. */
+    private void updateTotalsFooter() {
+        if (footerRow == null) {
+            return;
+        }
+        List<Transaction> visible = grid.getListDataView().getItems().collect(Collectors.toList());
+
+        Account selected = accountSelector.getValue();
+        boolean allSelected = isAllAccountsSelected(selected);
+        BigDecimal net = BigDecimal.ZERO;
+        for (Transaction t : visible) {
+            BigDecimal amount = t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO;
+            if (t.getType() == Transaction.TransactionType.INCOME) {
+                net = net.add(amount);
+            } else if (t.getType() == Transaction.TransactionType.EXPENSE) {
+                net = net.subtract(amount);
+            } else if (!allSelected && selected != null) {
+                if (t.getToAccount() != null && t.getToAccount().getId().equals(selected.getId())) net = net.add(amount);
+                if (t.getFromAccount() != null && t.getFromAccount().getId().equals(selected.getId())) net = net.subtract(amount);
+            }
+        }
+
+        Span sum = new Span("Σ " + formatCurrency(net));
+        sum.addClassName(net.compareTo(BigDecimal.ZERO) >= 0 ? "amount-positive" : "amount-negative");
+        footerRow.getCell(amountCol).setComponent(sum);
+
+        Span count = new Span(visible.size() + " ×");
+        count.getStyle().set("color", "var(--vaadin-text-color-secondary)")
+                .set("font-size", "var(--aura-font-size-xs)");
+        footerRow.getCell(payeeCol).setComponent(count);
+
+        // First visible row of each day (display order)
+        firstOfDayIds.clear();
+        java.time.LocalDate lastDay = null;
+        for (Transaction t : visible) {
+            java.time.LocalDate day = t.getTransactionDate().toLocalDate();
+            if (!day.equals(lastDay)) {
+                firstOfDayIds.add(t.getId());
+                lastDay = day;
+            }
+        }
+        grid.getDataProvider().refreshAll();
+    }
+
     private void applyResponsiveColumns(int width,
             com.vaadin.flow.component.grid.Grid.Column<Transaction> cardCol,
             java.util.List<com.vaadin.flow.component.grid.Grid.Column<Transaction>> desktopCols,
-            com.vaadin.flow.component.grid.Grid.Column<Transaction> actionsCol,
-            java.util.List<com.vaadin.flow.component.grid.Grid.Column<Transaction>> secondaryCols) {
+            com.vaadin.flow.component.grid.Grid.Column<Transaction> actionsCol) {
         boolean phone = width < 520;
         boolean narrow = width < 768;
         cardCol.setVisible(phone);
         desktopCols.forEach(c -> c.setVisible(!phone));
         if (!phone) {
-            secondaryCols.forEach(c -> c.setVisible(!narrow));
+            categoryCol.setVisible(colPrefs.getOrDefault("category", true));
+            tagsCol.setVisible(!narrow && colPrefs.getOrDefault("tags", true));
+            balanceCol.setVisible(!narrow && colPrefs.getOrDefault("balance", true));
+            memoCol.setVisible(!narrow && colPrefs.getOrDefault("memo", true));
         }
     }
 

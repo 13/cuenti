@@ -158,6 +158,27 @@ public class TransactionService {
         return transactionRepository.findByAccount(account);
     }
 
+    /** Grid window query: filters applied by the database. */
+    public List<Transaction> getTransactionsFiltered(User user, Account account,
+            Transaction.TransactionType type, java.time.LocalDateTime from, java.time.LocalDateTime to) {
+        return transactionRepository.findFiltered(user, account, type, from, to);
+    }
+
+    /** id → running balance for the filter window, computed via SQL window function. */
+    public java.util.Map<Long, BigDecimal> getRunningBalances(User user, Account account,
+            Transaction.TransactionType type, java.time.LocalDateTime from, java.time.LocalDateTime to) {
+        List<Object[]> rows = account == null
+                ? transactionRepository.runningBalancesForUser(user.getId(), from, to,
+                        type != null ? type.name() : null)
+                : transactionRepository.runningBalancesForAccount(account.getId(), from, to,
+                        type != null ? type.name() : null);
+        java.util.Map<Long, BigDecimal> result = new java.util.HashMap<>();
+        for (Object[] row : rows) {
+            result.put(((Number) row[0]).longValue(), (BigDecimal) row[1]);
+        }
+        return result;
+    }
+
     /**
      * Get all transactions for a specific user.
      */

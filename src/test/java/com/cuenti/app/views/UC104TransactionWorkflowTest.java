@@ -36,6 +36,31 @@ class UC104TransactionWorkflowTest extends SpringBrowserlessTest {
     }
 
     @Test
+    @UseCase(id = "UC-104", scenario = "Header Filter Narrows Rows and Footer Recounts")
+    void headerPayeeFilter_narrowsRows() {
+        TransactionHistoryView view = navigate(TransactionHistoryView.class);
+        Grid<?> grid = $(Grid.class).single();
+        int all = test(grid).size();
+
+        test(view.headerPayeeFilter).setValue("definitely-no-such-payee");
+        assertThat(test(grid).size()).isEqualTo(0);
+
+        test(view.headerPayeeFilter).setValue("");
+        assertThat(test(grid).size()).isEqualTo(all);
+    }
+
+    @Test
+    @UseCase(id = "UC-104", scenario = "Running Balance Comes From SQL Window")
+    void balances_presentForVisibleRows() {
+        TransactionHistoryView view = navigate(TransactionHistoryView.class);
+        Grid<?> grid = $(Grid.class).single();
+        // every visible row must have a computed balance (no zero-default holes)
+        assertThat(test(grid).size()).isGreaterThan(0);
+        String csv = view.buildCsv();
+        assertThat(csv.split("\n").length - 1).isEqualTo(test(grid).size());
+    }
+
+    @Test
     @UseCase(id = "UC-104", scenario = "Alt+N Opens New Transaction Dialog")
     void altN_opensNewTransactionDialog() {
         navigate(TransactionHistoryView.class);

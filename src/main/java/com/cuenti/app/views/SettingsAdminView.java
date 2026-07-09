@@ -35,6 +35,8 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
     private final UserService userService;
     private final GlobalSettingService globalSettingService;
     private final Grid<User> userGrid = new Grid<>(User.class, false);
+    private final com.cuenti.app.views.components.DetailPanel userPanel =
+            new com.cuenti.app.views.components.DetailPanel();
 
     public SettingsAdminView(UserService userService, GlobalSettingService globalSettingService,
                              SecurityUtils securityUtils) {
@@ -149,6 +151,18 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
         userGrid.setItems(userService.findAll());
         userGrid.setAllRowsVisible(true);
         card.add(userGrid);
+
+        // Row selection opens the user editor panel (StarPass admin pattern)
+        add(userPanel);
+        userPanel.setCloseCallback(() -> userGrid.asSingleSelect().clear());
+        userGrid.asSingleSelect().addValueChangeListener(e -> {
+            if (e.getValue() != null) {
+                showUserEditor(e.getValue());
+            } else {
+                userPanel.setVisible(false);
+            }
+        });
+        userGrid.addItemClickListener(e -> userGrid.select(e.getItem()));
         container.add(card);
     }
 
@@ -206,6 +220,86 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
         cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         dialog.getFooter().add(cancel, save);
         dialog.open();
+    }
+
+    private void showUserEditor(User user) {
+        userPanel.setHeader(getTranslation("settings.edit_user"), "@" + user.getUsername());
+
+        Span pill = new Span(user.getEnabled()
+                ? getTranslation("settings.enabled") : getTranslation("settings.disabled"));
+        pill.addClassName("tag-badge");
+        pill.getStyle().set("--tag-bg", user.getEnabled() ? "var(--aura-green)" : "var(--aura-red)");
+        userPanel.setPill(pill);
+
+        Div content = userPanel.content();
+        content.removeAll();
+
+        // Read-only identity (dotted style, like the StarPass user editor)
+        Div username = new Div(new Span("@" + user.getUsername()));
+        username.addClassName("field-readonly");
+        Div joined = new Div(new Span(user.getCreatedAt() != null
+                ? user.getCreatedAt().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) : "—"));
+        joined.addClassName("field-readonly");
+        content.add(labeled(getTranslation("login.username"), username),
+                labeled(getTranslation("settings.joined"), joined));
+
+        // Editable profile fields
+        TextField firstName = new TextField(getTranslation("register.firstname"));
+        firstName.setValue(user.getFirstName() != null ? user.getFirstName() : "");
+        firstName.setWidthFull();
+
+        TextField lastName = new TextField(getTranslation("register.lastname"));
+        lastName.setValue(user.getLastName() != null ? user.getLastName() : "");
+        lastName.setWidthFull();
+
+        EmailField email = new EmailField(getTranslation("register.email"));
+        email.setValue(user.getEmail() != null ? user.getEmail() : "");
+        email.setWidthFull();
+
+        content.add(firstName, lastName, email);
+
+        Button save = new Button(getTranslation("dialog.save"), e -> {
+            if (email.isInvalid()) {
+                return;
+            }
+            try {
+                userService.updateUserInfo(user, firstName.getValue(), lastName.getValue(), email.getValue());
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.saved"));
+                userGrid.setItems(userService.findAll());
+            } catch (Exception ex) {
+                com.cuenti.app.views.components.UiNotifier.error(getTranslation("error.generic"));
+            }
+        });
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        save.setWidthFull();
+        content.add(save);
+
+        Div footer = userPanel.footer();
+        footer.removeAll();
+
+        Button resetPw = new Button(getTranslation("settings.force_password_change"), e -> {
+            userPanel.closePanel();
+            openAdminPasswordDialog(user);
+        });
+
+        Button deleteUser = new Button(getTranslation("settings.delete_user"), e -> {
+            userPanel.closePanel();
+            openDeleteUserDialog(user);
+        });
+        deleteUser.addClassName("btn-danger-outline");
+        deleteUser.setEnabled(!user.getUsername().equals(currentUser.getUsername())
+                && !user.getUsername().equals("demo"));
+
+        footer.add(resetPw, deleteUser);
+        userPanel.openPanel();
+    }
+
+    private Div labeled(String label, Div field) {
+        Span l = new Span(label);
+        l.addClassName("field-label");
+        Div wrap = new Div(l, field);
+        wrap.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "3px");
+        return wrap;
     }
 
     private void openAdminPasswordDialog(User user) {

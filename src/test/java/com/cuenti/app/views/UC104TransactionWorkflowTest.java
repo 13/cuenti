@@ -61,6 +61,24 @@ class UC104TransactionWorkflowTest extends SpringBrowserlessTest {
     }
 
     @Test
+    @UseCase(id = "UC-104", scenario = "Row Selection Opens Detail Panel")
+    void rowSelection_opensDetailPanel_andCloseClearsSelection() {
+        TransactionHistoryView view = navigate(TransactionHistoryView.class);
+        Grid<?> grid = $(Grid.class).single();
+        assertThat(test(grid).size()).isGreaterThan(0);
+
+        com.cuenti.app.views.components.DetailPanel panel = view.detailPanel;
+        assertThat(panel.isVisible()).isFalse();
+
+        test(grid).select(0);
+        assertThat(panel.isVisible()).isTrue();
+
+        panel.closePanel();
+        assertThat(panel.isVisible()).isFalse();
+        assertThat(grid.getSelectedItems()).isEmpty();
+    }
+
+    @Test
     @UseCase(id = "UC-104", scenario = "Alt+N Opens New Transaction Dialog")
     void altN_opensNewTransactionDialog() {
         navigate(TransactionHistoryView.class);

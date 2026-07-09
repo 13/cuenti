@@ -78,6 +78,8 @@ public class TransactionHistoryView extends VerticalLayout
 
     private final Grid<Transaction> grid = new Grid<>(Transaction.class, false);
     private final TextField searchField = new TextField();
+    final com.cuenti.app.views.components.DetailPanel detailPanel =
+            new com.cuenti.app.views.components.DetailPanel(); // package-visible for tests
     private final ComboBox<Account> accountSelector = new ComboBox<>();
     private final DatePicker dateFrom = new DatePicker();
     private final DatePicker dateTo = new DatePicker();
@@ -277,6 +279,19 @@ public class TransactionHistoryView extends VerticalLayout
         card.add(toolbar, typeTabs, grid);
         add(card);
         expand(card);
+
+        // Row selection opens the StarPass-style detail panel
+        add(detailPanel);
+        detailPanel.setCloseCallback(() -> grid.asSingleSelect().clear());
+        grid.asSingleSelect().addValueChangeListener(e -> {
+            if (e.getValue() != null) {
+                showTransactionDetail(e.getValue());
+            } else {
+                detailPanel.setVisible(false);
+            }
+        });
+        // V25 grids don't select on row click by default
+        grid.addItemClickListener(e -> grid.select(e.getItem()));
     }
 
     private void setupTabs() {
@@ -728,6 +743,7 @@ public class TransactionHistoryView extends VerticalLayout
         allAccountTransactions.sort(Comparator.comparing(Transaction::getTransactionDate)
                 .thenComparing(Transaction::getSortOrder)
                 .reversed());
+        grid.asSingleSelect().clear();
         grid.setItems(allAccountTransactions);
         updateFilters();
         updateTotalsFooter();
@@ -1507,6 +1523,95 @@ public class TransactionHistoryView extends VerticalLayout
                 .set("gap", "var(--vaadin-gap-xs)").set("padding", "var(--vaadin-gap-xs) 0")
                 .set("width", "100%");
         return card;
+    }
+
+    private void showTransactionDetail(Transaction t) {
+        boolean isCredit = t.getType() == Transaction.TransactionType.INCOME;
+        String sign = isCredit ? "+" : (t.getType() == Transaction.TransactionType.TRANSFER ? "" : "−");
+
+        detailPanel.setHeader(getTranslation("transactions.details"),
+                t.getPayee() != null && !t.getPayee().isBlank() ? t.getPayee() : "#" + t.getId());
+
+        Span pill = new Span(getTranslation("transaction.type." + t.getType().name().toLowerCase()));
+        pill.addClassName("tag-badge");
+        String pillColor = switch (t.getType()) {
+            case INCOME -> "var(--cuenti-chart-income)";
+            case EXPENSE -> "var(--cuenti-chart-expense)";
+            case TRANSFER -> "var(--aura-accent-color)";
+        };
+        pill.getStyle().set("--tag-bg", pillColor);
+        detailPanel.setPill(pill);
+
+        Div content = detailPanel.content();
+        content.removeAll();
+
+        Span amount = new Span(sign + formatCurrency(t.getAmount()));
+        amount.addClassName(t.getType() == Transaction.TransactionType.TRANSFER
+                ? "amount-neutral" : (isCredit ? "amount-positive" : "amount-negative"));
+        amount.getStyle().set("font-size", "var(--cuenti-font-size-xxl)")
+                .set("font-weight", "700").set("font-family", "var(--aura-font-family)");
+        content.add(amount);
+
+        content.add(new com.cuenti.app.views.components.FieldRow(VaadinIcon.CALENDAR,
+                getTranslation("transactions.date"),
+                t.getTransactionDate().format(getDateTimeFormatter())));
+
+        if (t.getType() == Transaction.TransactionType.TRANSFER
+                && t.getFromAccount() != null && t.getToAccount() != null) {
+            content.add(new com.cuenti.app.views.components.FieldRow(VaadinIcon.EXCHANGE,
+                    getTranslation("dialog.account"),
+                    t.getFromAccount().getAccountName() + " → " + t.getToAccount().getAccountName()));
+        } else {
+            Account acc = isCredit ? t.getToAccount() : t.getFromAccount();
+            content.add(new com.cuenti.app.views.components.FieldRow(VaadinIcon.WALLET,
+                    getTranslation("dialog.account"),
+                    acc != null ? acc.getAccountName() : null));
+        }
+
+        String category = t.getSplits() != null && !t.getSplits().isEmpty()
+                ? getTranslation("transactions.split")
+                : (t.getCategory() != null ? t.getCategory().getFullName() : null);
+        content.add(new com.cuenti.app.views.components.FieldRow(VaadinIcon.SITEMAP,
+                getTranslation("transactions.category"), category));
+
+        if (t.getPaymentMethod() != null && t.getPaymentMethod() != Transaction.PaymentMethod.NONE) {
+            content.add(new com.cuenti.app.views.components.FieldRow(VaadinIcon.CREDIT_CARD,
+                    getTranslation("dialog.payment_method"),
+                    t.getPaymentMethod().getLabel()));
+        }
+
+        if (t.getTags() != null && !t.getTags().isBlank()) {
+            HorizontalLayout tags = new HorizontalLayout();
+            tags.setSpacing(false);
+            tags.getStyle().set("gap", "4px").set("flex-wrap", "wrap");
+            for (String tagName : t.getTags().split(",")) {
+                tags.add(TagColorUtil.createTagBadge(tagName.trim()));
+            }
+            content.add(new com.cuenti.app.views.components.FieldRow(VaadinIcon.TAGS,
+                    getTranslation("dialog.tags"), tags));
+        }
+
+        if (t.getMemo() != null && !t.getMemo().isBlank()) {
+            content.add(new com.cuenti.app.views.components.FieldRow(VaadinIcon.COMMENT,
+                    getTranslation("dialog.memo"), t.getMemo()));
+        }
+
+        Div footer = detailPanel.footer();
+        footer.removeAll();
+
+        Button edit = new Button(getTranslation("transactions.edit"), e -> {
+            detailPanel.closePanel();
+            openTransactionDialog(t);
+        });
+
+        Button delete = new Button(getTranslation("transactions.delete"), e -> {
+            detailPanel.closePanel();
+            confirmDelete(t);
+        });
+        delete.addClassName("btn-danger-outline");
+
+        footer.add(edit, delete);
+        detailPanel.openPanel();
     }
 
     /** Current global search term. Package-visible for tests. */

@@ -470,6 +470,10 @@ vaadin-app-layout::part(navbar) {
 }
 
 /* Login stages */
+.stage-hidden {
+  display: none !important;
+}
+
 .auth-stage {
   display: flex;
   flex-direction: column;
@@ -624,4 +628,143 @@ input:-webkit-autofill:focus {
   -webkit-text-fill-color: inherit !important;
   background-color: transparent !important;
   transition: background-color 5000s ease-in-out 0s;
+}
+
+/* ----------------------------------------------------------------------------
+   12. Detail / edit side panel (StarPass pattern)
+   ---------------------------------------------------------------------------- */
+.detail-panel {
+  position: fixed;
+  top: 10px;
+  bottom: 10px;
+  right: 10px;
+  width: min(380px, calc(100vw - 20px));
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--aura-surface-color-solid);
+  border: 1px solid var(--vaadin-border-color-secondary);
+  border-radius: var(--vaadin-radius-l);
+  box-shadow: var(--aura-shadow-m);
+  box-sizing: border-box;
+}
+
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vaadin-gap-s);
+  padding: var(--vaadin-padding-m);
+  border-bottom: 1px solid var(--cuenti-divider);
+}
+
+.detail-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.detail-title {
+  font-family: var(--aura-font-family);
+  font-size: var(--aura-font-size-l);
+  font-weight: 700;
+  color: var(--vaadin-text-color);
+}
+
+.detail-subtitle {
+  font-size: var(--aura-font-size-xs);
+  color: var(--vaadin-text-color-secondary);
+}
+
+.detail-pill-slot {
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.detail-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: var(--vaadin-padding-m);
+  display: flex;
+  flex-direction: column;
+  gap: var(--vaadin-gap-s);
+}
+
+.detail-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vaadin-gap-xs);
+  padding: var(--vaadin-padding-m);
+  border-top: 1px solid var(--cuenti-divider);
+}
+
+.detail-footer vaadin-button {
+  width: 100%;
+}
+
+/* Field rows: icon tile + label + value */
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: var(--vaadin-gap-s);
+}
+
+.field-tile {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--vaadin-radius-m);
+  background: var(--cuenti-surface-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vaadin-text-color-secondary);
+}
+
+.field-tile vaadin-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.field-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.field-label {
+  font-size: var(--aura-font-size-xs);
+  color: var(--vaadin-text-color-secondary);
+}
+
+.field-value {
+  font-size: var(--aura-font-size-s);
+  font-weight: 600;
+  color: var(--vaadin-text-color);
+  overflow-wrap: anywhere;
+}
+
+/* Read-only fields: dotted outline like the StarPass user editor */
+.field-readonly {
+  border: 1px dashed var(--vaadin-border-color-secondary);
+  border-radius: var(--vaadin-radius-m);
+  padding: var(--vaadin-padding-xs) var(--vaadin-padding-s);
+  color: var(--vaadin-text-color-secondary);
+  font-size: var(--aura-font-size-s);
+}
+
+/* Danger outline button (Cancel Booking / Delete User style) */
+.btn-danger-outline {
+  --vaadin-button-text-color: var(--aura-red-text);
+  color: var(--aura-red-text) !important;
+}
+
+@media (max-width: 600px) {
+  .detail-panel {
+    top: auto;
+    max-height: 88dvh;
+    left: 10px;
+  }
 }

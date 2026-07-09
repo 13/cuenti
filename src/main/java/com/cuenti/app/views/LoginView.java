@@ -63,6 +63,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
 
     // ── Stage 1: primary options ─────────────────────────────────────
     primaryStage.addClassName("auth-stage");
+    primaryStage.setId("login-primary-stage");
 
     if (demoAvailable) {
       Button demoButton = new Button(getTranslation("login.demo_user"), VaadinIcon.LOCK.create(),
@@ -79,11 +80,12 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
 
     // Without a demo account the form IS the primary option
     if (!demoAvailable) {
-      primaryStage.setVisible(false);
+      primaryStage.addClassName("stage-hidden");
     }
 
     // ── Stage 2: username/password form ──────────────────────────────
     formStage.addClassName("auth-stage");
+    formStage.setId("login-form-stage");
 
     Button backButton = new Button(getTranslation("login.back"),
             VaadinIcon.ARROW_CIRCLE_LEFT_O.create(), e -> showForm(false));
@@ -98,7 +100,9 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
     demoHint.setVisible(demoAvailable);
 
     formStage.add(backButton, loginForm, registerLink, demoHint);
-    formStage.setVisible(!demoAvailable);
+    if (demoAvailable) {
+      formStage.addClassName("stage-hidden");
+    }
 
     Div card = new Div(brand, primaryStage, formStage);
     card.addClassName("auth-card");
@@ -106,23 +110,35 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
   }
 
   private void showForm(boolean form) {
-    formStage.setVisible(form);
-    primaryStage.setVisible(!form);
+    if (form) {
+      formStage.removeClassName("stage-hidden");
+      primaryStage.addClassName("stage-hidden");
+    } else {
+      formStage.addClassName("stage-hidden");
+      primaryStage.removeClassName("stage-hidden");
+    }
   }
 
-  /** Fills the (slotted, light-DOM) login form with demo credentials and submits. */
+  /** Reveals the form, fills demo credentials and submits (client fill via JS). */
   private void submitDemoLogin() {
     showForm(true);
     loginForm.getElement().executeJs(
-        "const u = this.querySelector('input[name=\"username\"]');" +
-        "const p = this.querySelector('input[name=\"password\"]');" +
-        "if (u && p) {" +
-        "  u.value = 'demo';" +
-        "  p.value = 'demo123';" +
-        "  u.dispatchEvent(new Event('input', {bubbles: true}));" +
-        "  p.dispatchEvent(new Event('input', {bubbles: true}));" +
-        "  this.querySelector('vaadin-button[slot=\"submit\"]')?.click();" +
-        "}"
+        "let attempts = 60;" +
+        "const tryFill = () => {" +
+        "  const u = this.querySelector('input[name=\"username\"]');" +
+        "  const p = this.querySelector('input[name=\"password\"]');" +
+        "  const b = this.querySelector('vaadin-button[slot=\"submit\"]');" +
+        "  if (u && p && b) {" +
+        "    u.value = 'demo';" +
+        "    p.value = 'demo123';" +
+        "    u.dispatchEvent(new Event('input', {bubbles: true}));" +
+        "    p.dispatchEvent(new Event('input', {bubbles: true}));" +
+        "    b.click();" +
+        "  } else if (attempts-- > 0) {" +
+        "    requestAnimationFrame(tryFill);" +
+        "  }" +
+        "};" +
+        "tryFill();"
     );
   }
 

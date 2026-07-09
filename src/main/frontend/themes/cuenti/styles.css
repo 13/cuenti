@@ -100,9 +100,13 @@ h1, h2, h3, h4, h5, h6,
   width: 100%;
 }
 
-/* Demo page titles carry no icons */
+/* Page title icon: subtle accent, aligned to the demo's compact title size */
 .page-title vaadin-icon {
-  display: none;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  color: var(--aura-accent-text-color);
+  vertical-align: -3px;
 }
 
 .page-header {
@@ -379,6 +383,26 @@ vaadin-app-layout::part(navbar) {
   color: var(--aura-accent-contrast-color) !important;
 }
 
+.nav-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--vaadin-background-container-strong);
+  color: var(--vaadin-text-color-secondary);
+  font-size: var(--aura-font-size-xs);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.drawer-nav vaadin-side-nav-item[current] .nav-badge {
+  background: color-mix(in srgb, var(--aura-accent-contrast-color) 25%, transparent);
+  color: var(--aura-accent-contrast-color);
+}
+
 .drawer-nav vaadin-side-nav-item[current] vaadin-icon {
   color: var(--aura-accent-contrast-color) !important;
 }
@@ -555,6 +579,14 @@ vaadin-grid::part(cell) {
 /* ----------------------------------------------------------------------------
    9b. Dialogs & overlays — one look everywhere
    ---------------------------------------------------------------------------- */
+.dialog-header-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--aura-accent-text-color);
+  margin-right: 6px;
+  order: -1;
+}
+
 /* Demo dialogs: bold title, no divider chrome, plain right-aligned footer */
 vaadin-dialog-overlay::part(title) {
   font-family: var(--aura-font-family);
@@ -766,4 +798,44 @@ input:-webkit-autofill:focus {
     max-height: 88dvh;
     left: 10px;
   }
+
+  /* sheet handle: signals the panel slides over content */
+  .detail-panel::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--vaadin-background-container-strong);
+    margin: 8px auto 0;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   13. Loading skeletons
+   ---------------------------------------------------------------------------- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--vaadin-background-container);
+  border-radius: var(--vaadin-radius-m);
+  min-height: 90px;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent,
+      color-mix(in srgb, var(--aura-surface-color-solid) 60%, transparent), transparent);
+  animation: cuenti-shimmer 1.4s infinite;
+}
+
+@keyframes cuenti-shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; }
 }

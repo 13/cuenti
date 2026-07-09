@@ -264,6 +264,9 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
                 .set("overflow-x", "hidden");
         dialog.setHeaderTitle(account.getId() == null
                 ? getTranslation("accounts.add") : getTranslation("accounts.edit"));
+        com.vaadin.flow.component.icon.Icon headerIcon = VaadinIcon.WALLET.create();
+        headerIcon.addClassName("dialog-header-icon");
+        dialog.getHeader().add(headerIcon);
 
         // ── Fields ────────────────────────────────────────────────────
         TextField nameField = new TextField(getTranslation("accounts.name"));

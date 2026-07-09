@@ -158,6 +158,9 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
         dialog.getElement().getStyle()
                 .set("overflow-x", "hidden");
         dialog.setHeaderTitle(tag.getId() == null ? getTranslation("tags.add") : getTranslation("tags.edit"));
+        com.vaadin.flow.component.icon.Icon headerIcon = VaadinIcon.TAGS.create();
+        headerIcon.addClassName("dialog-header-icon");
+        dialog.getHeader().add(headerIcon);
 
         TextField nameField = new TextField(getTranslation("tags.name"));
         nameField.setPrefixComponent(VaadinIcon.TAG.create());

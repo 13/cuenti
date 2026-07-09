@@ -197,6 +197,9 @@ public class BudgetManagementView extends VerticalLayout implements HasDynamicTi
         dialog.setWidth("min(420px, 96vw)");
         dialog.setHeaderTitle(budget.getId() == null
                 ? getTranslation("budgets.add") : getTranslation("budgets.edit"));
+        com.vaadin.flow.component.icon.Icon headerIcon = VaadinIcon.PIGGY_BANK.create();
+        headerIcon.addClassName("dialog-header-icon");
+        dialog.getHeader().add(headerIcon);
 
         ComboBox<Category> categoryCombo = new ComboBox<>(getTranslation("budgets.category"));
         categoryCombo.setItems(categoryService.getAllCategories().stream()

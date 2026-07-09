@@ -708,19 +708,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
             renderTrendChart(card, monthlyData);
         }
 
-        HorizontalLayout header = createSortableHeader(
-                new String[]{
-                        getTranslation("statistics.month"),
-                        getTranslation("statistics.income"),
-                        getTranslation("statistics.expense"),
-                        getTranslation("statistics.net"),
-                        getTranslation("statistics.pct_change")
-                },
-                new String[]{"label", "income", "expense", "net", "pct"}
-        );
-        card.add(header);
-
-        // Pre-compute % change (net as % of income) for each month so it can also be used as a sort key
+        // Real grid: native sortable columns, screen-reader friendly
         record MonthRow(String month, BigDecimal income, BigDecimal expense, BigDecimal net, BigDecimal pct) {}
 
         List<MonthRow> rows = monthlyData.entrySet().stream().map(e -> {
@@ -733,24 +721,43 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
             return new MonthRow(e.getKey(), inc, exp, net, pct);
         }).collect(Collectors.toCollection(ArrayList::new));
 
-        Comparator<MonthRow> comparator = switch (sortCol) {
-            case "income"  -> Comparator.comparing(MonthRow::income);
-            case "expense" -> Comparator.comparing(MonthRow::expense);
-            case "net"     -> Comparator.comparing(MonthRow::net);
-            case "pct"     -> Comparator.comparing(r -> r.pct() != null ? r.pct() : BigDecimal.valueOf(Long.MIN_VALUE));
-            default        -> Comparator.comparing(MonthRow::month);
-        };
-        if (!sortAsc) comparator = comparator.reversed();
-        rows.sort(comparator);
+        com.vaadin.flow.component.grid.Grid<MonthRow> monthGrid =
+                new com.vaadin.flow.component.grid.Grid<>();
+        monthGrid.addThemeVariants(com.vaadin.flow.component.grid.GridVariant.LUMO_NO_BORDER,
+                com.vaadin.flow.component.grid.GridVariant.LUMO_COMPACT);
+        monthGrid.setAllRowsVisible(true);
+        monthGrid.setWidthFull();
 
-        rows.forEach(row -> card.add(createDataRow(
-                row.month(),
-                formatCurrency(row.income()),
-                formatCurrency(row.expense()),
-                formatCurrency(row.net()),
-                row.net().compareTo(BigDecimal.ZERO) >= 0,
-                formatPctChange(row.pct())
-        )));
+        monthGrid.addColumn(MonthRow::month)
+                .setHeader(getTranslation("statistics.month"))
+                .setSortable(true).setComparator(Comparator.comparing(MonthRow::month))
+                .setAutoWidth(true);
+        monthGrid.addComponentColumn(r -> amountSpan(formatCurrency(r.income()), "amount-positive"))
+                .setHeader(getTranslation("statistics.income"))
+                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END)
+                .setSortable(true).setComparator(Comparator.comparing(MonthRow::income))
+                .setAutoWidth(true);
+        monthGrid.addComponentColumn(r -> amountSpan(formatCurrency(r.expense()), "amount-negative"))
+                .setHeader(getTranslation("statistics.expense"))
+                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END)
+                .setSortable(true).setComparator(Comparator.comparing(MonthRow::expense))
+                .setAutoWidth(true);
+        monthGrid.addComponentColumn(r -> amountSpan(formatCurrency(r.net()),
+                        r.net().compareTo(BigDecimal.ZERO) >= 0 ? "amount-positive" : "amount-negative"))
+                .setHeader(getTranslation("statistics.net"))
+                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END)
+                .setSortable(true).setComparator(Comparator.comparing(MonthRow::net))
+                .setAutoWidth(true);
+        monthGrid.addColumn(r -> formatPctChange(r.pct()))
+                .setHeader(getTranslation("statistics.pct_change"))
+                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END)
+                .setSortable(true)
+                .setComparator(Comparator.comparing(r ->
+                        r.pct() != null ? r.pct() : BigDecimal.valueOf(Long.MIN_VALUE)))
+                .setAutoWidth(true);
+
+        monthGrid.setItems(rows);
+        card.add(monthGrid);
 
         contentContainer.add(card);
     }
@@ -1077,6 +1084,13 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         }
 
         return header;
+    }
+
+    private Span amountSpan(String text, String cssClass) {
+        Span span = new Span(text);
+        span.addClassName(cssClass);
+        span.getStyle().set("font-size", "var(--aura-font-size-s)");
+        return span;
     }
 
     private HorizontalLayout createDataRow(String label, String income, String expense, String net, boolean isPositive) {

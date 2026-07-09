@@ -105,7 +105,7 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
         submit.setText(t("register.submit", "Register"));
         submit.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        binder.forField(firstName)
+        var firstNameBinding = binder.forField(firstName)
                 .asRequired(t("register.validation.firstname_required",
                         "First name is required"))
                 .withValidator(new StringLengthValidator(
@@ -114,8 +114,13 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
                         1, 50))
                 .bind(RegistrationModel::getFirstName,
                         RegistrationModel::setFirstName);
+        firstName.addBlurListener(e -> {
+            if (!firstName.isEmpty()) {
+                firstNameBinding.validate();
+            }
+        });
 
-        binder.forField(lastName)
+        var lastNameBinding = binder.forField(lastName)
                 .asRequired(t("register.validation.lastname_required",
                         "Last name is required"))
                 .withValidator(new StringLengthValidator(
@@ -124,8 +129,13 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
                         1, 50))
                 .bind(RegistrationModel::getLastName,
                         RegistrationModel::setLastName);
+        lastName.addBlurListener(e -> {
+            if (!lastName.isEmpty()) {
+                lastNameBinding.validate();
+            }
+        });
 
-        binder.forField(username)
+        var usernameBinding = binder.forField(username)
                 .asRequired(t("register.validation.username_required",
                         "Username is required"))
                 .withValidator(new StringLengthValidator(
@@ -134,14 +144,24 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
                         3, 50))
                 .bind(RegistrationModel::getUsername,
                         RegistrationModel::setUsername);
+        username.addBlurListener(e -> {
+            if (!username.isEmpty()) {
+                usernameBinding.validate();
+            }
+        });
 
-        binder.forField(email)
+        var emailBinding = binder.forField(email)
                 .asRequired(t("register.validation.email_required",
                         "Email is required"))
                 .bind(RegistrationModel::getEmail,
                         RegistrationModel::setEmail);
+        email.addBlurListener(e -> {
+            if (!email.isEmpty()) {
+                emailBinding.validate();
+            }
+        });
 
-        binder.forField(password)
+        var passwordBinding = binder.forField(password)
                 .asRequired(t("register.validation.password_required",
                         "Password is required"))
                 .withValidator(new StringLengthValidator(
@@ -150,8 +170,13 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
                         8, 128))
                 .bind(RegistrationModel::getPassword,
                         RegistrationModel::setPassword);
+        password.addBlurListener(e -> {
+            if (!password.isEmpty()) {
+                passwordBinding.validate();
+            }
+        });
 
-        binder.forField(confirmPassword)
+        var confirmPasswordBinding = binder.forField(confirmPassword)
                 .asRequired(t("register.validation.password_required",
                         "Password is required"))
                 .withValidator(
@@ -160,6 +185,11 @@ public class RegisterView extends VerticalLayout implements BeforeEnterObserver,
                         t("register.validation.password_mismatch",
                                 "Passwords do not match"))
                 .bind(model -> null, (model, value) -> {});
+        confirmPassword.addBlurListener(e -> {
+            if (!confirmPassword.isEmpty()) {
+                confirmPasswordBinding.validate();
+            }
+        });
 
         submit.addClickListener(e -> {
             RegistrationModel model = new RegistrationModel();

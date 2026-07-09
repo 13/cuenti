@@ -294,11 +294,24 @@ public class TransactionHistoryView extends VerticalLayout
         grid.addItemClickListener(e -> grid.select(e.getItem()));
     }
 
+    private final Span allCount = tabBadge();
+    private final Span expenseCount = tabBadge();
+    private final Span incomeCount = tabBadge();
+    private final Span transferCount = tabBadge();
+
+    private static Span tabBadge() {
+        Span badge = new Span();
+        badge.addClassName("nav-badge");
+        badge.getStyle().set("margin-left", "6px");
+        badge.setVisible(false);
+        return badge;
+    }
+
     private void setupTabs() {
-        Tab all = new Tab(getTranslation("nav.history"));
-        Tab expenses = new Tab(getTranslation("transaction.type.expense"));
-        Tab income = new Tab(getTranslation("transaction.type.income"));
-        Tab transfers = new Tab(getTranslation("transaction.type.transfer"));
+        Tab all = new Tab(new Span(getTranslation("nav.history")), allCount);
+        Tab expenses = new Tab(new Span(getTranslation("transaction.type.expense")), expenseCount);
+        Tab income = new Tab(new Span(getTranslation("transaction.type.income")), incomeCount);
+        Tab transfers = new Tab(new Span(getTranslation("transaction.type.transfer")), transferCount);
 
         typeTabs.add(all, expenses, income, transfers);
         typeTabs.addSelectedChangeListener(event -> {
@@ -739,6 +752,7 @@ public class TransactionHistoryView extends VerticalLayout
         transactionService.getRunningBalances(currentUser, accountFilter, selectedTypeFilter, from, to)
                 .forEach((id, bal) -> balanceCache.put(id, bal.add(offset)));
 
+        updateTabCounts(window);
         allAccountTransactions = new ArrayList<>(window);
         allAccountTransactions.sort(Comparator.comparing(Transaction::getTransactionDate)
                 .thenComparing(Transaction::getSortOrder)
@@ -747,6 +761,29 @@ public class TransactionHistoryView extends VerticalLayout
         grid.setItems(allAccountTransactions);
         updateFilters();
         updateTotalsFooter();
+    }
+
+    private void updateTabCounts(List<Transaction> window) {
+        if (selectedTypeFilter != null) {
+            // window only contains one type; per-type counts would mislead
+            allCount.setVisible(false);
+            expenseCount.setVisible(false);
+            incomeCount.setVisible(false);
+            transferCount.setVisible(false);
+            return;
+        }
+        long expenses = window.stream().filter(t -> t.getType() == Transaction.TransactionType.EXPENSE).count();
+        long income = window.stream().filter(t -> t.getType() == Transaction.TransactionType.INCOME).count();
+        long transfers = window.stream().filter(t -> t.getType() == Transaction.TransactionType.TRANSFER).count();
+        setTabCount(allCount, window.size());
+        setTabCount(expenseCount, expenses);
+        setTabCount(incomeCount, income);
+        setTabCount(transferCount, transfers);
+    }
+
+    private void setTabCount(Span badge, long count) {
+        badge.setText(String.valueOf(count));
+        badge.setVisible(count > 0);
     }
 
     private boolean isAllAccountsSelected(Account selected) {
@@ -1300,6 +1337,7 @@ public class TransactionHistoryView extends VerticalLayout
         dialog.add(body);
         dialog.getFooter().add(cancelButton, addKeepButton, saveButton);
         dialog.open();
+        amountField.focus();
     }
 
     /** Creates a padded section container with an optional all-caps label. */

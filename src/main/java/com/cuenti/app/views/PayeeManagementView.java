@@ -177,6 +177,9 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         dialog.getElement().getStyle()
                 .set("overflow-x", "hidden");
         dialog.setHeaderTitle(payee.getId() == null ? getTranslation("payees.add") : getTranslation("payees.edit"));
+        com.vaadin.flow.component.icon.Icon headerIcon = VaadinIcon.USERS.create();
+        headerIcon.addClassName("dialog-header-icon");
+        dialog.getHeader().add(headerIcon);
 
         TextField name = new TextField(getTranslation("payees.name"));
         name.setPrefixComponent(VaadinIcon.USER.create()); name.setWidthFull();

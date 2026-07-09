@@ -139,6 +139,9 @@ public class CurrencyManagementView extends VerticalLayout implements HasDynamic
         dialog.getElement().getStyle()
                 .set("overflow-x", "hidden");
         dialog.setHeaderTitle(currency.getId() == null ? getTranslation("currencies.add") : getTranslation("currencies.edit"));
+        com.vaadin.flow.component.icon.Icon headerIcon = VaadinIcon.MONEY.create();
+        headerIcon.addClassName("dialog-header-icon");
+        dialog.getHeader().add(headerIcon);
 
          TextField code  = new TextField(getTranslation("currencies.code"));  code.setWidthFull();
          TextField name  = new TextField(getTranslation("currencies.name"));  name.setWidthFull();

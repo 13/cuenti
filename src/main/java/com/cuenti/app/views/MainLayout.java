@@ -40,12 +40,15 @@ public class MainLayout extends AppLayout {
     private final UserService userService;
     private final AssetService assetService;
     private final com.cuenti.app.views.components.QuickSearchDialog quickSearch;
+    private final com.cuenti.app.service.ScheduledTransactionService scheduledService;
     private User currentUser;
 
     public MainLayout(SecurityUtils securityUtils, UserService userService, AssetService assetService,
                       com.cuenti.app.service.PayeeService payeeService,
                       com.cuenti.app.service.CategoryService categoryService,
-                      com.cuenti.app.service.TagService tagService) {
+                      com.cuenti.app.service.TagService tagService,
+                      com.cuenti.app.service.ScheduledTransactionService scheduledService) {
+        this.scheduledService = scheduledService;
         this.securityUtils = securityUtils;
         this.userService = userService;
         this.assetService = assetService;
@@ -209,7 +212,7 @@ public class MainLayout extends AppLayout {
         SideNav general = navSection(getTranslation("nav.general"), true,
                 new SideNavItem(getTranslation("nav.dashboard"),    DashboardView.class,             VaadinIcon.DASHBOARD.create()),
                 new SideNavItem(getTranslation("nav.transactions"), TransactionHistoryView.class,    VaadinIcon.LIST.create()),
-                new SideNavItem(getTranslation("nav.scheduled"),    ScheduledTransactionsView.class, VaadinIcon.CALENDAR_CLOCK.create()),
+                scheduledNavItem(),
                 new SideNavItem(getTranslation("nav.statistics"),   StatisticsView.class,            VaadinIcon.CHART.create()),
                 new SideNavItem(getTranslation("nav.forecasts"),    ForecastsView.class,             VaadinIcon.TRENDING_UP.create()),
                 new SideNavItem(getTranslation("nav.budgets"),      BudgetManagementView.class,      VaadinIcon.PIGGY_BANK.create()),
@@ -246,6 +249,21 @@ public class MainLayout extends AppLayout {
                 .set("display", "flex").set("flex-direction", "column");
 
         addToDrawer(drawer);
+    }
+
+    /** Scheduled nav entry with a due-soon count badge (demo pattern). */
+    private SideNavItem scheduledNavItem() {
+        SideNavItem item = new SideNavItem(getTranslation("nav.scheduled"),
+                ScheduledTransactionsView.class, VaadinIcon.CALENDAR_CLOCK.create());
+        if (currentUser != null) {
+            long due = scheduledService.countDueSoon(currentUser);
+            if (due > 0) {
+                Span badge = new Span(String.valueOf(due));
+                badge.addClassName("nav-badge");
+                item.setSuffixComponent(badge);
+            }
+        }
+        return item;
     }
 
     private SideNav navSection(String label, boolean expanded, SideNavItem... items) {

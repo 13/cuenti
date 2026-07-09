@@ -203,6 +203,9 @@ public class AssetManagementView extends VerticalLayout implements HasDynamicTit
         dialog.getElement().getStyle()
                 .set("overflow-x", "hidden");
         dialog.setHeaderTitle(asset.getId() == null ? getTranslation("assets.add") : getTranslation("assets.edit"));
+        com.vaadin.flow.component.icon.Icon headerIcon = VaadinIcon.CHART_3D.create();
+        headerIcon.addClassName("dialog-header-icon");
+        dialog.getHeader().add(headerIcon);
 
         TextField symbol = new TextField(getTranslation("assets.symbol"));
         symbol.setPrefixComponent(VaadinIcon.STOCK.create()); symbol.setWidthFull();

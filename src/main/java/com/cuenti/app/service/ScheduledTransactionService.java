@@ -143,4 +143,14 @@ public class ScheduledTransactionService {
         scheduled.setNextOccurrence(next);
         repository.save(scheduled);
     }
+
+    /** Enabled schedules due within the next 7 days (nav badge). */
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public long countDueSoon(com.cuenti.app.model.User user) {
+        return getByUser(user).stream()
+                .filter(com.cuenti.app.model.ScheduledTransaction::isEnabled)
+                .filter(st -> st.getNextOccurrence() != null
+                        && st.getNextOccurrence().isBefore(java.time.LocalDateTime.now().plusDays(7)))
+                .count();
+    }
 }

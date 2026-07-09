@@ -56,3 +56,6 @@ build/
 *.png.bak
 tsconfig.json.*.bak
 /v252-*.png
+/d-*.png
+/clone-*.png
+/*.png

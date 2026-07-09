@@ -178,6 +178,9 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
         dialog.getElement().getStyle()
                 .set("overflow-x", "hidden");
         dialog.setHeaderTitle(category.getId() == null ? getTranslation("categories.add") : getTranslation("categories.edit"));
+        com.vaadin.flow.component.icon.Icon headerIcon = VaadinIcon.SITEMAP.create();
+        headerIcon.addClassName("dialog-header-icon");
+        dialog.getHeader().add(headerIcon);
 
         TextField nameField = new TextField(getTranslation("categories.name"));
         nameField.setWidthFull();

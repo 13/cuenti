@@ -311,7 +311,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
             Span s = new Span(st.getFromAccount() != null ? st.getFromAccount().getAccountName() : "—");
             s.getStyle().set("font-size", "var(--aura-font-size-s)");
             return s;
-        }).setHeader(getTranslation("dialog.account")).setAutoWidth(true).setSortable(true)
+        }).setKey("pending-account").setHeader(getTranslation("dialog.account")).setAutoWidth(true).setSortable(true)
                 .setComparator(Comparator.comparing(st -> st.getFromAccount() != null ? st.getFromAccount().getAccountName() : ""));
 
         // Payee
@@ -319,7 +319,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
             Span s = new Span(st.getPayee() != null ? st.getPayee() : "—");
             s.getStyle().set("font-weight", "600").set("font-size", "var(--aura-font-size-s)");
             return s;
-        }).setHeader(getTranslation("transactions.payee")).setAutoWidth(true).setSortable(true)
+        }).setKey("pending-payee").setHeader(getTranslation("transactions.payee")).setAutoWidth(true).setSortable(true)
                 .setComparator(Comparator.comparing(st -> st.getPayee() != null ? st.getPayee() : ""));
 
         // Amount
@@ -334,6 +334,10 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .setHeader(getTranslation("dialog.tags")).setAutoWidth(true);
         com.cuenti.app.views.components.ResponsiveGridColumns.hideBelow(768, pendingGrid,
                 java.util.List.of(pendingTagsCol));
+        // Phones: due date + amount + actions only
+        com.cuenti.app.views.components.ResponsiveGridColumns.hideBelow(520, pendingGrid,
+                java.util.List.of(pendingGrid.getColumnByKey("pending-account"),
+                        pendingGrid.getColumnByKey("pending-payee")));
 
         // Actions: Post (primary), Skip (subtle), Edit (icon)
         pendingGrid.addComponentColumn(st -> {

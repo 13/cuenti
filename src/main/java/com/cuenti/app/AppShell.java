@@ -5,6 +5,8 @@ import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.server.AppShellSettings;
 import com.vaadin.flow.server.PWA;
 import com.vaadin.flow.theme.Theme;
+import com.vaadin.flow.shared.communication.PushMode;
+import com.vaadin.flow.component.page.Push;
 import com.vaadin.flow.theme.aura.Aura;
 
 /**
@@ -19,6 +21,7 @@ import com.vaadin.flow.theme.aura.Aura;
   offlinePath = "offline.html",
   iconPath = "images/icon.png"
 )
+@Push(PushMode.AUTOMATIC)
 @StyleSheet(Aura.STYLESHEET)
 @Theme("cuenti")
 public class AppShell implements AppShellConfigurator {

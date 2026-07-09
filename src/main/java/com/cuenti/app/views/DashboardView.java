@@ -79,26 +79,52 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         setSpacing(false);
         setAlignItems(Alignment.CENTER);
 
-        setupUI();
+        // Scaffold with skeletons; data loads async after attach (@Push)
+        container.addClassName("page-container");
+        container.add(new com.cuenti.app.views.components.PageHeader(getTranslation("dashboard.title")));
+        for (int i = 0; i < 4; i++) {
+            Div skeleton = new Div();
+            skeleton.addClassName("skeleton");
+            skeleton.setMinHeight(i == 0 ? "90px" : "220px");
+            skeletons.add(skeleton);
+            container.add(skeleton);
+        }
+        add(container);
     }
 
-    private void setupUI() {
-        List<Account> allAccounts = accountService.getAccountsByUser(currentUser);
+    private final Div container = new Div();
+    private final java.util.List<Div> skeletons = new ArrayList<>();
+    private boolean dataLoaded;
+
+    @Override
+    protected void onAttach(com.vaadin.flow.component.AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+        if (dataLoaded) {
+            return;
+        }
+        dataLoaded = true;
+        com.vaadin.flow.component.UI ui = attachEvent.getUI();
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            // heavy reads off the UI thread; entities are join-fetched
+            List<Account> fetchedAccounts = accountService.getAccountsByUser(currentUser);
+            List<Transaction> fetchedTransactions = transactionService.getTransactionsByUser(currentUser);
+            ui.access(() -> {
+                skeletons.forEach(container::remove);
+                setupUI(fetchedAccounts, fetchedTransactions);
+            });
+        });
+    }
+
+    private void setupUI(List<Account> allAccounts, List<Transaction> userTransactions) {
         // Filter out accounts excluded from summary for dashboard display
         List<Account> accounts = allAccounts.stream()
                 .filter(a -> !a.isExcludeFromSummary())
                 .collect(java.util.stream.Collectors.toList());
-        List<Transaction> userTransactions = transactionService.getTransactionsByUser(currentUser);
 
         // Calculate asset performance data first (used by metrics and asset list)
         calculateAssetPerformance(userTransactions);
 
-        // Page title
-        com.cuenti.app.views.components.PageHeader pageTitle =
-                new com.cuenti.app.views.components.PageHeader(getTranslation("dashboard.title"));
 
-        Div container = new Div();
-        container.addClassName("page-container");
 
         createMetrics(accounts);
         createAssetPerformanceSection();
@@ -106,8 +132,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         createCharts(userTransactions);
         Div budgetsSection = createBudgetsSection();
 
-        container.add(pageTitle, metricsLayout, assetPerformanceLayout, chartsLayout, budgetsSection, accountsLayout);
-        add(container);
+        container.add(metricsLayout, assetPerformanceLayout, chartsLayout, budgetsSection, accountsLayout);
     }
 
     /**

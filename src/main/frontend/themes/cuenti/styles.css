@@ -24,22 +24,22 @@ html {
      one background in both schemes. */
   --aura-app-background: var(--aura-background-color);
 
-  /* Legacy-Lumo compatibility: a few components (e.g. the login form
-     wrapper) still paint --lumo-base-color. Lumo's own value is white /
-     navy hsl(214,35%,21%) and matches neither Aura scheme, which showed
-     up as off-color slabs. Point it at the Aura surface instead. */
-  --lumo-base-color: var(--aura-surface-color-solid);
 }
 
 /* The html[theme] attribute must stay set — the production bundle ships
    the legacy attribute-based Lumo palette whose dark TEXT tokens only
-   activate under html[theme=dark]. Lumo's side effect of painting the
-   document with --lumo-base-color is overridden here so the app frame
-   keeps the Aura background in both schemes. */
+   activate under html[theme=dark]. Two side effects are overridden at
+   the same html[theme] specificity (a bare `html` rule loses to Lumo's
+   html[theme=dark] block):
+   - Lumo paints the document with --lumo-base-color
+   - components that fill --lumo-base-color themselves (grids, the
+     login form wrapper) would show Lumo's white/navy instead of the
+     Aura surface */
 html,
 html[theme='light'],
 html[theme='dark'] {
   background: var(--aura-app-background);
+  --lumo-base-color: var(--aura-surface-color-solid);
 
   /* App-specific tokens not covered by Aura */
   --cuenti-font-size-xxl: calc(var(--aura-font-size-xl) * 1.3);

@@ -3,7 +3,6 @@ package com.cuenti.app.views;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.server.VaadinService;
 import com.vaadin.flow.server.VaadinSession;
-import com.vaadin.flow.theme.lumo.Lumo;
 import jakarta.servlet.http.Cookie;
 import java.util.Locale;
 
@@ -11,6 +10,7 @@ public final class ThemePreference {
 
     private static final String THEME_COOKIE = "cuenti-theme";
     private static final String DARK = "dark";
+    private static final String LIGHT = "light";
     private static final String LOCALE_COOKIE = "cuenti-locale";
 
     private ThemePreference() {}
@@ -37,12 +37,12 @@ public final class ThemePreference {
         ui.getElement().executeJs(
                 "document.documentElement.removeAttribute('theme');" +
                 "document.documentElement.style.colorScheme = $0;",
-                isDark ? Lumo.DARK : Lumo.LIGHT
+                isDark ? DARK : LIGHT
         );
     }
 
     public static void persistThemeCookie(UI ui, boolean isDark) {
-        String value = THEME_COOKIE + "=" + (isDark ? DARK : Lumo.LIGHT)
+        String value = THEME_COOKIE + "=" + (isDark ? DARK : LIGHT)
                 + ";path=/;max-age=31536000;SameSite=Lax";
         ui.getPage().executeJs("document.cookie = $0", value);
     }
@@ -100,7 +100,7 @@ public final class ThemePreference {
     }
 
     private static boolean isDarkCookieValue(String value) {
-        return DARK.equalsIgnoreCase(value) || Lumo.DARK.equalsIgnoreCase(value);
+        return DARK.equalsIgnoreCase(value);
     }
 }
 

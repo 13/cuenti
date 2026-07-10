@@ -73,11 +73,12 @@ public class TransactionHistoryView extends VerticalLayout
     private final AssetService assetService;
     private final PayeeService payeeService;
     private final TagService tagService;
+    private final com.cuenti.app.service.SavedViewService savedViewService;
     private final SecurityUtils securityUtils;
     private final User currentUser;
 
     private final Grid<Transaction> grid = new Grid<>(Transaction.class, false);
-    private final TextField searchField = new TextField();
+    final TextField searchField = new TextField(); // package-visible for tests
     final com.cuenti.app.views.components.DetailPanel detailPanel =
             new com.cuenti.app.views.components.DetailPanel(); // package-visible for tests
     private final ComboBox<Account> accountSelector = new ComboBox<>();
@@ -110,7 +111,8 @@ public class TransactionHistoryView extends VerticalLayout
     public TransactionHistoryView(TransactionService transactionService, AccountService accountService,
                                   UserService userService, ExchangeRateService exchangeRateService, 
                                   CategoryService categoryService, AssetService assetService,
-                                  PayeeService payeeService, TagService tagService, SecurityUtils securityUtils) {
+                                  PayeeService payeeService, TagService tagService, SecurityUtils securityUtils,
+                                  com.cuenti.app.service.SavedViewService savedViewService) {
         this.transactionService = transactionService;
         this.accountService = accountService;
         this.userService = userService;
@@ -120,6 +122,7 @@ public class TransactionHistoryView extends VerticalLayout
         this.payeeService = payeeService;
         this.tagService = tagService;
         this.securityUtils = securityUtils;
+        this.savedViewService = savedViewService;
 
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
@@ -242,7 +245,16 @@ public class TransactionHistoryView extends VerticalLayout
             columnMenuItems.put(key, item);
         });
 
-        HorizontalLayout actionsRow = new HorizontalLayout(columnsMenu, exportAnchor, addButton);
+        Button viewsBtn = new Button(getTranslation("views.title"), VaadinIcon.BOOKMARK.create(),
+                e -> openSavedViewsDialog());
+        viewsBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+        bulkBtn.setText(getTranslation("bulk.select"));
+        bulkBtn.setIcon(VaadinIcon.CHECK_SQUARE_O.create());
+        bulkBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        bulkBtn.addClickListener(e -> toggleBulkMode());
+
+        HorizontalLayout actionsRow = new HorizontalLayout(viewsBtn, bulkBtn, columnsMenu, exportAnchor, addButton);
         actionsRow.setAlignItems(Alignment.CENTER);
         actionsRow.setSpacing(false);
         actionsRow.getStyle().set("gap", "var(--vaadin-gap-s)");
@@ -269,21 +281,21 @@ public class TransactionHistoryView extends VerticalLayout
         card.setSizeFull();
         card.addClassName("card");
         card.addClassName("card--flex");
-        card.add(toolbar, typeTabs, grid);
+        buildBulkBar();
+        card.add(toolbar, typeTabs, bulkBar, grid);
         add(card);
         expand(card);
 
         // Row selection opens the StarPass-style detail panel
         add(detailPanel);
-        detailPanel.setCloseCallback(() -> grid.asSingleSelect().clear());
-        grid.asSingleSelect().addValueChangeListener(e -> {
-            if (e.getValue() != null) {
-                showTransactionDetail(e.getValue());
-            } else {
-                detailPanel.setVisible(false);
+        detailPanel.setCloseCallback(() -> {
+            if (!bulkMode) {
+                grid.asSingleSelect().clear();
             }
         });
-        // V25 grids don't select on row click by default
+        wireSingleSelection();
+        // V25 grids don't select on row click by default (in bulk mode the
+        // same click toggles the row into the multi-selection)
         grid.addItemClickListener(e -> grid.select(e.getItem()));
     }
 
@@ -315,6 +327,322 @@ public class TransactionHistoryView extends VerticalLayout
             else if (selectedTab == transfers) selectedTypeFilter = Transaction.TransactionType.TRANSFER;
             refreshGrid();
         });
+    }
+
+    // ── Bulk actions ────────────────────────────────────────────────────────
+
+    final Button bulkBtn = new Button(); // package-visible for tests
+    final HorizontalLayout bulkBar = new HorizontalLayout(); // package-visible for tests
+    private final Span bulkCount = new Span();
+    private boolean bulkMode = false;
+
+    private void wireSingleSelection() {
+        grid.asSingleSelect().addValueChangeListener(e -> {
+            if (e.getValue() != null) {
+                showTransactionDetail(e.getValue());
+            } else {
+                detailPanel.setVisible(false);
+            }
+        });
+    }
+
+    private void buildBulkBar() {
+        bulkBar.setWidthFull();
+        bulkBar.setAlignItems(Alignment.CENTER);
+        bulkBar.setVisible(false);
+        bulkBar.getStyle()
+                .set("gap", "var(--vaadin-gap-s)")
+                .set("flex-wrap", "wrap")
+                .set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-s)")
+                .set("border-radius", "var(--vaadin-radius-m)")
+                .set("background", "var(--aura-accent-surface)");
+
+        bulkCount.getStyle().set("font-weight", "600")
+                .set("font-size", "var(--aura-font-size-s)");
+
+        Button categoryBtn = new Button(getTranslation("bulk.set_category"),
+                VaadinIcon.SITEMAP.create(), e -> openBulkCategoryDialog());
+        categoryBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
+        Button tagBtn = new Button(getTranslation("bulk.add_tag"),
+                VaadinIcon.TAG.create(), e -> openBulkTagDialog());
+        tagBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
+        Button deleteBtn = new Button(getTranslation("bulk.delete"),
+                VaadinIcon.TRASH.create(), e -> bulkDelete());
+        deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL,
+                ButtonVariant.LUMO_ERROR);
+
+        Button doneBtn = new Button(getTranslation("bulk.done"), e -> toggleBulkMode());
+        doneBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
+        Div spacer = new Div();
+        bulkBar.add(bulkCount, categoryBtn, tagBtn, deleteBtn, spacer, doneBtn);
+        bulkBar.expand(spacer);
+    }
+
+    void toggleBulkMode() {
+        bulkMode = !bulkMode;
+        bulkBar.setVisible(bulkMode);
+        bulkBtn.setText(getTranslation(bulkMode ? "bulk.done" : "bulk.select"));
+        if (bulkMode) {
+            detailPanel.setVisible(false);
+            grid.setSelectionMode(Grid.SelectionMode.MULTI);
+            grid.addSelectionListener(e -> updateBulkCount());
+            updateBulkCount();
+        } else {
+            grid.setSelectionMode(Grid.SelectionMode.SINGLE);
+            wireSingleSelection();
+        }
+    }
+
+    private void updateBulkCount() {
+        bulkCount.setText(getTranslation("bulk.selected", grid.getSelectedItems().size()));
+    }
+
+    private void bulkDelete() {
+        Set<Transaction> selection = new HashSet<>(grid.getSelectedItems());
+        if (selection.isEmpty()) {
+            return;
+        }
+        com.cuenti.app.views.components.DeleteConfirm.show(
+                getTranslation("dialog.confirm_delete"),
+                getTranslation("bulk.delete_message", selection.size()),
+                getTranslation("dialog.delete"),
+                getTranslation("dialog.cancel"),
+                getTranslation("error.delete_failed"),
+                () -> {
+                    selection.forEach(transactionService::deleteTransaction);
+                    grid.deselectAll();
+                    refreshGrid();
+                    com.cuenti.app.views.components.UiNotifier.success(
+                            getTranslation("bulk.deleted", selection.size()));
+                });
+    }
+
+    private void openBulkCategoryDialog() {
+        Set<Transaction> selection = new HashSet<>(grid.getSelectedItems());
+        if (selection.isEmpty()) {
+            return;
+        }
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("bulk.set_category"));
+        dialog.setWidth("min(380px, 96vw)");
+
+        ComboBox<Category> combo = new ComboBox<>(getTranslation("transactions.category"));
+        combo.setItems(categoryService.getAllCategories().stream()
+                .sorted(java.util.Comparator.comparing(Category::getFullName)).toList());
+        combo.setItemLabelGenerator(Category::getFullName);
+        combo.setWidthFull();
+
+        Div body = new Div(combo);
+        body.addClassName("dialog-body");
+        dialog.add(body);
+
+        Button save = new Button(getTranslation("dialog.save"), e -> {
+            Category category = combo.getValue();
+            if (category == null) {
+                combo.setInvalid(true);
+                return;
+            }
+            selection.forEach(t -> {
+                t.setCategory(category);
+                transactionService.saveTransaction(t);
+            });
+            grid.deselectAll();
+            refreshGrid();
+            dialog.close();
+            com.cuenti.app.views.components.UiNotifier.success(
+                    getTranslation("bulk.updated", selection.size()));
+        });
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        Button cancel = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
+        cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        dialog.getFooter().add(cancel, save);
+        dialog.open();
+        combo.focus();
+    }
+
+    private void openBulkTagDialog() {
+        Set<Transaction> selection = new HashSet<>(grid.getSelectedItems());
+        if (selection.isEmpty()) {
+            return;
+        }
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("bulk.add_tag"));
+        dialog.setWidth("min(380px, 96vw)");
+
+        ComboBox<String> combo = new ComboBox<>(getTranslation("dialog.tags"));
+        combo.setItems(tagService.getAllTags().stream().map(t -> t.getName()).sorted().toList());
+        combo.setAllowCustomValue(true);
+        combo.addCustomValueSetListener(e -> combo.setValue(e.getDetail()));
+        combo.setWidthFull();
+
+        Div body = new Div(combo);
+        body.addClassName("dialog-body");
+        dialog.add(body);
+
+        Button save = new Button(getTranslation("dialog.save"), e -> {
+            String tag = combo.getValue();
+            if (tag == null || tag.isBlank()) {
+                combo.setInvalid(true);
+                return;
+            }
+            String trimmed = tag.trim();
+            selection.forEach(t -> {
+                Set<String> tags = new java.util.LinkedHashSet<>();
+                if (t.getTags() != null && !t.getTags().isBlank()) {
+                    for (String existing : t.getTags().split(",")) {
+                        tags.add(existing.trim());
+                    }
+                }
+                tags.add(trimmed);
+                t.setTags(String.join(",", tags));
+                transactionService.saveTransaction(t);
+            });
+            grid.deselectAll();
+            refreshGrid();
+            dialog.close();
+            com.cuenti.app.views.components.UiNotifier.success(
+                    getTranslation("bulk.updated", selection.size()));
+        });
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        Button cancel = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
+        cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        dialog.getFooter().add(cancel, save);
+        dialog.open();
+        combo.focus();
+    }
+
+    // ── Saved filter views ──────────────────────────────────────────────────
+
+    String serializeFilters() { // package-visible for tests
+        Account selected = accountSelector.getValue();
+        String account = (selected == null || isAllAccountsSelected(selected))
+                ? "all" : String.valueOf(selected.getId());
+        String type = selectedTypeFilter == null ? "ALL" : selectedTypeFilter.name();
+        String from = dateFrom.getValue() != null ? dateFrom.getValue().toString() : "";
+        String to = dateTo.getValue() != null ? dateTo.getValue().toString() : "";
+        String q = java.net.URLEncoder.encode(searchField.getValue() == null ? "" : searchField.getValue(),
+                java.nio.charset.StandardCharsets.UTF_8);
+        return "account=" + account + "|type=" + type + "|from=" + from + "|to=" + to + "|q=" + q;
+    }
+
+    void applyFilterParams(String params) { // package-visible for tests
+        Map<String, String> map = new HashMap<>();
+        for (String pair : params.split("\\|")) {
+            int idx = pair.indexOf('=');
+            if (idx > 0) {
+                map.put(pair.substring(0, idx), pair.substring(idx + 1));
+            }
+        }
+        String account = map.getOrDefault("account", "all");
+        accountSelector.getListDataView().getItems()
+                .filter(a -> "all".equals(account)
+                        ? isAllAccountsSelected(a)
+                        : a.getId() != null && a.getId().toString().equals(account))
+                .findFirst().ifPresent(accountSelector::setValue);
+
+        String from = map.getOrDefault("from", "");
+        dateFrom.setValue(from.isEmpty() ? null : LocalDate.parse(from));
+        String to = map.getOrDefault("to", "");
+        dateTo.setValue(to.isEmpty() ? null : LocalDate.parse(to));
+
+        String type = map.getOrDefault("type", "ALL");
+        int tabIndex = switch (type) {
+            case "EXPENSE" -> 1;
+            case "INCOME" -> 2;
+            case "TRANSFER" -> 3;
+            default -> 0;
+        };
+        typeTabs.setSelectedIndex(tabIndex);
+
+        searchField.setValue(java.net.URLDecoder.decode(map.getOrDefault("q", ""),
+                java.nio.charset.StandardCharsets.UTF_8));
+        refreshGrid();
+    }
+
+    private void openSavedViewsDialog() {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("views.title"));
+        dialog.setWidth("min(420px, 96vw)");
+        com.vaadin.flow.component.icon.Icon headerIcon = VaadinIcon.BOOKMARK.create();
+        headerIcon.addClassName("dialog-header-icon");
+        dialog.getHeader().add(headerIcon);
+
+        Div listContainer = new Div();
+        listContainer.getStyle().set("display", "flex").set("flex-direction", "column")
+                .set("gap", "var(--vaadin-gap-xs)");
+        renderSavedViewList(listContainer, dialog);
+
+        TextField nameField = new TextField(getTranslation("views.name"));
+        nameField.setWidthFull();
+        nameField.setMaxLength(100);
+
+        Button saveBtn = new Button(getTranslation("views.save_current"), VaadinIcon.PLUS.create(), e -> {
+            String name = nameField.getValue() == null ? "" : nameField.getValue().trim();
+            if (name.isEmpty()) {
+                nameField.setInvalid(true);
+                return;
+            }
+            savedViewService.save(currentUser, name, serializeFilters());
+            nameField.clear();
+            renderSavedViewList(listContainer, dialog);
+            com.cuenti.app.views.components.UiNotifier.success(getTranslation("views.saved"));
+        });
+        saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+
+        HorizontalLayout saveRow = new HorizontalLayout(nameField, saveBtn);
+        saveRow.setWidthFull();
+        saveRow.setAlignItems(Alignment.END);
+        saveRow.setSpacing(false);
+        saveRow.getStyle().set("gap", "var(--vaadin-gap-s)");
+        saveRow.expand(nameField);
+
+        Div body = new Div(listContainer, saveRow);
+        body.addClassName("dialog-body");
+        dialog.add(body);
+
+        Button close = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
+        close.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        dialog.getFooter().add(close);
+        dialog.open();
+    }
+
+    private void renderSavedViewList(Div container, Dialog dialog) {
+        container.removeAll();
+        java.util.List<com.cuenti.app.model.SavedView> views = savedViewService.getViews(currentUser);
+        if (views.isEmpty()) {
+            Span none = new Span(getTranslation("views.none"));
+            none.getStyle().set("color", "var(--vaadin-text-color-secondary)")
+                    .set("font-size", "var(--aura-font-size-s)");
+            container.add(none);
+            return;
+        }
+        for (com.cuenti.app.model.SavedView view : views) {
+            Button apply = new Button(view.getName(), VaadinIcon.BOOKMARK_O.create(), e -> {
+                applyFilterParams(view.getParams());
+                dialog.close();
+            });
+            apply.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            apply.getStyle().set("justify-content", "flex-start");
+
+            Button remove = new Button(VaadinIcon.TRASH.create(), e -> {
+                savedViewService.delete(currentUser, view);
+                renderSavedViewList(container, dialog);
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("views.deleted"));
+            });
+            remove.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL,
+                    ButtonVariant.LUMO_ERROR);
+            remove.getElement().setAttribute("aria-label",
+                    getTranslation("dialog.delete") + " " + view.getName());
+
+            HorizontalLayout row = new HorizontalLayout(apply, remove);
+            row.setWidthFull();
+            row.setAlignItems(Alignment.CENTER);
+            row.setJustifyContentMode(JustifyContentMode.BETWEEN);
+            container.add(row);
+        }
     }
 
     private void updateFilters() {
@@ -750,7 +1078,7 @@ public class TransactionHistoryView extends VerticalLayout
         allAccountTransactions.sort(Comparator.comparing(Transaction::getTransactionDate)
                 .thenComparing(Transaction::getSortOrder)
                 .reversed());
-        grid.asSingleSelect().clear();
+        grid.deselectAll();
         grid.setItems(allAccountTransactions);
         updateFilters();
         updateTotalsFooter();

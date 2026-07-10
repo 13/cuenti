@@ -25,6 +25,7 @@ public class ScheduledTransactionService {
     private final UserService userService;
 
     private final SecurityUtils securityUtils;
+    private final AuditService auditService;
 
     public List<ScheduledTransaction> getByUser(User user) {
         return repository.findByUser(user);
@@ -46,7 +47,11 @@ public class ScheduledTransactionService {
                 throw new SecurityException("Cannot modify scheduled transaction belonging to another user");
             }
         }
-        return repository.save(scheduledTransaction);
+        boolean created = scheduledTransaction.getId() == null;
+        ScheduledTransaction saved = repository.save(scheduledTransaction);
+        auditService.log(currentUser, created ? "CREATE" : "UPDATE", "ScheduledTransaction",
+                saved.getId(), saved.getPayee());
+        return saved;
     }
 
     @Transactional
@@ -57,6 +62,8 @@ public class ScheduledTransactionService {
         // Security check: only allow deletion if scheduled transaction belongs to current user
         if (scheduledTransaction.getUser().getId().equals(currentUser.getId())) {
             repository.delete(scheduledTransaction);
+            auditService.log(currentUser, "DELETE", "ScheduledTransaction",
+                    scheduledTransaction.getId(), scheduledTransaction.getPayee());
         } else {
             throw new SecurityException("Cannot delete scheduled transaction belonging to another user");
         }

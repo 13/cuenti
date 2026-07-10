@@ -122,11 +122,12 @@ class UC101ManageTagsTest extends SpringBrowserlessTest {
         test($(ConfirmDialog.class).single()).confirm();
         assertThat(test(grid).size()).isEqualTo(0);
 
-        // Undo action lives inside the delete notification (the earlier
-        // "saved" toast may still be open, so scan all notifications)
+        // Undo action lives inside the delete notification. Other toasts with
+        // buttons may be open too (e.g. the due-scheduled reminder), so take
+        // the newest notification button — the delete toast opened last.
         Button undo = $(Notification.class).all().stream()
                 .flatMap(n -> $(Button.class, n).all().stream())
-                .findFirst().orElseThrow();
+                .reduce((first, second) -> second).orElseThrow();
         test(undo).click();
         assertThat(test(grid).size()).isEqualTo(1);
 

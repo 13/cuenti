@@ -24,6 +24,7 @@ public class BudgetService {
 
     private final BudgetRepository budgetRepository;
     private final TransactionRepository transactionRepository;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public List<Budget> getBudgets(User user) {
@@ -32,12 +33,18 @@ public class BudgetService {
 
     @Transactional
     public Budget saveBudget(Budget budget) {
-        return budgetRepository.save(budget);
+        boolean created = budget.getId() == null;
+        Budget saved = budgetRepository.save(budget);
+        auditService.log(saved.getUser(), created ? "CREATE" : "UPDATE", "Budget", saved.getId(),
+                saved.getCategory().getFullName() + " " + saved.getMonthlyLimit());
+        return saved;
     }
 
     @Transactional
     public void deleteBudget(Budget budget) {
         budgetRepository.delete(budget);
+        auditService.log(budget.getUser(), "DELETE", "Budget", budget.getId(),
+                budget.getCategory().getFullName() + " " + budget.getMonthlyLimit());
     }
 
     @Transactional(readOnly = true)

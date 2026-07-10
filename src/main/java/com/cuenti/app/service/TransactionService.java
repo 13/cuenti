@@ -23,6 +23,7 @@ public class TransactionService {
     private final AccountService accountService;
     private final UserService userService;
     private final SecurityUtils securityUtils;
+    private final AuditService auditService;
 
     /**
      * Create or update a transaction and update account balances.
@@ -70,7 +71,17 @@ public class TransactionService {
         applyBalanceEffect(transaction);
         
         transaction.setStatus(Transaction.TransactionStatus.COMPLETED);
-        return transactionRepository.save(transaction);
+        boolean created = transaction.getId() == null;
+        Transaction saved = transactionRepository.save(transaction);
+        auditService.log(currentUser, created ? "CREATE" : "UPDATE", "Transaction", saved.getId(),
+                auditDetails(saved));
+        return saved;
+    }
+
+    private static String auditDetails(Transaction t) {
+        return t.getType() + " " + t.getAmount()
+                + (t.getPayee() != null ? " " + t.getPayee() : "")
+                + " " + t.getTransactionDate();
     }
 
     private User getTransactionUser(Transaction transaction) {
@@ -202,6 +213,7 @@ public class TransactionService {
 
             reverseBalanceEffect(t);
             transactionRepository.delete(t);
+            auditService.log(currentUser, "DELETE", "Transaction", t.getId(), auditDetails(t));
         });
     }
 }

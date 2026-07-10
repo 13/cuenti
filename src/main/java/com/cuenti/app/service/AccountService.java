@@ -22,6 +22,7 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final UserService userService;
     private final SecurityUtils securityUtils;
+    private final AuditService auditService;
     private final Random random = new Random();
 
     @Transactional
@@ -55,7 +56,10 @@ public class AccountService {
             account.setUser(user);
         }
 
-        return accountRepository.save(account);
+        boolean created = account.getId() == null;
+        Account saved = accountRepository.save(account);
+        auditService.log(user, created ? "CREATE" : "UPDATE", "Account", saved.getId(), saved.getAccountName());
+        return saved;
     }
 
     @Transactional
@@ -69,6 +73,7 @@ public class AccountService {
             throw new SecurityException("Cannot delete account belonging to another user");
         }
         accountRepository.delete(account);
+        auditService.log(currentUser, "DELETE", "Account", account.getId(), account.getAccountName());
     }
 
     @Transactional

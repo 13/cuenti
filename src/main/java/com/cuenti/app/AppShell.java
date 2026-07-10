@@ -28,6 +28,16 @@ public class AppShell implements AppShellConfigurator {
 
     @Override
     public void configurePage(AppShellSettings settings) {
+        // Apply the persisted theme before the first paint. Without this the
+        // page renders in the browser's preferred scheme and flips once the
+        // server round-trip applies the user's preference (visible flash;
+        // the login page stayed in the wrong scheme until then).
+        settings.addInlineWithContents(com.vaadin.flow.component.page.Inline.Position.PREPEND,
+                "(function(){var m=document.cookie.match(/(?:^|; )cuenti-theme=([^;]*)/);"
+                        + "document.documentElement.style.colorScheme="
+                        + "(m&&m[1]==='dark')?'dark':'light';})();",
+                com.vaadin.flow.component.page.Inline.Wrapping.JAVASCRIPT);
+
         // Standard Favicon
         settings.addLink("icon", "images/favicon.ico");
         

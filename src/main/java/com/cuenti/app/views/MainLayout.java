@@ -70,9 +70,14 @@ public class MainLayout extends AppLayout {
         }
 
         applyTheme();
+        if (currentUser != null) {
+            // sync the cookie on login so full reloads paint the right scheme
+            ThemePreference.persistThemeCookie(UI.getCurrent(), currentUser.isDarkMode());
+        }
         setPrimarySection(Section.DRAWER);
         createHeader();
         createDrawer();
+        notifyDueScheduled();
     }
 
     // ── Theme ──────────────────────────────────────────────────────────────────
@@ -97,6 +102,9 @@ public class MainLayout extends AppLayout {
             boolean newDark = !currentUser.isDarkMode();
             currentUser.setDarkMode(newDark);
             userService.updateDarkMode(currentUser, newDark);
+            // keep the cookie in sync so the pre-paint bootstrap script and
+            // the login page use the same scheme after a full reload
+            ThemePreference.persistThemeCookie(UI.getCurrent(), newDark);
             applyTheme();
         }
     }
@@ -230,6 +238,8 @@ public class MainLayout extends AppLayout {
         if (currentUser != null && currentUser.getRoles().contains("ROLE_ADMIN")) {
             settings.addItem(new SideNavItem(getTranslation("settings.administration"),
                     SettingsAdminView.class, VaadinIcon.KEY.create()));
+            settings.addItem(new SideNavItem(getTranslation("audit.title"),
+                    AuditLogView.class, VaadinIcon.CLIPBOARD_TEXT.create()));
         }
         settings.addItem(new SideNavItem(getTranslation("settings.user_title"),
                 SettingsUserView.class, VaadinIcon.USER.create()));
@@ -249,6 +259,26 @@ public class MainLayout extends AppLayout {
                 .set("display", "flex").set("flex-direction", "column");
 
         addToDrawer(drawer);
+    }
+
+    /** One reminder toast per session when scheduled transactions are due. */
+    private void notifyDueScheduled() {
+        if (currentUser == null) {
+            return;
+        }
+        com.vaadin.flow.server.VaadinSession session = com.vaadin.flow.server.VaadinSession.getCurrent();
+        if (session == null || session.getAttribute("cuenti.due.notified") != null) {
+            return;
+        }
+        session.setAttribute("cuenti.due.notified", Boolean.TRUE);
+        long due = scheduledService.countDueSoon(currentUser);
+        if (due > 0) {
+            com.cuenti.app.views.components.UiNotifier.infoWithAction(
+                    getTranslation("scheduled.due_notification", due),
+                    getTranslation("scheduled.due_notification_action"),
+                    () -> com.vaadin.flow.component.UI.getCurrent()
+                            .navigate(ScheduledTransactionsView.class));
+        }
     }
 
     /** Scheduled nav entry with a due-soon count badge (demo pattern). */

@@ -520,7 +520,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
                 .collect(Collectors.toList());
         com.cuenti.app.views.components.charts.DonutChart donut =
                 new com.cuenti.app.views.components.charts.DonutChart(slices, total,
-                        getTranslation("dashboard.top_spending"),
+                        getTranslation("dashboard.top_spending", currentUser.getDefaultCurrency()),
                         amount -> formatCurrency(amount, currentUser.getDefaultCurrency()));
         Div donutWrap = new Div(donut);
         donutWrap.getStyle().set("display", "flex").set("justify-content", "center")

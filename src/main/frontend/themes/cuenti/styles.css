@@ -17,8 +17,12 @@ html {
   /* Exact accent used by app.demo.vaadin.com (same in both schemes) */
   --aura-accent-color-light: oklch(0.55 0.2 264);
   --aura-accent-color-dark: oklch(0.55 0.2 264);
-  /* Backgrounds, radii and app-frame inset stay at Aura defaults,
-     matching the demo exactly. */
+  /* Radii and app-frame inset stay at Aura defaults. Aura's default app
+     background is an accent-tinted radial gradient anchored top-left;
+     the transparent drawer sits in its tinted zone and reads a different
+     color than the content area. Flatten it so sidebar and pages share
+     one background in both schemes. */
+  --aura-app-background: var(--aura-background-color);
 
   /* App-specific tokens not covered by Aura */
   --cuenti-font-size-xxl: calc(var(--aura-font-size-xl) * 1.3);
@@ -380,6 +384,14 @@ vaadin-app-layout::part(navbar) {
   min-height: 48px;
   box-shadow: none;
   border-bottom: none;
+  background: transparent;
+}
+
+/* Vaadin's built-in Lumo layer paints the drawer with --lumo-base-color
+   (navy in dark, white in light), which never matches Aura's page
+   background. Desktop drawer is transparent so sidebar and pages share
+   one background; the mobile overlay drawer keeps Aura's solid surface. */
+vaadin-app-layout:not([overlay])::part(drawer) {
   background: transparent;
 }
 

@@ -20,10 +20,12 @@ public final class ThemePreference {
     }
 
     public static void applyTheme(UI ui, boolean isDark) {
-        // Aura resolves light/dark via the CSS color-scheme property; the
-        // theme attribute is kept for any attribute-based selectors.
+        // Aura resolves light/dark purely via the CSS color-scheme property.
+        // The legacy Lumo theme attribute must NOT be set: html[theme=dark]
+        // pins Lumo's dark base color (#233348) on the document background,
+        // which painted the drawer navy in both schemes.
         ui.getElement().executeJs(
-                "document.documentElement.setAttribute('theme', $0);" +
+                "document.documentElement.removeAttribute('theme');" +
                 "document.documentElement.style.colorScheme = $0;",
                 isDark ? Lumo.DARK : Lumo.LIGHT
         );

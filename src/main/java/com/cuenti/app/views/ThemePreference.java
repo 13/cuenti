@@ -21,21 +21,23 @@ public final class ThemePreference {
             // No stored preference: follow the OS scheme (matches the
             // pre-paint bootstrap script in AppShell)
             ui.getElement().executeJs(
-                    "document.documentElement.removeAttribute('theme');"
-                    + "document.documentElement.style.colorScheme="
-                    + "matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';");
+                    "var s=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';"
+                    + "document.documentElement.setAttribute('theme', s);"
+                    + "document.documentElement.style.colorScheme=s;");
             return;
         }
         applyTheme(ui, isDarkCookieValue(value));
     }
 
     public static void applyTheme(UI ui, boolean isDark) {
-        // Aura resolves light/dark purely via the CSS color-scheme property.
-        // The legacy Lumo theme attribute must NOT be set: html[theme=dark]
-        // pins Lumo's dark base color (#233348) on the document background,
-        // which painted the drawer navy in both schemes.
+        // Aura resolves light/dark via color-scheme, but the production
+        // bundle ships the legacy attribute-based Lumo palette whose dark
+        // text tokens only activate under html[theme=dark] — without the
+        // attribute, side-nav and login text rendered light-mode dark-on-dark.
+        // Its background side effect is neutralized in styles.css
+        // (--lumo-base-color remap + explicit html background).
         ui.getElement().executeJs(
-                "document.documentElement.removeAttribute('theme');" +
+                "document.documentElement.setAttribute('theme', $0);" +
                 "document.documentElement.style.colorScheme = $0;",
                 isDark ? DARK : LIGHT
         );

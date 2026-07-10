@@ -29,6 +29,17 @@ html {
      navy hsl(214,35%,21%) and matches neither Aura scheme, which showed
      up as off-color slabs. Point it at the Aura surface instead. */
   --lumo-base-color: var(--aura-surface-color-solid);
+}
+
+/* The html[theme] attribute must stay set — the production bundle ships
+   the legacy attribute-based Lumo palette whose dark TEXT tokens only
+   activate under html[theme=dark]. Lumo's side effect of painting the
+   document with --lumo-base-color is overridden here so the app frame
+   keeps the Aura background in both schemes. */
+html,
+html[theme='light'],
+html[theme='dark'] {
+  background: var(--aura-app-background);
 
   /* App-specific tokens not covered by Aura */
   --cuenti-font-size-xxl: calc(var(--aura-font-size-xl) * 1.3);

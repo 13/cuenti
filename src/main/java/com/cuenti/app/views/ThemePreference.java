@@ -16,7 +16,17 @@ public final class ThemePreference {
     private ThemePreference() {}
 
     public static void applyThemeFromCookie(UI ui) {
-        applyTheme(ui, isDarkCookieValue(readThemeCookieValue()));
+        String value = readThemeCookieValue();
+        if (value == null) {
+            // No stored preference: follow the OS scheme (matches the
+            // pre-paint bootstrap script in AppShell)
+            ui.getElement().executeJs(
+                    "document.documentElement.removeAttribute('theme');"
+                    + "document.documentElement.style.colorScheme="
+                    + "matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';");
+            return;
+        }
+        applyTheme(ui, isDarkCookieValue(value));
     }
 
     public static void applyTheme(UI ui, boolean isDark) {
@@ -46,9 +56,10 @@ public final class ThemePreference {
         ui.getPage().executeJs("document.cookie = $0", value);
     }
 
+    /** Returns the stored theme, or null when the user never chose one. */
     private static String readThemeCookieValue() {
         if (VaadinService.getCurrentRequest() == null || VaadinService.getCurrentRequest().getCookies() == null) {
-            return Lumo.LIGHT;
+            return null;
         }
 
         for (Cookie cookie : VaadinService.getCurrentRequest().getCookies()) {
@@ -57,7 +68,7 @@ public final class ThemePreference {
             }
         }
 
-        return Lumo.LIGHT;
+        return null;
     }
 
     private static String readLocaleCookieValue() {

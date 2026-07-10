@@ -34,8 +34,8 @@ public class AppShell implements AppShellConfigurator {
         // the login page stayed in the wrong scheme until then).
         settings.addInlineWithContents(com.vaadin.flow.component.page.Inline.Position.PREPEND,
                 "(function(){var m=document.cookie.match(/(?:^|; )cuenti-theme=([^;]*)/);"
-                        + "document.documentElement.style.colorScheme="
-                        + "(m&&m[1]==='dark')?'dark':'light';})();",
+                        + "var s=m?m[1]:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');"
+                        + "document.documentElement.style.colorScheme=(s==='dark')?'dark':'light';})();",
                 com.vaadin.flow.component.page.Inline.Wrapping.JAVASCRIPT);
 
         // Standard Favicon

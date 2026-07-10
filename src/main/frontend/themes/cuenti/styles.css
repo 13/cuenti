@@ -24,13 +24,23 @@ html {
      one background in both schemes. */
   --aura-app-background: var(--aura-background-color);
 
+  /* Legacy-Lumo compatibility: a few components (e.g. the login form
+     wrapper) still paint --lumo-base-color. Lumo's own value is white /
+     navy hsl(214,35%,21%) and matches neither Aura scheme, which showed
+     up as off-color slabs. Point it at the Aura surface instead. */
+  --lumo-base-color: var(--aura-surface-color-solid);
+
   /* App-specific tokens not covered by Aura */
   --cuenti-font-size-xxl: calc(var(--aura-font-size-xl) * 1.3);
   --cuenti-surface-muted: var(--vaadin-background-container);
   --cuenti-space-xl: calc(var(--vaadin-gap-l) * 1.5);
   --cuenti-amount-positive: light-dark(#047857, #34d399);
   --cuenti-amount-negative: light-dark(#b91c1c, #f87171);
-  --cuenti-divider: color-mix(in srgb, var(--vaadin-text-color) 8%, transparent);
+  /* Hairlines need a stronger mix in dark: 8% on near-black is barely
+     visible, which made sections blur together */
+  --cuenti-divider: light-dark(
+      color-mix(in srgb, var(--vaadin-text-color) 8%, transparent),
+      color-mix(in srgb, var(--vaadin-text-color) 14%, transparent));
 
   /* Chart palette — validated (CVD + contrast) per mode; do not eyeball-edit */
   --cuenti-chart-income: light-dark(#047857, #199e70);
@@ -599,12 +609,18 @@ vaadin-app-layout:not([overlay])::part(drawer) {
   line-height: 1;
 }
 
-.auth-card vaadin-login-form,
-.auth-card vaadin-login-form-wrapper {
+.auth-card vaadin-login-form {
   width: 100%;
   background: transparent;
   box-shadow: none;
   padding: 0;
+  /* The form wrapper lives in shadow DOM and paints
+     --lumo-base-color + a --lumo-tint gradient (a navy/white slab that
+     ignored the color scheme). Only custom properties pierce the
+     shadow boundary, so blank them here to melt it into the card. */
+  --lumo-base-color: transparent;
+  --lumo-tint-5pct: transparent;
+  --lumo-shade-5pct: transparent;
 }
 
 /* ----------------------------------------------------------------------------

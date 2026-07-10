@@ -78,6 +78,15 @@ h1, h2, h3, h4, h5, h6,
 
 .page-shell {
   align-items: center;
+  padding: var(--vaadin-padding-m);
+  gap: var(--vaadin-gap-s);
+  overflow: hidden;
+}
+
+/* Long-content shell pages (statistics) scroll the whole panel instead of
+   clipping — grids elsewhere scroll internally */
+.page-shell--scroll {
+  overflow-y: auto;
 }
 
 /* The page's main card melts into the panel — no box inside a box */
@@ -148,6 +157,32 @@ h1, h2, h3, h4, h5, h6,
   font-weight: 600;
   color: var(--vaadin-text-color);
   margin: 0 0 var(--vaadin-gap-s) 0;
+}
+
+/* Card whose children stack vertically (toolbar + grid, etc.) */
+.card--flex {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vaadin-gap-s);
+  min-height: 0;
+}
+
+/* Standard dialog body: single column of fields, demo-style padding */
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vaadin-gap-s);
+  padding: var(--vaadin-padding-m) var(--vaadin-padding-l);
+  box-sizing: border-box;
+}
+
+/* Tiny uppercase label above stats and amounts */
+.text-overline {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vaadin-text-color-secondary);
 }
 
 /* Metric tile */

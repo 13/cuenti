@@ -65,8 +65,6 @@ public class BudgetManagementView extends VerticalLayout implements HasDynamicTi
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        getStyle().set("padding", "var(--vaadin-gap-m)").set("overflow", "hidden");
-
         setupUI();
         refreshGrid();
     }
@@ -152,10 +150,7 @@ public class BudgetManagementView extends VerticalLayout implements HasDynamicTi
         Div card = new Div(toolbar, grid);
         card.setSizeFull();
         card.addClassName("card");
-        card.getStyle()
-                .set("display", "flex")
-                .set("flex-direction", "column")
-                .set("gap", "var(--vaadin-gap-s)");
+        card.addClassName("card--flex");
 
         add(title, card);
         expand(card);
@@ -216,9 +211,7 @@ public class BudgetManagementView extends VerticalLayout implements HasDynamicTi
         limitField.setValue(budget.getMonthlyLimit());
 
         Div body = new Div(categoryCombo, limitField);
-        body.getStyle().set("display", "flex").set("flex-direction", "column")
-                .set("gap", "var(--vaadin-gap-s)")
-                .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l)");
+        body.addClassName("dialog-body");
         dialog.add(body);
 
         Button saveButton = new Button(getTranslation("dialog.save"), e -> {

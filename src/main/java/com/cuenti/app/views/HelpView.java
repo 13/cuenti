@@ -26,7 +26,7 @@ public class HelpView extends VerticalLayout implements HasDynamicTitle {
         setAlignItems(Alignment.CENTER);
         setPadding(false);
         setSpacing(false);
-        getStyle().set("padding", "var(--vaadin-gap-m)").set("gap", "var(--vaadin-gap-m)");
+        getStyle().set("padding", "var(--vaadin-padding-m)").set("gap", "var(--vaadin-gap-s)");
 
         Span title = new Span(getTranslation("help.title"));
         title.addClassName("page-title");
@@ -37,7 +37,7 @@ public class HelpView extends VerticalLayout implements HasDynamicTitle {
 
         Accordion accordion = new Accordion();
         accordion.setWidthFull();
-        accordion.getStyle().set("border-radius", "16px").set("overflow", "hidden");
+        accordion.getStyle().set("border-radius", "var(--vaadin-radius-l)").set("overflow", "hidden");
 
         // Dashboard
         accordion.add(createHelpPanel(

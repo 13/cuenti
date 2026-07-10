@@ -89,10 +89,6 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        getStyle()
-                .set("padding", "var(--vaadin-gap-m)")
-                .set("overflow", "hidden");
-
         setupUI();
         refreshGrids();
     }
@@ -456,9 +452,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .set("font-size", "var(--cuenti-font-size-xxl)").set("font-weight", "800");
 
         Span amountLabel = new Span(getTranslation("dialog.amount").toUpperCase());
-        amountLabel.getStyle()
-                .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                .set("color", "var(--vaadin-text-color-secondary)");
+        amountLabel.addClassName("text-overline");
 
         Div heroSection = new Div(amountLabel, amount);
         heroSection.setWidthFull();
@@ -705,9 +699,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .set("box-sizing", "border-box");
         if (label != null && !label.isBlank()) {
             Span lbl = new Span(label.toUpperCase());
-            lbl.getStyle()
-                    .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                    .set("color", "var(--vaadin-text-color-secondary)");
+            lbl.addClassName("text-overline");
             section.add(lbl);
         }
         return section;

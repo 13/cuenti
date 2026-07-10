@@ -79,10 +79,6 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        getStyle()
-                .set("padding", "var(--vaadin-gap-m)")
-                .set("overflow", "hidden");
-
         setupUI();
         updateList();
     }
@@ -116,11 +112,7 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
         Div card = new Div();
         card.setSizeFull();
         card.addClassName("card");
-        card.getStyle()
-                .set("display", "flex")
-                .set("flex-direction", "column")
-                .set("gap", "var(--vaadin-gap-s)")
-                .set("box-sizing", "border-box");
+        card.addClassName("card--flex");
         card.add(toolbar, grid);
         add(title, card);
         expand(card);

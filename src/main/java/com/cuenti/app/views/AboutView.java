@@ -39,7 +39,7 @@ public class AboutView extends VerticalLayout implements HasDynamicTitle {
         setPadding(false);
         setSpacing(false);
         addClassName("page-scroll");
-        getStyle().set("padding", "var(--vaadin-gap-l)");
+        getStyle().set("padding", "var(--vaadin-padding-m)");
 
         String version   = getVersion();
         String buildDate = getBuildDate();

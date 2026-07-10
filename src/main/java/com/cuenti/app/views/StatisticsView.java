@@ -68,10 +68,10 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
 
-        addClassNames("statistics-view", "page-scroll", "page-shell");
-        setWidthFull();
-        setPadding(true);
-        setSpacing(true);
+        addClassNames("statistics-view", "page-scroll", "page-shell", "page-shell--scroll");
+        setSizeFull();
+        setPadding(false);
+        setSpacing(false);
 
         reportableAccounts = accountService.getAccountsByUser(currentUser).stream()
                 .filter(a -> !a.isExcludeFromReports())
@@ -86,17 +86,9 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
 
     private void setupUI() {
         // Page header
-        Div header = new Div();
-        header.getStyle()
-                .set("display", "flex")
-                .set("align-items", "baseline")
-                .set("gap", "var(--vaadin-gap-m)")
-                .set("margin-bottom", "var(--vaadin-gap-xs)");
-
         Span title = new Span(getTranslation("statistics.title"));
         title.addComponentAsFirst(VaadinIcon.CHART.create());
         title.addClassName("page-title");
-        header.add(title);
 
         HorizontalLayout filters = createTimeFilter();
         Tabs tabs = createTabs();
@@ -104,15 +96,10 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         contentContainer.setWidthFull();
 
         Div card = new Div();
-        card.setSizeFull();
-        card.addClassName("card");
-        card.getStyle()
-                .set("display", "flex")
-                .set("flex-direction", "column")
-                .set("gap", "var(--vaadin-gap-m)");
+        card.setWidthFull();
+        card.addClassNames("card", "card--flex");
         card.add(filters, tabs, contentContainer);
-        add(header, card);
-        expand(card);
+        add(title, card);
     }
 
     private HorizontalLayout createTimeFilter() {
@@ -561,11 +548,8 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
         BigDecimal maxValue = entries.get(0).getValue();
 
         Span chartTitle = new Span(title.toUpperCase());
+        chartTitle.addClassName("text-overline");
         chartTitle.getStyle()
-                .set("font-size", "10px")
-                .set("font-weight", "700")
-                .set("letter-spacing", "0.08em")
-                .set("color", "var(--vaadin-text-color-secondary)")
                 .set("display", "block")
                 .set("margin-bottom", "var(--vaadin-gap-s)");
 
@@ -827,12 +811,8 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                 .set("margin-top", "var(--vaadin-gap-m)");
 
         Span label = new Span(getTranslation("statistics.savings_rate").toUpperCase());
-        label.getStyle()
-                .set("font-size", "10px")
-                .set("font-weight", "700")
-                .set("letter-spacing", "0.08em")
-                .set("color", "var(--vaadin-text-color-secondary)")
-                .set("white-space", "nowrap");
+        label.addClassName("text-overline");
+        label.getStyle().set("white-space", "nowrap");
 
         Div barBg = new Div();
         barBg.getStyle()
@@ -988,11 +968,7 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
                 .set("gap", "var(--vaadin-gap-xs)");
 
         Span titleSpan = new Span(title.toUpperCase());
-        titleSpan.getStyle()
-                .set("font-size", "10px")
-                .set("font-weight", "700")
-                .set("letter-spacing", "0.08em")
-                .set("color", "var(--vaadin-text-color-secondary)");
+        titleSpan.addClassName("text-overline");
 
         Span valueSpan = new Span(formatCurrency(amount));
         valueSpan.getStyle()
@@ -1060,12 +1036,10 @@ public class StatisticsView extends VerticalLayout implements HasDynamicTitle {
             String arrow = active ? (sortAsc ? " ▲" : " ▼") : "";
 
             Span col = new Span(labels[i].toUpperCase() + arrow);
+            col.addClassName("text-overline");
             col.getStyle()
                     .set("flex", i == 0 ? "2" : "1")
                     .set("text-align", i == 0 ? "left" : "right")
-                    .set("font-size", "10px")
-                    .set("font-weight", "700")
-                    .set("letter-spacing", "0.07em")
                     .set("cursor", "pointer")
                     .set("user-select", "none")
                     .set("color", active ? "var(--aura-accent-color)" : "var(--vaadin-text-color-secondary)")

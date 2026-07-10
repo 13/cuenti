@@ -237,10 +237,8 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
                 {getTranslation("dashboard.current_value"), "1.5", "right"},
                 {getTranslation("dashboard.gain_loss"),     "1.5", "right"}}) {
             Span h = new Span(hdr[0].toUpperCase());
-            h.getStyle()
-                    .set("flex", hdr[1]).set("text-align", hdr[2])
-                    .set("font-size", "10px").set("font-weight", "700")
-                    .set("letter-spacing", "0.07em").set("color", "var(--vaadin-text-color-secondary)");
+            h.addClassName("text-overline");
+            h.getStyle().set("flex", hdr[1]).set("text-align", hdr[2]);
             headerRow.add(h);
         }
         Div contentScroll = new Div();
@@ -747,9 +745,7 @@ public class DashboardView extends VerticalLayout implements HasDynamicTitle {
         if (totalInvestmentGain.compareTo(BigDecimal.ZERO) != 0) {
             BigDecimal grandTotalWithGain = grandTotal.add(totalInvestmentGain);
             Span gtwgLabel = new Span(getTranslation("dashboard.grand_total_with_gain").toUpperCase());
-            gtwgLabel.getStyle()
-                    .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.07em")
-                    .set("color", "var(--vaadin-text-color-secondary)");
+            gtwgLabel.addClassName("text-overline");
             Span gtwgValue = new Span(formatCurrency(grandTotalWithGain, currentUser.getDefaultCurrency()));
             gtwgValue.getStyle()
                     .set("font-size", "var(--aura-font-size-xl)").set("font-weight", "800")

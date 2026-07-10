@@ -56,10 +56,6 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        getStyle()
-                .set("padding", "var(--vaadin-gap-m)")
-                .set("overflow", "hidden");
-
         selectedYear = LocalDate.now().getYear();
 
         setupUI();
@@ -102,11 +98,8 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         Div card = new Div();
         card.setSizeFull();
         card.addClassName("card");
-        card.getStyle()
-                .set("display", "flex")
-                .set("flex-direction", "column")
-                .set("gap", "var(--vaadin-gap-m)")
-                .set("overflow-y", "auto");
+        card.addClassName("card--flex");
+        card.getStyle().set("overflow-y", "auto");
 
         card.add(toolbar, contentContainer);
         add(title, card);
@@ -260,9 +253,8 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
                 getTranslation("statistics.expense"),
                 getTranslation("statistics.net")}) {
             Span h = new Span(col.toUpperCase());
-            h.getStyle()
-                    .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.07em")
-                    .set("color", "var(--vaadin-text-color-secondary)").set("text-align", "right");
+            h.addClassName("text-overline");
+            h.getStyle().set("text-align", "right");
             header.add(h);
         }
         // Override first col to left-align
@@ -362,9 +354,7 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
                 .set("display", "flex").set("flex-direction", "column").set("gap", "var(--vaadin-gap-xs)");
 
         Span titleSpan = new Span(title.toUpperCase());
-        titleSpan.getStyle()
-                .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                .set("color", "var(--vaadin-text-color-secondary)");
+        titleSpan.addClassName("text-overline");
 
         Span valueSpan = new Span(formatCurrency(amount));
         valueSpan.getStyle()

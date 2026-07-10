@@ -240,9 +240,9 @@
     "@vaadin/vaadin-lumo-styles": "$@vaadin/vaadin-lumo-styles",
     "@vaadin/email-field": "25.2.0",
     "@vaadin/message-input": "25.2.0",
+    "@vaadin/breadcrumbs": "25.2.0",
     "workbox-build": {
       "glob": "13.0.6"
-    },
-    "@vaadin/breadcrumbs": "25.2.0"
+    }
   }
 }

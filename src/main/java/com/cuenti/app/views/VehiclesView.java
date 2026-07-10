@@ -4,6 +4,7 @@ import com.cuenti.app.model.Category;
 import com.cuenti.app.model.Transaction;
 import com.cuenti.app.model.User;
 import com.cuenti.app.security.SecurityUtils;
+import com.cuenti.app.views.components.EmptyStateNotice;
 import com.cuenti.app.service.CategoryService;
 import com.cuenti.app.service.ExchangeRateService;
 import com.cuenti.app.service.TransactionService;
@@ -101,10 +102,6 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        getStyle()
-                .set("padding", "var(--vaadin-gap-m)")
-                .set("overflow", "hidden");
-
         setupUI();
         // Initial load is deferred to afterNavigation to ensure the view is fully attached
         // and that listeners (time range/category) have settled. afterNavigation() will
@@ -148,10 +145,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         Div card = new Div();
         card.setSizeFull();
         card.addClassName("card");
-        card.getStyle()
-                .set("display", "flex")
-                .set("flex-direction", "column")
-                .set("gap", "var(--vaadin-gap-m)");
+        card.addClassName("card--flex");
 
         card.add(createToolbar(), summaryContainer, grid);
         add(title, card);
@@ -556,17 +550,8 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
 
     private void renderSummary() {
         if (fuelEntries.isEmpty()) {
-            Div empty = new Div();
-            empty.getStyle()
-                    .set("display", "flex").set("flex-direction", "column").set("align-items", "center")
-                    .set("justify-content", "center").set("padding", "var(--cuenti-space-xl)")
-                    .set("color", "var(--vaadin-text-color-secondary)").set("gap", "var(--vaadin-gap-s)");
-            Icon ico = VaadinIcon.DROP.create();
-            ico.getStyle().set("font-size", "48px").set("opacity", "0.3");
-            Span msg = new Span(getTranslation("vehicles.no_data"));
-            msg.getStyle().set("font-size", "var(--aura-font-size-m)");
-            empty.add(ico, msg);
-            summaryContainer.add(empty);
+            summaryContainer.add(new EmptyStateNotice(
+                    VaadinIcon.DROP, getTranslation("vehicles.no_data"), null));
             return;
         }
 
@@ -687,9 +672,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
                 .set("display", "flex").set("flex-direction", "column").set("gap", "var(--vaadin-gap-xs)");
 
         Span titleSpan = new Span(title.toUpperCase());
-        titleSpan.getStyle()
-                .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                .set("color", "var(--vaadin-text-color-secondary)");
+        titleSpan.addClassName("text-overline");
 
         Span valueSpan = new Span(value);
         valueSpan.getStyle()
@@ -702,17 +685,8 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
 
     private void renderEmptyState() {
         summaryContainer.removeAll();
-        Div empty = new Div();
-        empty.getStyle()
-                .set("display", "flex").set("flex-direction", "column").set("align-items", "center")
-                .set("justify-content", "center").set("padding", "var(--cuenti-space-xl)")
-                .set("color", "var(--vaadin-text-color-secondary)").set("gap", "var(--vaadin-gap-s)");
-        Icon ico = VaadinIcon.CAR.create();
-        ico.getStyle().set("font-size", "48px").set("opacity", "0.25");
-        Span msg = new Span(getTranslation("vehicles.select_placeholder"));
-        msg.getStyle().set("font-size", "var(--aura-font-size-m)");
-        empty.add(ico, msg);
-        summaryContainer.add(empty);
+        summaryContainer.add(new EmptyStateNotice(
+                VaadinIcon.CAR, getTranslation("vehicles.select_placeholder"), null));
     }
 
     private String formatCurrency(BigDecimal amount) {

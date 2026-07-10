@@ -24,7 +24,7 @@ abstract class BaseSettingsView extends VerticalLayout {
         setAlignItems(Alignment.CENTER);
         setPadding(false);
         setSpacing(false);
-        getStyle().set("padding", "var(--vaadin-gap-m)");
+        getStyle().set("padding", "var(--vaadin-padding-m)");
 
         container.addClassNames("page-container", "page-container--narrow");
         container.getStyle().set("padding", "0");
@@ -35,10 +35,7 @@ abstract class BaseSettingsView extends VerticalLayout {
     protected Div createCard() {
         Div card = new Div();
         card.setWidthFull();
-        card.addClassName("card");
-        card.getStyle()
-                .set("display", "flex").set("flex-direction", "column")
-                .set("gap", "var(--vaadin-gap-m)");
+        card.addClassNames("card", "card--flex");
         return card;
     }
 
@@ -60,8 +57,8 @@ abstract class BaseSettingsView extends VerticalLayout {
         Div wrapper = new Div();
         wrapper.setWidthFull();
         wrapper.getStyle()
-                .set("padding-bottom", "var(--vaadin-gap-m)")
-                .set("border-bottom", "1px solid var(--vaadin-border-color-secondary)")
+                .set("padding-bottom", "var(--vaadin-gap-s)")
+                .set("border-bottom", "1px solid var(--cuenti-divider)")
                 .set("display", "flex").set("flex-direction", "column").set("gap", "4px");
         wrapper.add(headingRow);
 
@@ -84,8 +81,8 @@ abstract class BaseSettingsView extends VerticalLayout {
         text_.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", color);
         banner.add(text_);
         banner.getStyle()
-                .set("padding", "var(--vaadin-gap-m)")
-                .set("border-radius", "10px")
+                .set("padding", "var(--vaadin-padding-m)")
+                .set("border-radius", "var(--vaadin-radius-m)")
                 .set("background", bg)
                 .set("border-left", "3px solid " + color)
                 .set("box-sizing", "border-box");

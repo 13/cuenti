@@ -128,10 +128,6 @@ public class TransactionHistoryView extends VerticalLayout
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        getStyle()
-                .set("padding", "var(--vaadin-gap-m)")
-                .set("gap", "var(--vaadin-gap-s)")
-                .set("overflow", "hidden");
         
         setupUI();
         refreshGrid();
@@ -272,10 +268,7 @@ public class TransactionHistoryView extends VerticalLayout
         Div card = new Div();
         card.setSizeFull();
         card.addClassName("card");
-        card.getStyle()
-                .set("display", "flex")
-                .set("flex-direction", "column")
-                .set("gap", "var(--vaadin-gap-s)");
+        card.addClassName("card--flex");
         card.add(toolbar, typeTabs, grid);
         add(card);
         expand(card);
@@ -907,9 +900,7 @@ public class TransactionHistoryView extends VerticalLayout
         amountField.getElement().getStyle().set("font-size", "var(--cuenti-font-size-xxl)").set("font-weight", "800");
 
         Span amountLabel = new Span(getTranslation("dialog.amount").toUpperCase());
-        amountLabel.getStyle()
-                .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                .set("color", "var(--vaadin-text-color-secondary)");
+        amountLabel.addClassName("text-overline");
 
         // Split toggle button — next to amount
         Button splitToggleBtn = new Button(VaadinIcon.PIE_CHART.create());
@@ -1351,9 +1342,7 @@ public class TransactionHistoryView extends VerticalLayout
                 .set("box-sizing", "border-box");
         if (labelKey != null && !labelKey.isBlank()) {
             Span label = new Span(labelKey.toUpperCase());
-            label.getStyle()
-                    .set("font-size", "10px").set("font-weight", "700").set("letter-spacing", "0.08em")
-                    .set("color", "var(--vaadin-text-color-secondary)");
+            label.addClassName("text-overline");
             section.add(label);
         }
         return section;

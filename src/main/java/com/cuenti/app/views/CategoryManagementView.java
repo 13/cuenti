@@ -64,10 +64,6 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        getStyle()
-                .set("padding", "var(--vaadin-gap-m)")
-                .set("overflow", "hidden");
-
         setupUI();
         refreshGrid();
     }
@@ -160,11 +156,7 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
         Div card = new Div();
         card.setSizeFull();
         card.addClassName("card");
-        card.getStyle()
-                .set("display", "flex")
-                .set("flex-direction", "column")
-                .set("gap", "var(--vaadin-gap-s)")
-                .set("box-sizing", "border-box");
+        card.addClassName("card--flex");
         card.add(toolbar, grid);
         add(title, card);
         expand(card);
@@ -259,8 +251,7 @@ public class CategoryManagementView extends VerticalLayout implements HasDynamic
 
         Div body = new Div();
         body.setWidthFull();
-        body.getStyle().set("display","flex").set("flex-direction","column").set("gap","var(--vaadin-gap-s)")
-                .set("padding","var(--vaadin-gap-m) var(--vaadin-gap-l)").set("box-sizing","border-box");
+        body.addClassName("dialog-body");
         body.add(nameField, typeGroup, parentCombo);
         dialog.add(body);
 

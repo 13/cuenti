@@ -75,7 +75,7 @@ public class TransactionApiController {
 
         Page<Transaction> result = transactionService.search(user, accountId, type, categoryId,
                 start != null ? start.atStartOfDay() : null,
-                end != null ? end.atTime(23, 59, 59) : null,
+                end != null ? end.atTime(java.time.LocalTime.MAX) : null,
                 emptyToNull(payee), emptyToNull(tag), emptyToNull(search), pageable);
 
         List<TransactionDTO> dtos = result.getContent().stream()
@@ -102,11 +102,12 @@ public class TransactionApiController {
         String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
         if (username == null) return ResponseEntity.status(401).build();
 
-        Transaction transaction = mapFromDTO(dto);
-        String splitError = applySplits(transaction, dto);
+        String splitError = validateSplits(dto);
         if (splitError != null) {
             return ResponseEntity.badRequest().body(Map.of("error", splitError));
         }
+        Transaction transaction = mapFromDTO(dto);
+        applySplitsMutation(transaction, dto);
         Transaction saved = transactionService.saveTransaction(transaction);
         return ResponseEntity.ok(DtoMapper.toTransactionDTO(saved));
     }
@@ -116,10 +117,12 @@ public class TransactionApiController {
         String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
         if (username == null) return ResponseEntity.status(401).build();
 
-        // Update the user's existing transaction instead of merging a fresh
-        // instance: a fresh instance carries an empty splits list, which
-        // orphanRemoval would interpret as "delete all splits" even when the
-        // request omitted the splits field entirely.
+        // Read-only existence/ownership check plus validation of the incoming DTO.
+        // Nothing below reads or writes any scalar/association field for the purpose
+        // of persisting it - the actual mutation happens inside
+        // TransactionService.updateTransaction, on a fresh entity loaded within that
+        // single write transaction, so balance reversal always sees the true old
+        // amount/type/accounts (see the Javadoc on that method for why this matters).
         Transaction existing = transactionService.getTransactionsByUser(
                         userService.findByUsername(username)).stream()
                 .filter(t -> t.getId().equals(id))
@@ -127,12 +130,19 @@ public class TransactionApiController {
                 .orElse(null);
         if (existing == null) return ResponseEntity.notFound().build();
 
-        String splitError = applySplits(existing, dto);
+        String splitError = validateSplits(dto);
         if (splitError != null) {
             return ResponseEntity.badRequest().body(Map.of("error", splitError));
         }
-        applyDtoFields(existing, dto);
-        Transaction saved = transactionService.saveTransaction(existing);
+        String sumError = validateSplitSumInvariant(existing, dto);
+        if (sumError != null) {
+            return ResponseEntity.badRequest().body(Map.of("error", sumError));
+        }
+
+        Transaction saved = transactionService.updateTransaction(id, fresh -> {
+            applySplitsMutation(fresh, dto);
+            applyDtoFields(fresh, dto);
+        });
         return ResponseEntity.ok(DtoMapper.toTransactionDTO(saved));
     }
 
@@ -187,17 +197,16 @@ public class TransactionApiController {
     }
 
     /**
-     * Validates the DTO's splits and, when the splits field is present,
-     * replaces the transaction's split set. An absent (null) splits field
-     * leaves the transaction's existing splits untouched; an empty list is a
-     * deliberate remove-all.
+     * Validates the DTO's splits structurally (amount present, category known, sum
+     * matches the DTO's amount) without touching any managed entity. Returns null
+     * when the splits field is absent (nothing to validate for the "leave existing
+     * splits untouched" case).
      *
      * @return error message, or null when valid
      */
-    private String applySplits(Transaction transaction, TransactionDTO dto) {
+    private String validateSplits(TransactionDTO dto) {
         if (dto.getSplits() == null) return null;
 
-        List<TransactionSplit> newSplits = new ArrayList<>();
         BigDecimal sum = BigDecimal.ZERO;
         for (TransactionSplitDTO s : dto.getSplits()) {
             if (s.getAmount() == null) {
@@ -209,18 +218,57 @@ public class TransactionApiController {
                 return "Unknown split categoryId: " + s.getCategoryId();
             }
             sum = sum.add(s.getAmount());
+        }
+        if (!dto.getSplits().isEmpty() && sum.compareTo(dto.getAmount()) != 0) {
+            return "Split amounts must sum to the transaction amount";
+        }
+        return null;
+    }
+
+    /**
+     * When the splits field is present, replaces the transaction's split set. An
+     * absent (null) splits field leaves the transaction's existing splits untouched;
+     * an empty list is a deliberate remove-all. Assumes {@link #validateSplits}
+     * already returned null for this DTO.
+     */
+    private void applySplitsMutation(Transaction transaction, TransactionDTO dto) {
+        if (dto.getSplits() == null) return;
+
+        List<TransactionSplit> newSplits = new ArrayList<>();
+        for (TransactionSplitDTO s : dto.getSplits()) {
+            Category category = categoryService.findById(s.getCategoryId()).orElse(null);
             newSplits.add(TransactionSplit.builder()
                     .amount(s.getAmount())
                     .memo(s.getMemo())
                     .category(category)
                     .build());
         }
-        if (!newSplits.isEmpty() && sum.compareTo(dto.getAmount()) != 0) {
-            return "Split amounts must sum to the transaction amount";
-        }
 
         transaction.getSplits().clear();
         newSplits.forEach(transaction::addSplit);
+    }
+
+    /**
+     * Closes the split-sum invariant hole for updates that change the amount without
+     * resending the splits field: if the DTO omits splits but the existing
+     * transaction has splits recorded, the (possibly new) DTO amount must still match
+     * the existing splits' sum, otherwise the persisted splits would silently no
+     * longer add up to the transaction amount.
+     *
+     * @return error message, or null when there is nothing to enforce or it matches
+     */
+    private String validateSplitSumInvariant(Transaction existing, TransactionDTO dto) {
+        if (dto.getSplits() != null) return null;
+        if (existing.getSplits() == null || existing.getSplits().isEmpty()) return null;
+        if (dto.getAmount() == null) return null;
+
+        BigDecimal existingSum = existing.getSplits().stream()
+                .map(TransactionSplit::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (existingSum.compareTo(dto.getAmount()) != 0) {
+            return "Amount must match existing split total (" + existingSum
+                    + ") when splits are not provided";
+        }
         return null;
     }
 }

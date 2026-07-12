@@ -36,22 +36,12 @@ public class TransactionService {
                 .orElseThrow(() -> new SecurityException("User not authenticated"));
         User currentUser = userService.findByUsername(username);
 
-        if (transaction.getAmount().compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Amount cannot be negative");
-        }
-
-        // Security check: verify all accounts in the transaction belong to current user
-        if (transaction.getFromAccount() != null &&
-            !transaction.getFromAccount().getUser().getId().equals(currentUser.getId())) {
-            throw new SecurityException("Cannot use account belonging to another user");
-        }
-        if (transaction.getToAccount() != null &&
-            !transaction.getToAccount().getUser().getId().equals(currentUser.getId())) {
-            throw new SecurityException("Cannot use account belonging to another user");
-        }
+        validateAmountNotNegative(transaction);
+        checkAccountOwnership(transaction, currentUser);
 
         // If updating, verify user owns the existing transaction
-        if (transaction.getId() != null) {
+        boolean created = transaction.getId() == null;
+        if (!created) {
             Transaction existing = transactionRepository.findById(transaction.getId())
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             User existingUser = getTransactionUser(existing);
@@ -61,6 +51,71 @@ public class TransactionService {
             reverseBalanceEffect(existing);
         }
 
+        return finishSave(transaction, currentUser, created);
+    }
+
+    /**
+     * Updates a transaction by id, applying {@code mutator} to a freshly loaded, writable
+     * managed entity inside this single write transaction.
+     *
+     * <p>Unlike a naive "load (read-only) -> mutate in caller -> save" flow, this method
+     * loads the entity itself and reverses its balance effect using the OLD amount/type/
+     * accounts BEFORE the mutator runs. That ordering matters: if a caller instead loaded
+     * the entity via a {@code readOnly} transaction, mutated it there, and then called
+     * {@code saveTransaction}, the two calls could share the same OSIV first-level-cache
+     * instance, so the balance-reversal step would see the caller's already-mutated (new)
+     * values instead of the true old ones - corrupting account balances. Loading and
+     * reversing here, before any mutation, avoids that entirely.
+     */
+    @Transactional
+    public Transaction updateTransaction(Long id, java.util.function.Consumer<Transaction> mutator) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+
+        Transaction existing = transactionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+        User existingUser = getTransactionUser(existing);
+        if (!existingUser.getId().equals(currentUser.getId())) {
+            throw new SecurityException("Cannot modify transaction belonging to another user");
+        }
+
+        // Reverse using the OLD amount/type/accounts before the mutator changes anything.
+        reverseBalanceEffect(existing);
+
+        mutator.accept(existing);
+
+        // Re-validate against the NEW state the mutator produced.
+        validateAmountNotNegative(existing);
+        checkAccountOwnership(existing, currentUser);
+
+        return finishSave(existing, currentUser, false);
+    }
+
+    private void validateAmountNotNegative(Transaction transaction) {
+        if (transaction.getAmount().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Amount cannot be negative");
+        }
+    }
+
+    /** Verifies all accounts referenced by the transaction belong to currentUser. */
+    private void checkAccountOwnership(Transaction transaction, User currentUser) {
+        if (transaction.getFromAccount() != null &&
+            !transaction.getFromAccount().getUser().getId().equals(currentUser.getId())) {
+            throw new SecurityException("Cannot use account belonging to another user");
+        }
+        if (transaction.getToAccount() != null &&
+            !transaction.getToAccount().getUser().getId().equals(currentUser.getId())) {
+            throw new SecurityException("Cannot use account belonging to another user");
+        }
+    }
+
+    /**
+     * Shared tail of create/update: reload accounts as managed entities, apply the
+     * (new) balance effect, persist, and audit-log. Assumes any balance reversal for
+     * an update has already happened.
+     */
+    private Transaction finishSave(Transaction transaction, User currentUser, boolean created) {
         // Reload accounts from repository to ensure we work with managed entities
         // This prevents double balance updates when the same account is referenced by different instances
         if (transaction.getFromAccount() != null && transaction.getFromAccount().getId() != null) {
@@ -71,9 +126,8 @@ public class TransactionService {
         }
 
         applyBalanceEffect(transaction);
-        
+
         transaction.setStatus(Transaction.TransactionStatus.COMPLETED);
-        boolean created = transaction.getId() == null;
         Transaction saved = transactionRepository.save(transaction);
         auditService.log(currentUser, created ? "CREATE" : "UPDATE", "Transaction", saved.getId(),
                 auditDetails(saved));

@@ -65,7 +65,9 @@ class TransactionSearchApiTest {
                         .with(user("demo")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(5));
+                .andExpect(jsonPath("$.length()").value(5))
+                // default sort: transactionDate desc on the unpaged path too
+                .andExpect(jsonPath("$[0].payee").value("Rewe 5"));
     }
 
     @Test

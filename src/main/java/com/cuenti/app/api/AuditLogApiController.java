@@ -26,7 +26,9 @@ public class AuditLogApiController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String filter) {
-        Page<AuditLog> result = auditService.latest(filter, page, Math.min(size, 200));
+        int effectivePage = Math.max(page, 0);
+        int effectiveSize = Math.min(Math.max(size, 1), 200);
+        Page<AuditLog> result = auditService.latest(filter, effectivePage, effectiveSize);
         return ResponseEntity.ok(Map.of(
                 "content", result.getContent().stream().map(DtoMapper::toAuditLogDTO).collect(Collectors.toList()),
                 "page", result.getNumber(),

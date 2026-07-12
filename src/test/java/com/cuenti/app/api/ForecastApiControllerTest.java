@@ -39,4 +39,11 @@ class ForecastApiControllerTest {
                 .andExpect(jsonPath("$.year").value(2030))
                 .andExpect(jsonPath("$.months[0].month").value("2030-01"));
     }
+
+    @Test
+    void extremeYearIs400() throws Exception {
+        mockMvc.perform(get("/api/forecasts").param("year", "999999"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").isNotEmpty());
+    }
 }

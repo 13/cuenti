@@ -179,6 +179,74 @@ class TransactionSplitApiTest {
     }
 
     @Test
+    void putChangingAmountReversesOldBalanceNotNewOne() throws Exception {
+        // startBalance 1000, POST expense 100 -> balance 900
+        String body = mockMvc.perform(post("/api/transactions")
+                        .with(user("demo"))
+                        .contentType("application/json")
+                        .content("{\"type\":\"EXPENSE\",\"fromAccountId\":" + accountId
+                                + ",\"amount\":100,\"transactionDate\":\"2026-05-01T12:00:00\",\"payee\":\"Shop\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        long id = objectMapper.readTree(body).get("id").asLong();
+
+        mockMvc.perform(get("/api/accounts/" + accountId).with(user("demo")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(900.00));
+
+        // PUT changing amount to 50: correct reversal should leave balance at 950
+        // (1000 - 50), not 800 (1000 - 100 - 50, the bug where reversal uses the
+        // already-mutated new amount instead of the old one).
+        String updated = "{\"type\":\"EXPENSE\",\"fromAccountId\":" + accountId
+                + ",\"amount\":50,\"transactionDate\":\"2026-05-01T12:00:00\",\"payee\":\"Shop\"}";
+        mockMvc.perform(put("/api/transactions/" + id)
+                        .with(user("demo"))
+                        .contentType("application/json")
+                        .content(updated))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.amount").value(50.00));
+
+        mockMvc.perform(get("/api/accounts/" + accountId).with(user("demo")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(950.00));
+
+        // The new amount must actually be persisted, not just echoed in the PUT response.
+        mockMvc.perform(get("/api/transactions").param("accountId", String.valueOf(accountId))
+                        .with(user("demo")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].amount").value(50.00));
+    }
+
+    @Test
+    void putChangingAmountWithoutSplitsMismatchingExistingSplitSumIs400() throws Exception {
+        String body = mockMvc.perform(post("/api/transactions")
+                        .with(user("demo"))
+                        .contentType("application/json")
+                        .content(splitTxJson("50.00", "30.00", "20.00")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        long id = objectMapper.readTree(body).get("id").asLong();
+
+        // amount changed 50 -> 80 without resending splits: splits still sum to 50 on
+        // an 80 tx, which must be rejected rather than silently persisted.
+        String updated = "{\"type\":\"EXPENSE\",\"fromAccountId\":" + accountId
+                + ",\"amount\":80.00,\"transactionDate\":\"2026-05-01T12:00:00\",\"payee\":\"Supermarket\"}";
+        mockMvc.perform(put("/api/transactions/" + id)
+                        .with(user("demo"))
+                        .contentType("application/json")
+                        .content(updated))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").isNotEmpty());
+
+        // Original amount/splits must be untouched after the rejected update.
+        mockMvc.perform(get("/api/transactions").param("accountId", String.valueOf(accountId))
+                        .with(user("demo")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].amount").value(50.00))
+                .andExpect(jsonPath("$[0].splits.length()").value(2));
+    }
+
+    @Test
     void noSplitsFieldStillWorks() throws Exception {
         mockMvc.perform(post("/api/transactions")
                         .with(user("demo"))

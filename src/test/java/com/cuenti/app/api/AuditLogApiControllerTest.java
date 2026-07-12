@@ -37,4 +37,20 @@ class AuditLogApiControllerTest {
         mockMvc.perform(get("/api/audit-log"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUser(username = "demo", roles = {"ADMIN"})
+    void zeroSizeIsClampedInsteadOf500() throws Exception {
+        mockMvc.perform(get("/api/audit-log").param("page", "0").param("size", "0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "demo", roles = {"ADMIN"})
+    void negativePageIsClampedInsteadOf500() throws Exception {
+        mockMvc.perform(get("/api/audit-log").param("page", "-5").param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(0));
+    }
 }

@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -64,13 +65,23 @@ public class TransactionApiController {
         String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
         if (username == null) return ResponseEntity.status(401).build();
 
-        Transaction transaction = mapFromDTO(dto);
-        transaction.setId(id);
-        String splitError = applySplits(transaction, dto);
+        // Update the user's existing transaction instead of merging a fresh
+        // instance: a fresh instance carries an empty splits list, which
+        // orphanRemoval would interpret as "delete all splits" even when the
+        // request omitted the splits field entirely.
+        Transaction existing = transactionService.getTransactionsByUser(
+                        userService.findByUsername(username)).stream()
+                .filter(t -> t.getId().equals(id))
+                .findFirst()
+                .orElse(null);
+        if (existing == null) return ResponseEntity.notFound().build();
+
+        String splitError = applySplits(existing, dto);
         if (splitError != null) {
             return ResponseEntity.badRequest().body(Map.of("error", splitError));
         }
-        Transaction saved = transactionService.saveTransaction(transaction);
+        applyDtoFields(existing, dto);
+        Transaction saved = transactionService.saveTransaction(existing);
         return ResponseEntity.ok(DtoMapper.toTransactionDTO(saved));
     }
 
@@ -94,61 +105,71 @@ public class TransactionApiController {
     }
 
     private Transaction mapFromDTO(TransactionDTO dto) {
-        Transaction.TransactionBuilder builder = Transaction.builder()
-                .type(dto.getType())
-                .amount(dto.getAmount())
-                .transactionDate(dto.getTransactionDate())
-                .payee(dto.getPayee())
-                .memo(dto.getMemo())
-                .tags(dto.getTags())
-                .number(dto.getNumber())
-                .paymentMethod(dto.getPaymentMethod() != null ? dto.getPaymentMethod() : Transaction.PaymentMethod.NONE)
-                .units(dto.getUnits())
-                .sortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
-
-        if (dto.getFromAccountId() != null) {
-            builder.fromAccount(accountService.findById(dto.getFromAccountId()));
-        }
-        if (dto.getToAccountId() != null) {
-            builder.toAccount(accountService.findById(dto.getToAccountId()));
-        }
-        if (dto.getCategoryId() != null) {
-            categoryService.getAllCategories().stream()
-                    .filter(c -> c.getId().equals(dto.getCategoryId()))
-                    .findFirst()
-                    .ifPresent(builder::category);
-        }
-        if (dto.getAssetId() != null) {
-            assetService.getAllAssets().stream()
-                    .filter(a -> a.getId().equals(dto.getAssetId()))
-                    .findFirst()
-                    .ifPresent(builder::asset);
-        }
-
-        return builder.build();
+        Transaction transaction = Transaction.builder().build();
+        applyDtoFields(transaction, dto);
+        return transaction;
     }
 
-    /** @return error message, or null when valid */
-    private String applySplits(Transaction transaction, TransactionDTO dto) {
-        if (dto.getSplits() == null || dto.getSplits().isEmpty()) return null;
+    /** Copies the DTO's scalar and association fields onto the given transaction. */
+    private void applyDtoFields(Transaction target, TransactionDTO dto) {
+        target.setType(dto.getType());
+        target.setAmount(dto.getAmount());
+        target.setTransactionDate(dto.getTransactionDate());
+        target.setPayee(dto.getPayee());
+        target.setMemo(dto.getMemo());
+        target.setTags(dto.getTags());
+        target.setNumber(dto.getNumber());
+        target.setPaymentMethod(dto.getPaymentMethod() != null ? dto.getPaymentMethod() : Transaction.PaymentMethod.NONE);
+        target.setUnits(dto.getUnits());
+        target.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
+        target.setFromAccount(dto.getFromAccountId() != null
+                ? accountService.findById(dto.getFromAccountId()) : null);
+        target.setToAccount(dto.getToAccountId() != null
+                ? accountService.findById(dto.getToAccountId()) : null);
+        target.setCategory(dto.getCategoryId() != null
+                ? categoryService.findById(dto.getCategoryId()).orElse(null) : null);
+        target.setAsset(dto.getAssetId() != null
+                ? assetService.getAllAssets().stream()
+                        .filter(a -> a.getId().equals(dto.getAssetId()))
+                        .findFirst().orElse(null)
+                : null);
+    }
 
-        BigDecimal sum = dto.getSplits().stream()
-                .map(TransactionSplitDTO::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        if (sum.compareTo(dto.getAmount()) != 0) {
+    /**
+     * Validates the DTO's splits and, when the splits field is present,
+     * replaces the transaction's split set. An absent (null) splits field
+     * leaves the transaction's existing splits untouched; an empty list is a
+     * deliberate remove-all.
+     *
+     * @return error message, or null when valid
+     */
+    private String applySplits(Transaction transaction, TransactionDTO dto) {
+        if (dto.getSplits() == null) return null;
+
+        List<TransactionSplit> newSplits = new ArrayList<>();
+        BigDecimal sum = BigDecimal.ZERO;
+        for (TransactionSplitDTO s : dto.getSplits()) {
+            if (s.getAmount() == null) {
+                return "Each split must have an amount";
+            }
+            Category category = s.getCategoryId() != null
+                    ? categoryService.findById(s.getCategoryId()).orElse(null) : null;
+            if (category == null) {
+                return "Unknown split categoryId: " + s.getCategoryId();
+            }
+            sum = sum.add(s.getAmount());
+            newSplits.add(TransactionSplit.builder()
+                    .amount(s.getAmount())
+                    .memo(s.getMemo())
+                    .category(category)
+                    .build());
+        }
+        if (!newSplits.isEmpty() && sum.compareTo(dto.getAmount()) != 0) {
             return "Split amounts must sum to the transaction amount";
         }
 
-        for (TransactionSplitDTO s : dto.getSplits()) {
-            TransactionSplit split = TransactionSplit.builder()
-                    .amount(s.getAmount())
-                    .memo(s.getMemo())
-                    .build();
-            if (s.getCategoryId() != null) {
-                categoryService.findById(s.getCategoryId()).ifPresent(split::setCategory);
-            }
-            transaction.addSplit(split);
-        }
+        transaction.getSplits().clear();
+        newSplits.forEach(transaction::addSplit);
         return null;
     }
 }

@@ -115,6 +115,67 @@ class TransactionSplitApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.splits.length()").value(1))
                 .andExpect(jsonPath("$.splits[0].amount").value(50.00));
+
+        // Replacement must be persisted, not just echoed in the PUT response
+        mockMvc.perform(get("/api/transactions").param("accountId", String.valueOf(accountId))
+                        .with(user("demo")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].splits.length()").value(1))
+                .andExpect(jsonPath("$[0].splits[0].amount").value(50.00));
+    }
+
+    @Test
+    void putWithoutSplitsFieldPreservesExistingSplits() throws Exception {
+        String body = mockMvc.perform(post("/api/transactions")
+                        .with(user("demo"))
+                        .contentType("application/json")
+                        .content(splitTxJson("50.00", "30.00", "20.00")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        long id = objectMapper.readTree(body).get("id").asLong();
+
+        // splits key entirely absent: only rename the payee
+        String updated = "{\"type\":\"EXPENSE\",\"fromAccountId\":" + accountId
+                + ",\"amount\":50.00,\"transactionDate\":\"2026-05-01T12:00:00\",\"payee\":\"Renamed\"}";
+        mockMvc.perform(put("/api/transactions/" + id)
+                        .with(user("demo"))
+                        .contentType("application/json")
+                        .content(updated))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.payee").value("Renamed"))
+                .andExpect(jsonPath("$.splits.length()").value(2));
+
+        // Existing splits must survive in the store
+        mockMvc.perform(get("/api/transactions").param("accountId", String.valueOf(accountId))
+                        .with(user("demo")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].splits.length()").value(2));
+    }
+
+    @Test
+    void splitWithUnknownCategoryIs400() throws Exception {
+        String body = "{\"type\":\"EXPENSE\",\"fromAccountId\":" + accountId
+                + ",\"amount\":50.00,\"transactionDate\":\"2026-05-01T12:00:00\",\"payee\":\"Supermarket\""
+                + ",\"splits\":[{\"categoryId\":999999999,\"amount\":50.00}]}";
+        mockMvc.perform(post("/api/transactions")
+                        .with(user("demo"))
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").isNotEmpty());
+    }
+
+    @Test
+    void splitMissingAmountIs400() throws Exception {
+        String body = "{\"type\":\"EXPENSE\",\"fromAccountId\":" + accountId
+                + ",\"amount\":50.00,\"transactionDate\":\"2026-05-01T12:00:00\",\"payee\":\"Supermarket\""
+                + ",\"splits\":[{\"categoryId\":" + groceriesId + "}]}";
+        mockMvc.perform(post("/api/transactions")
+                        .with(user("demo"))
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").isNotEmpty());
     }
 
     @Test

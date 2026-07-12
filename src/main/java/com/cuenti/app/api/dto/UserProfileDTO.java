@@ -17,5 +17,6 @@ public class UserProfileDTO {
     private boolean darkMode;
     private String locale;
     private boolean apiEnabled;
+    private Long defaultVehicleCategoryId;
     private Set<String> roles;
 }

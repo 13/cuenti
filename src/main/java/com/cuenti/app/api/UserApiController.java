@@ -76,6 +76,11 @@ public class UserApiController {
         if (preferences.containsKey("apiEnabled")) {
             userService.updateApiEnabled(user, (Boolean) preferences.get("apiEnabled"));
         }
+        if (preferences.containsKey("defaultVehicleCategoryId")) {
+            Object raw = preferences.get("defaultVehicleCategoryId");
+            Long catId = raw == null ? null : ((Number) raw).longValue();
+            userService.updateDefaultVehicleCategory(user, catId);
+        }
 
         // Refresh user
         user = userService.findByUsername(username);

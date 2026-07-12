@@ -151,6 +151,7 @@ public final class DtoMapper {
                 .darkMode(u.isDarkMode())
                 .locale(u.getLocale())
                 .apiEnabled(u.isApiEnabled())
+                .defaultVehicleCategoryId(u.getDefaultVehicleCategoryId())
                 .roles(u.getRoles())
                 .build();
     }

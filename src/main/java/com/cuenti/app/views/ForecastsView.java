@@ -1,5 +1,6 @@
 package com.cuenti.app.views;
 
+import com.cuenti.app.api.dto.ForecastDTO;
 import com.cuenti.app.model.*;
 import com.cuenti.app.security.SecurityUtils;
 import com.cuenti.app.service.*;
@@ -21,7 +22,6 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Route(value = "forecasts", layout = MainLayout.class)
 @PermitAll
@@ -33,21 +33,17 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
     }
 
 
-    private final ScheduledTransactionService scheduledService;
-    private final AccountService accountService;
-    private final ExchangeRateService exchangeRateService;
+    private final ForecastService forecastService;
     private final User currentUser;
 
     private final Div contentContainer = new Div();
     private Select<String> yearSelect;
     private int selectedYear;
 
-    public ForecastsView(ScheduledTransactionService scheduledService, AccountService accountService,
-                         UserService userService, ExchangeRateService exchangeRateService,
+    public ForecastsView(ForecastService forecastService,
+                         UserService userService,
                          SecurityUtils securityUtils) {
-        this.scheduledService = scheduledService;
-        this.accountService = accountService;
-        this.exchangeRateService = exchangeRateService;
+        this.forecastService = forecastService;
 
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
@@ -109,80 +105,17 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
     private void loadData() {
         contentContainer.removeAll();
 
-        List<ScheduledTransaction> allScheduled = scheduledService.getByUser(currentUser);
-        List<Account> reportableAccounts = accountService.getAccountsByUser(currentUser).stream()
-                .filter(a -> !a.isExcludeFromReports())
-                .collect(Collectors.toList());
-        
-        Set<Long> reportableAccountIds = reportableAccounts.stream()
-                .map(Account::getId)
-                .collect(Collectors.toSet());
-
-        // Filter scheduled transactions that are enabled and will occur in the selected year
-        LocalDate yearStart = LocalDate.of(selectedYear, 1, 1);
-        LocalDate yearEnd = LocalDate.of(selectedYear, 12, 31);
+        ForecastDTO forecast = forecastService.getForecast(currentUser, selectedYear);
+        BigDecimal totalIncome = forecast.getTotalIncome();
+        BigDecimal totalExpense = forecast.getTotalExpense();
+        BigDecimal netForecast = forecast.getNetForecast();
 
         Map<String, BigDecimal> monthlyIncomes = new TreeMap<>();
         Map<String, BigDecimal> monthlyExpenses = new TreeMap<>();
-        
-        BigDecimal totalIncome = BigDecimal.ZERO;
-        BigDecimal totalExpense = BigDecimal.ZERO;
-
-        for (ScheduledTransaction st : allScheduled) {
-            if (!st.isEnabled()) continue;
-            
-            // Check if the transaction's account is reportable
-            Account fromAccount = st.getFromAccount();
-            Account toAccount = st.getToAccount();
-
-            if (st.getType() == Transaction.TransactionType.INCOME) {
-                if (toAccount == null || !reportableAccountIds.contains(toAccount.getId())) continue;
-            } else if (st.getType() == Transaction.TransactionType.EXPENSE) {
-                if (fromAccount == null || !reportableAccountIds.contains(fromAccount.getId())) continue;
-            } else {
-                continue; // Ignore transfers for now as they aren't handled in forecasts
-            }
-
-            // Calculate all occurrences in the selected year
-            LocalDateTime occurrence = st.getNextOccurrence();
-            LocalDate occurrenceDate = occurrence.toLocalDate();
-
-            while (occurrenceDate.getYear() < selectedYear) {
-                occurrence = ScheduledTransactionService.advanceOccurrence(occurrence, st);
-                occurrenceDate = occurrence.toLocalDate();
-            }
-
-            while (occurrenceDate.getYear() == selectedYear) {
-                String monthKey = String.format("%d-%02d", occurrenceDate.getYear(), occurrenceDate.getMonthValue());
-
-                BigDecimal convertedAmount = st.getAmount();
-
-                if (st.getType() == Transaction.TransactionType.INCOME) {
-                    String currency = toAccount != null ? toAccount.getCurrency() : currentUser.getDefaultCurrency();
-                    convertedAmount = exchangeRateService.convert(
-                        st.getAmount(),
-                        currency,
-                        currentUser.getDefaultCurrency()
-                    );
-                    monthlyIncomes.merge(monthKey, convertedAmount, BigDecimal::add);
-                    totalIncome = totalIncome.add(convertedAmount);
-                } else if (st.getType() == Transaction.TransactionType.EXPENSE) {
-                    String currency = fromAccount != null ? fromAccount.getCurrency() : currentUser.getDefaultCurrency();
-                    convertedAmount = exchangeRateService.convert(
-                        st.getAmount(),
-                        currency,
-                        currentUser.getDefaultCurrency()
-                    );
-                    monthlyExpenses.merge(monthKey, convertedAmount, BigDecimal::add);
-                    totalExpense = totalExpense.add(convertedAmount);
-                }
-
-                occurrence = ScheduledTransactionService.advanceOccurrence(occurrence, st);
-                occurrenceDate = occurrence.toLocalDate();
-            }
+        for (ForecastDTO.MonthForecast m : forecast.getMonths()) {
+            if (m.getIncome().signum() != 0) monthlyIncomes.put(m.getMonth(), m.getIncome());
+            if (m.getExpense().signum() != 0) monthlyExpenses.put(m.getMonth(), m.getExpense());
         }
-
-        BigDecimal netForecast = totalIncome.subtract(totalExpense);
 
         // ── Summary cards ────────────────────────────────────────────────
         FlexLayout summaryLayout = new FlexLayout();

@@ -101,6 +101,8 @@ public class DataInitializer implements CommandLineRunner {
         demoUser.setLocale("de-DE");
         demoUser.setDarkMode(true);
         demoUser.setDefaultCurrency("EUR");
+        // Demo account exercises the REST API (mobile app) too.
+        demoUser.setApiEnabled(true);
         demoUser = userRepository.save(demoUser);
 
         User demo1User = new User();

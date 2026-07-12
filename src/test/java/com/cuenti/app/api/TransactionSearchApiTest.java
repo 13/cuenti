@@ -85,6 +85,41 @@ class TransactionSearchApiTest {
     }
 
     @Test
+    void paginationIsStableForEqualTimestamps() throws Exception {
+        // Regression: without an id tiebreaker, rows sharing
+        // (transactionDate, sortOrder) shuffle between pages and paginated
+        // clients see duplicates/gaps (crashed the mobile list).
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/transactions")
+                            .with(user("demo"))
+                            .contentType("application/json")
+                            .content("{\"type\":\"EXPENSE\",\"fromAccountId\":" + accountId
+                                    + ",\"amount\":7,\"transactionDate\":\"2026-06-01T09:00:00\""
+                                    + ",\"payee\":\"Tie " + i + "\"}"))
+                    .andExpect(status().isOk());
+        }
+
+        java.util.Set<Integer> seen = new java.util.HashSet<>();
+        int total = 0;
+        for (int page = 0; page < 4; page++) {
+            String body = mockMvc.perform(get("/api/transactions")
+                            .param("accountId", String.valueOf(accountId))
+                            .param("page", String.valueOf(page)).param("size", "3")
+                            .with(user("demo")))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+            var node = objectMapper.readTree(body).get("content");
+            for (var t : node) {
+                org.assertj.core.api.Assertions.assertThat(seen.add(t.get("id").asInt()))
+                        .as("duplicate id %s on page %s", t.get("id").asInt(), page)
+                        .isTrue();
+                total++;
+            }
+        }
+        org.assertj.core.api.Assertions.assertThat(total).isEqualTo(10); // 5 seeded + 5 ties
+    }
+
+    @Test
     void dateRangeFilterWorks() throws Exception {
         mockMvc.perform(get("/api/transactions")
                         .param("accountId", String.valueOf(accountId))

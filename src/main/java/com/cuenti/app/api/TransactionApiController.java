@@ -64,7 +64,12 @@ public class TransactionApiController {
             sortField = parts[0];
             if (parts.length > 1 && "asc".equalsIgnoreCase(parts[1])) sortDirection = Sort.Direction.ASC;
         }
-        Sort sortSpec = Sort.by(sortDirection, sortField).and(Sort.by(Sort.Direction.DESC, "sortOrder"));
+        // The id tiebreaker makes the order total: without it, rows sharing
+        // (transactionDate, sortOrder) shuffle between pages and paginated
+        // clients see duplicates/gaps.
+        Sort sortSpec = Sort.by(sortDirection, sortField)
+                .and(Sort.by(Sort.Direction.DESC, "sortOrder"))
+                .and(Sort.by(Sort.Direction.DESC, "id"));
 
         boolean paged = page != null || size != null;
         int effectivePage = page != null ? Math.max(page, 0) : 0;

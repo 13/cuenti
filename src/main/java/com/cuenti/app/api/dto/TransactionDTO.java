@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -31,4 +32,5 @@ public class TransactionDTO {
     private String assetName;
     private BigDecimal units;
     private Integer sortOrder;
+    private List<TransactionSplitDTO> splits;
 }

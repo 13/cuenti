@@ -2,6 +2,8 @@ package com.cuenti.app.api.dto;
 
 import com.cuenti.app.model.*;
 
+import java.util.stream.Collectors;
+
 /**
  * Utility class for converting between entities and DTOs.
  */
@@ -48,6 +50,15 @@ public final class DtoMapper {
                 .assetName(t.getAsset() != null ? t.getAsset().getName() : null)
                 .units(t.getUnits())
                 .sortOrder(t.getSortOrder())
+                .splits(t.getSplits().stream()
+                        .map(s -> TransactionSplitDTO.builder()
+                                .id(s.getId())
+                                .categoryId(s.getCategory() != null ? s.getCategory().getId() : null)
+                                .categoryName(s.getCategory() != null ? s.getCategory().getFullName() : null)
+                                .amount(s.getAmount())
+                                .memo(s.getMemo())
+                                .build())
+                        .collect(Collectors.toList()))
                 .build();
     }
 

@@ -9,6 +9,8 @@ import com.cuenti.app.service.CategoryService;
 import com.cuenti.app.service.ExchangeRateService;
 import com.cuenti.app.service.TransactionService;
 import com.cuenti.app.service.UserService;
+import com.cuenti.app.service.VehicleReportService;
+import com.cuenti.app.service.VehicleReportService.FuelEntry;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -41,8 +43,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -76,10 +76,6 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
     private final Grid<FuelEntry> grid = new Grid<>();
 
     private List<FuelEntry> fuelEntries = new ArrayList<>();
-
-    private static final Pattern ODOMETER_PATTERN = Pattern.compile("d[=:]\\s*(\\d+(?:[.,]\\d+)?)");
-    private static final Pattern LITERS_PATTERN = Pattern.compile("[vl][~=:]\\s*(\\d+(?:[.,]\\d+)?)");
-    private static final Pattern FULL_TANK_PATTERN = Pattern.compile("\\b(full)\\b", Pattern.CASE_INSENSITIVE);
 
     public VehiclesView(TransactionService transactionService, CategoryService categoryService,
                        UserService userService, ExchangeRateService exchangeRateService,
@@ -322,64 +318,64 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
 
         // Date
         grid.addComponentColumn(e -> {
-            Span s = new Span(e.date.format(dateFormatter));
+            Span s = new Span(e.getDate().format(dateFormatter));
             s.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
             return s;
         }).setHeader(getTranslation("vehicles.date")).setAutoWidth(true).setSortable(true)
-                .setComparator(java.util.Comparator.comparing(e -> e.date));
+                .setComparator(java.util.Comparator.comparing(FuelEntry::getDate));
 
         // Odometer
         com.vaadin.flow.component.grid.Grid.Column<FuelEntry> odoCol =
         grid.addComponentColumn(e -> {
-            Span s = new Span(e.odometer != null ? e.odometer.setScale(0, RoundingMode.HALF_UP) + " km" : "—");
+            Span s = new Span(e.getOdometer() != null ? e.getOdometer().setScale(0, RoundingMode.HALF_UP) + " km" : "—");
             s.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
             return s;
         }).setHeader(getTranslation("vehicles.odometer")).setAutoWidth(true).setSortable(true)
-                .setComparator(java.util.Comparator.comparing(e -> e.odometer != null ? e.odometer : BigDecimal.ZERO));
+                .setComparator(java.util.Comparator.comparing(e -> e.getOdometer() != null ? e.getOdometer() : BigDecimal.ZERO));
 
         // Distance
         grid.addComponentColumn(e -> {
-                    if (e.distance == null) { Span s = new Span("—"); s.getStyle().set("color", "var(--vaadin-text-color-disabled)"); return s; }
-                    Span s = new Span(e.distance.setScale(0, RoundingMode.HALF_UP) + " km");
+                    if (e.getDistance() == null) { Span s = new Span("—"); s.getStyle().set("color", "var(--vaadin-text-color-disabled)"); return s; }
+                    Span s = new Span(e.getDistance().setScale(0, RoundingMode.HALF_UP) + " km");
                     s.getStyle().set("font-size", "var(--aura-font-size-s)");
                     return s;
                 }).setHeader(getTranslation("vehicles.distance")).setAutoWidth(true).setSortable(true)
-                .setComparator(java.util.Comparator.comparing(e -> e.distance != null ? e.distance : BigDecimal.ZERO));
+                .setComparator(java.util.Comparator.comparing(e -> e.getDistance() != null ? e.getDistance() : BigDecimal.ZERO));
 
         // Liters
         grid.addComponentColumn(e -> {
-            Span s = new Span(e.liters != null ? e.liters.setScale(2, RoundingMode.HALF_UP) + " L" : "—");
+            Span s = new Span(e.getLiters() != null ? e.getLiters().setScale(2, RoundingMode.HALF_UP) + " L" : "—");
             s.getStyle().set("font-size", "var(--aura-font-size-s)");
             return s;
         }).setHeader(getTranslation("vehicles.liters")).setAutoWidth(true).setSortable(true)
-                .setComparator(java.util.Comparator.comparing(e -> e.liters != null ? e.liters : BigDecimal.ZERO));
+                .setComparator(java.util.Comparator.comparing(e -> e.getLiters() != null ? e.getLiters() : BigDecimal.ZERO));
 
         // Amount
         grid.addComponentColumn(e -> {
-            BigDecimal converted = exchangeRateService.convert(e.amount, e.currency, currentUser.getDefaultCurrency());
+            BigDecimal converted = exchangeRateService.convert(e.getAmount(), e.getCurrency(), currentUser.getDefaultCurrency());
             Span s = new Span(formatCurrency(converted));
             s.getStyle().set("font-weight", "700").set("font-size", "var(--aura-font-size-s)").set("color", "var(--aura-red)");
             return s;
         }).setHeader(getTranslation("vehicles.amount")).setAutoWidth(true).setSortable(true)
-                .setComparator(java.util.Comparator.comparing(e -> e.amount));
+                .setComparator(java.util.Comparator.comparing(FuelEntry::getAmount));
 
         // Price / L
         com.vaadin.flow.component.grid.Grid.Column<FuelEntry> pplCol =
         grid.addComponentColumn(e -> {
-            Span s = new Span(e.pricePerLiter != null ? formatCurrency(e.pricePerLiter) + "/L" : "—");
+            Span s = new Span(e.getPricePerLiter() != null ? formatCurrency(e.getPricePerLiter()) + "/L" : "—");
             s.getStyle().set("font-size", "var(--aura-font-size-s)").set("color", "var(--vaadin-text-color-secondary)");
             return s;
         }).setHeader(getTranslation("vehicles.price_per_liter")).setAutoWidth(true).setSortable(true)
-                .setComparator(java.util.Comparator.comparing(e -> e.pricePerLiter != null ? e.pricePerLiter : BigDecimal.ZERO));
+                .setComparator(java.util.Comparator.comparing(e -> e.getPricePerLiter() != null ? e.getPricePerLiter() : BigDecimal.ZERO));
 
         // Consumption — coloured pill
         grid.addComponentColumn(e -> {
-            if (e.consumption == null) { Span s = new Span("—"); s.getStyle().set("color", "var(--vaadin-text-color-disabled)"); return s; }
-            Span s = new Span(e.consumption + " L/100km");
+            if (e.getConsumption() == null) { Span s = new Span("—"); s.getStyle().set("color", "var(--vaadin-text-color-disabled)"); return s; }
+            Span s = new Span(e.getConsumption() + " L/100km");
             // Low consumption = green (< 6), medium = warning (6-9), high = red (> 9)
-            String color = e.consumption.compareTo(BigDecimal.valueOf(6)) < 0
+            String color = e.getConsumption().compareTo(BigDecimal.valueOf(6)) < 0
                     ? "var(--aura-green)"
-                    : e.consumption.compareTo(BigDecimal.valueOf(9)) < 0
+                    : e.getConsumption().compareTo(BigDecimal.valueOf(9)) < 0
                             ? "var(--aura-orange)"
                             : "var(--aura-red)";
             s.getStyle()
@@ -389,12 +385,12 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
                     .set("color", color).set("white-space", "nowrap");
             return s;
         }).setHeader(getTranslation("vehicles.consumption")).setAutoWidth(true).setSortable(true)
-                .setComparator(java.util.Comparator.comparing(e -> e.consumption != null ? e.consumption : BigDecimal.ZERO));
+                .setComparator(java.util.Comparator.comparing(e -> e.getConsumption() != null ? e.getConsumption() : BigDecimal.ZERO));
 
         // fullTank
         com.vaadin.flow.component.grid.Grid.Column<FuelEntry> fullTankCol =
         grid.addComponentColumn(e -> {
-            if (e.fullTank) {
+            if (e.isFullTank()) {
                 Icon icon = VaadinIcon.CHECK.create();
                 icon.setColor("var(--aura-green)");
                 return icon;
@@ -409,16 +405,16 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         .setWidth("80px")
         .setFlexGrow(0)
         .setSortable(true)
-        .setComparator(e -> e.fullTank);
+        .setComparator(FuelEntry::isFullTank);
 
         // Station
         com.vaadin.flow.component.grid.Grid.Column<FuelEntry> stationCol =
         grid.addComponentColumn(e -> {
-                    Span s = new Span(e.station != null ? e.station : "—");
+                    Span s = new Span(e.getStation() != null ? e.getStation() : "—");
                     s.getStyle().set("font-weight", "500").set("font-size", "var(--aura-font-size-s)");
                     return s;
                 }).setHeader(getTranslation("vehicles.station")).setFlexGrow(1).setSortable(true)
-                .setComparator(java.util.Comparator.comparing(e -> e.station != null ? e.station : ""));
+                .setComparator(java.util.Comparator.comparing(e -> e.getStation() != null ? e.getStation() : ""));
 
         // Phones: keep date/distance/liters/amount/consumption
         com.cuenti.app.views.components.ResponsiveGridColumns.hideBelow(768, grid,
@@ -448,7 +444,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
                 .collect(Collectors.toList());
 
         for (Transaction t : transactions) {
-            FuelEntry entry = parseFuelEntry(t);
+            FuelEntry entry = VehicleReportService.parseFuelEntry(t, currentUser.getDefaultCurrency());
             if (entry != null) fuelEntries.add(entry);
         }
 
@@ -457,95 +453,14 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         grid.setItems(fuelEntries.stream().sorted(Comparator.comparing(FuelEntry::getDate).reversed()).toList());
     }
 
-    private FuelEntry parseFuelEntry(Transaction t) {
-        BigDecimal odometer = extractValue(t.getMemo(), ODOMETER_PATTERN, "(\\d{4,})\\s*km");
-        BigDecimal liters = extractValue(t.getMemo(), LITERS_PATTERN, "(\\d+(?:[.,]\\d+)?)\\s*[Ll](?:\\s|$|\\))");
-        boolean fullTank = extractFullTank(t.getMemo());
-        FuelEntry entry = new FuelEntry(
-                t.getTransactionDate().toLocalDate(),
-                odometer,
-                liters,
-                t.getAmount(),
-                t.getFromAccount() != null ? t.getFromAccount().getCurrency() : currentUser.getDefaultCurrency(),
-                t.getPayee(),
-                t.getMemo()
-        );
-        entry.fullTank = fullTank;
-        return entry;
-    }
-
-    private BigDecimal extractValue(String memo, Pattern primary, String secondaryRegex) {
-        if (memo == null || memo.isEmpty()) return null;
-        Matcher m = primary.matcher(memo);
-        if (m.find()) return new BigDecimal(m.group(1).replace(",", "."));
-        Matcher m2 = Pattern.compile(secondaryRegex).matcher(memo);
-        if (m2.find()) return new BigDecimal(m2.group(1).replace(",", "."));
-        return null;
-    }
-
-    private boolean extractFullTank(String memo) {
-        if (memo == null || memo.isEmpty()) return false;
-        return FULL_TANK_PATTERN.matcher(memo).find();
-    }
-
     /** Liters/distance actually attributed to consumption figures (drives the averages). */
     private BigDecimal attributedLiters = BigDecimal.ZERO;
     private BigDecimal attributedDistance = BigDecimal.ZERO;
 
     private void calculateDerivedValues() {
-        BigDecimal[] attributed = computeDerivedValues(fuelEntries);
+        BigDecimal[] attributed = VehicleReportService.computeDerivedValues(fuelEntries);
         attributedLiters = attributed[0];
         attributedDistance = attributed[1];
-    }
-
-    /**
-     * Computes distance/price/consumption per entry (full-tank to full-tank;
-     * fill-to-fill fallback when no entry is flagged). Returns
-     * {attributedLiters, attributedDistance} for the averages.
-     * Static and package-visible for unit tests.
-     */
-    static BigDecimal[] computeDerivedValues(List<FuelEntry> fuelEntries) {
-        BigDecimal attributedLiters = BigDecimal.ZERO;
-        BigDecimal attributedDistance = BigDecimal.ZERO;
-
-        // Consumption is only measurable between two FULL tanks. If the user
-        // never flags full tanks, fall back to treating every fill as full.
-        boolean anyFullTank = fuelEntries.stream().anyMatch(e -> e.fullTank);
-
-        FuelEntry previous = null;
-        FuelEntry lastFull = null;
-        BigDecimal litersSinceFull = BigDecimal.ZERO;
-
-        for (FuelEntry entry : fuelEntries) {
-            if (previous != null && entry.odometer != null && previous.odometer != null) {
-                entry.distance = entry.odometer.subtract(previous.odometer);
-            }
-            if (entry.liters != null && entry.liters.compareTo(BigDecimal.ZERO) > 0 && entry.amount != null) {
-                entry.pricePerLiter = entry.amount.divide(entry.liters, 3, RoundingMode.HALF_UP);
-            }
-
-            if (entry.liters != null) {
-                litersSinceFull = litersSinceFull.add(entry.liters);
-            }
-            boolean measurePoint = anyFullTank ? entry.fullTank : true;
-            if (measurePoint && entry.odometer != null) {
-                if (lastFull != null) {
-                    BigDecimal dist = entry.odometer.subtract(lastFull.odometer);
-                    if (dist.compareTo(BigDecimal.ZERO) > 0 && litersSinceFull.compareTo(BigDecimal.ZERO) > 0) {
-                        entry.consumption = litersSinceFull
-                                .divide(dist, 6, RoundingMode.HALF_UP)
-                                .multiply(BigDecimal.valueOf(100))
-                                .setScale(2, RoundingMode.HALF_UP);
-                        attributedLiters = attributedLiters.add(litersSinceFull);
-                        attributedDistance = attributedDistance.add(dist);
-                    }
-                }
-                lastFull = entry;
-                litersSinceFull = BigDecimal.ZERO;
-            }
-            previous = entry;
-        }
-        return new BigDecimal[]{attributedLiters, attributedDistance};
     }
 
     private void renderSummary() {
@@ -555,9 +470,9 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
             return;
         }
 
-        BigDecimal totalLiters   = fuelEntries.stream().filter(e -> e.liters != null).map(e -> e.liters).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalAmount   = fuelEntries.stream().map(e -> exchangeRateService.convert(e.amount, e.currency, currentUser.getDefaultCurrency())).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalDistance = fuelEntries.stream().filter(e -> e.distance != null).map(e -> e.distance).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalLiters   = fuelEntries.stream().filter(e -> e.getLiters() != null).map(FuelEntry::getLiters).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalAmount   = fuelEntries.stream().map(e -> exchangeRateService.convert(e.getAmount(), e.getCurrency(), currentUser.getDefaultCurrency())).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalDistance = fuelEntries.stream().filter(e -> e.getDistance() != null).map(FuelEntry::getDistance).reduce(BigDecimal.ZERO, BigDecimal::add);
         // Average from liters actually attributed to measured distances
         // (excludes the first fill, which has no distance to attribute)
         BigDecimal avgConsumption = attributedDistance.compareTo(BigDecimal.ZERO) > 0
@@ -566,8 +481,8 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
                 : BigDecimal.ZERO;
         // Price per liter only over entries whose liters are known
         BigDecimal literAmount = fuelEntries.stream()
-                .filter(e -> e.liters != null && e.liters.compareTo(BigDecimal.ZERO) > 0)
-                .map(e -> exchangeRateService.convert(e.amount, e.currency, currentUser.getDefaultCurrency()))
+                .filter(e -> e.getLiters() != null && e.getLiters().compareTo(BigDecimal.ZERO) > 0)
+                .map(e -> exchangeRateService.convert(e.getAmount(), e.getCurrency(), currentUser.getDefaultCurrency()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal avgPricePerL  = totalLiters.compareTo(BigDecimal.ZERO) > 0
                 ? literAmount.divide(totalLiters, 3, RoundingMode.HALF_UP) : BigDecimal.ZERO;
@@ -616,8 +531,8 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
 
     private void renderConsumptionChart(Div container) {
         List<FuelEntry> withConsumption = fuelEntries.stream()
-                .filter(e -> e.consumption != null)
-                .sorted(java.util.Comparator.comparing(e -> e.date))
+                .filter(e -> e.getConsumption() != null)
+                .sorted(java.util.Comparator.comparing(FuelEntry::getDate))
                 .toList();
         if (withConsumption.isEmpty()) {
             Span none = new Span(getTranslation("vehicles.no_consumption_data"));
@@ -626,7 +541,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
             return;
         }
 
-        BigDecimal maxC = withConsumption.stream().map(e -> e.consumption).max(BigDecimal::compareTo).orElse(BigDecimal.TEN);
+        BigDecimal maxC = withConsumption.stream().map(FuelEntry::getConsumption).max(BigDecimal::compareTo).orElse(BigDecimal.TEN);
 
         Div chartArea = new Div();
         chartArea.getStyle()
@@ -636,14 +551,14 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM");
         for (FuelEntry e : withConsumption) {
             double pct = maxC.compareTo(BigDecimal.ZERO) > 0
-                    ? e.consumption.divide(maxC, 4, RoundingMode.HALF_UP).doubleValue() * 68 : 2;
-            String color = consumptionColor(e.consumption);
+                    ? e.getConsumption().divide(maxC, 4, RoundingMode.HALF_UP).doubleValue() * 68 : 2;
+            String color = consumptionColor(e.getConsumption());
 
             Div barGroup = new Div();
             barGroup.getStyle().set("display", "flex").set("flex-direction", "column")
                     .set("align-items", "center").set("gap", "3px").set("min-width", "36px");
 
-            Span value = new Span(e.consumption.toPlainString());
+            Span value = new Span(e.getConsumption().toPlainString());
             value.getStyle().set("font-size", "9px").set("font-weight", "700")
                     .set("color", color).set("white-space", "nowrap");
 
@@ -653,7 +568,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
                     .set("background", "linear-gradient(to top, " + color + ", " + color + "88)")
                     .set("border-radius", "4px 4px 0 0");
 
-            Span lbl = new Span(e.date.format(fmt));
+            Span lbl = new Span(e.getDate().format(fmt));
             lbl.getStyle().set("font-size", "9px").set("color", "var(--vaadin-text-color-secondary)")
                     .set("white-space", "nowrap");
 
@@ -693,25 +608,5 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         if (amount == null) return "-";
         return com.cuenti.app.util.CurrencyFormat.format(amount, currentUser.getDefaultCurrency(),
                 Locale.forLanguageTag(currentUser.getLocale()));
-    }
-
-    static class FuelEntry { // package-visible for tests
-        java.time.LocalDate date;
-        BigDecimal odometer;
-        BigDecimal liters;
-        BigDecimal amount;
-        String currency;
-        String station;
-        String memo;
-        BigDecimal distance;
-        BigDecimal consumption;
-        BigDecimal pricePerLiter;
-        boolean fullTank;
-        boolean valid;
-
-        FuelEntry(java.time.LocalDate date, BigDecimal odometer, BigDecimal liters, BigDecimal amount, String currency, String station, String memo) {
-            this.date = date; this.odometer = odometer; this.liters = liters; this.amount = amount; this.currency = currency; this.station = station; this.memo = memo;
-        }
-        public java.time.LocalDate getDate() { return date; }
     }
 }

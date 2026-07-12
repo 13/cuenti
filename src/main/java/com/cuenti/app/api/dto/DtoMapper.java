@@ -155,4 +155,17 @@ public final class DtoMapper {
                 .roles(u.getRoles())
                 .build();
     }
+
+    public static AuditLogDTO toAuditLogDTO(AuditLog a) {
+        return AuditLogDTO.builder()
+                .id(a.getId())
+                .userId(a.getUserId())
+                .username(a.getUsername())
+                .timestamp(a.getTimestamp())
+                .entityType(a.getEntityType())
+                .entityId(a.getEntityId())
+                .action(a.getAction())
+                .details(a.getDetails())
+                .build();
+    }
 }

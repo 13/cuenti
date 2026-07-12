@@ -36,4 +36,14 @@ public class SavedViewService {
         }
         repository.delete(view);
     }
+
+    @Transactional
+    public SavedView update(User user, Long id, String name, String params) {
+        SavedView view = repository.findById(id)
+                .filter(v -> v.getUser().getId().equals(user.getId()))
+                .orElseThrow(() -> new IllegalArgumentException("Saved view not found"));
+        if (name != null && !name.isBlank()) view.setName(name);
+        if (params != null) view.setParams(params);
+        return repository.save(view);
+    }
 }

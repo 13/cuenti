@@ -168,4 +168,13 @@ public final class DtoMapper {
                 .details(a.getDetails())
                 .build();
     }
+
+    public static SavedViewDTO toSavedViewDTO(SavedView v) {
+        return SavedViewDTO.builder()
+                .id(v.getId())
+                .name(v.getName())
+                .params(v.getParams())
+                .createdAt(v.getCreatedAt())
+                .build();
+    }
 }

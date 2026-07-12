@@ -146,22 +146,22 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
             // Calculate all occurrences in the selected year
             LocalDateTime occurrence = st.getNextOccurrence();
             LocalDate occurrenceDate = occurrence.toLocalDate();
-            
+
             while (occurrenceDate.getYear() < selectedYear) {
-                occurrence = getNextOccurrence(occurrence, st);
+                occurrence = ScheduledTransactionService.advanceOccurrence(occurrence, st);
                 occurrenceDate = occurrence.toLocalDate();
             }
 
             while (occurrenceDate.getYear() == selectedYear) {
                 String monthKey = String.format("%d-%02d", occurrenceDate.getYear(), occurrenceDate.getMonthValue());
-                
+
                 BigDecimal convertedAmount = st.getAmount();
-                
+
                 if (st.getType() == Transaction.TransactionType.INCOME) {
                     String currency = toAccount != null ? toAccount.getCurrency() : currentUser.getDefaultCurrency();
                     convertedAmount = exchangeRateService.convert(
-                        st.getAmount(), 
-                        currency, 
+                        st.getAmount(),
+                        currency,
                         currentUser.getDefaultCurrency()
                     );
                     monthlyIncomes.merge(monthKey, convertedAmount, BigDecimal::add);
@@ -169,7 +169,7 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
                 } else if (st.getType() == Transaction.TransactionType.EXPENSE) {
                     String currency = fromAccount != null ? fromAccount.getCurrency() : currentUser.getDefaultCurrency();
                     convertedAmount = exchangeRateService.convert(
-                        st.getAmount(), 
+                        st.getAmount(),
                         currency,
                         currentUser.getDefaultCurrency()
                     );
@@ -177,7 +177,7 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
                     totalExpense = totalExpense.add(convertedAmount);
                 }
 
-                occurrence = getNextOccurrence(occurrence, st);
+                occurrence = ScheduledTransactionService.advanceOccurrence(occurrence, st);
                 occurrenceDate = occurrence.toLocalDate();
             }
         }
@@ -208,31 +208,6 @@ public class ForecastsView extends VerticalLayout implements HasDynamicTitle {
         Div monthlyCard = createInnerCard(getTranslation("forecasts.monthly_breakdown"), VaadinIcon.LIST);
         renderMonthlyBreakdown(monthlyCard, monthlyIncomes, monthlyExpenses);
         contentContainer.add(monthlyCard);
-    }
-
-    private LocalDateTime getNextOccurrence(LocalDateTime current, ScheduledTransaction st) {
-        LocalDateTime next = current;
-        int value = (st.getRecurrenceValue() != null && st.getRecurrenceValue() > 0) 
-                    ? st.getRecurrenceValue() : 1;
-
-        switch (st.getRecurrencePattern()) {
-            case DAILY -> next = next.plusDays(value);
-            case WEEKLY -> next = next.plusWeeks(value);
-            case BI_WEEKLY -> next = next.plusWeeks(2);
-            case MONTHLY -> next = next.plusMonths(value);
-            case MONTHLY_LAST_DAY -> next = next.plusMonths(1).with(java.time.temporal.TemporalAdjusters.lastDayOfMonth());
-            case YEARLY -> next = next.plusYears(value);
-            case EVERY_FRIDAY -> next = next.with(java.time.temporal.TemporalAdjusters.next(java.time.DayOfWeek.FRIDAY));
-            case EVERY_SATURDAY -> next = next.with(java.time.temporal.TemporalAdjusters.next(java.time.DayOfWeek.SATURDAY));
-            case EVERY_WEEKDAY -> {
-                next = next.plusDays(1);
-                while (next.getDayOfWeek() == java.time.DayOfWeek.SATURDAY || 
-                       next.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) {
-                    next = next.plusDays(1);
-                }
-            }
-        }
-        return next;
     }
 
     private void renderMonthlyBreakdown(Div card, Map<String, BigDecimal> incomes, Map<String, BigDecimal> expenses) {

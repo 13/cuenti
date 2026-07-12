@@ -124,9 +124,10 @@ public class ScheduledTransactionService {
         updateToNextOccurrence(scheduled);
     }
 
-    private void updateToNextOccurrence(ScheduledTransaction scheduled) {
-        LocalDateTime next = scheduled.getNextOccurrence();
-        int value = (scheduled.getRecurrenceValue() != null && scheduled.getRecurrenceValue() > 0) 
+    /** Advance one occurrence according to the schedule's recurrence pattern. */
+    public static LocalDateTime advanceOccurrence(LocalDateTime current, ScheduledTransaction scheduled) {
+        LocalDateTime next = current;
+        int value = (scheduled.getRecurrenceValue() != null && scheduled.getRecurrenceValue() > 0)
                     ? scheduled.getRecurrenceValue() : 1;
 
         switch (scheduled.getRecurrencePattern()) {
@@ -134,9 +135,7 @@ public class ScheduledTransactionService {
             case WEEKLY -> next = next.plusWeeks(value);
             case BI_WEEKLY -> next = next.plusWeeks(2);
             case MONTHLY -> next = next.plusMonths(value);
-            case MONTHLY_LAST_DAY -> {
-                next = next.plusMonths(1).with(TemporalAdjusters.lastDayOfMonth());
-            }
+            case MONTHLY_LAST_DAY -> next = next.plusMonths(1).with(TemporalAdjusters.lastDayOfMonth());
             case YEARLY -> next = next.plusYears(value);
             case EVERY_FRIDAY -> next = next.with(TemporalAdjusters.next(DayOfWeek.FRIDAY));
             case EVERY_SATURDAY -> next = next.with(TemporalAdjusters.next(DayOfWeek.SATURDAY));
@@ -147,7 +146,11 @@ public class ScheduledTransactionService {
                 }
             }
         }
-        scheduled.setNextOccurrence(next);
+        return next;
+    }
+
+    private void updateToNextOccurrence(ScheduledTransaction scheduled) {
+        scheduled.setNextOccurrence(advanceOccurrence(scheduled.getNextOccurrence(), scheduled));
         repository.save(scheduled);
     }
 

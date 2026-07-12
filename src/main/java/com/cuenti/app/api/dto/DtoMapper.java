@@ -80,6 +80,16 @@ public final class DtoMapper {
                 .build();
     }
 
+    public static BudgetDTO toBudgetDTO(Budget b) {
+        return BudgetDTO.builder()
+                .id(b.getId())
+                .categoryId(b.getCategory().getId())
+                .categoryName(b.getCategory().getFullName())
+                .monthlyLimit(b.getMonthlyLimit())
+                .active(b.isActive())
+                .build();
+    }
+
     public static AssetDTO toAssetDTO(Asset a) {
         return AssetDTO.builder()
                 .id(a.getId())

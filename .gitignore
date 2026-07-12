@@ -60,3 +60,4 @@ tsconfig.json.*.bak
 /d-*.png
 /clone-*.png
 /*.png
+.superpowers/

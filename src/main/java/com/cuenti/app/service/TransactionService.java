@@ -6,6 +6,8 @@ import com.cuenti.app.model.User;
 import com.cuenti.app.repository.TransactionRepository;
 import com.cuenti.app.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -196,6 +198,15 @@ public class TransactionService {
     @Transactional(readOnly = true)
     public List<Transaction> getTransactionsByUser(User user) {
         return transactionRepository.findByUser(user);
+    }
+
+    /** Paged, filtered search backing the REST API's GET /api/transactions. */
+    @Transactional(readOnly = true)
+    public Page<Transaction> search(User user, Long accountId, Transaction.TransactionType type,
+                                    Long categoryId, java.time.LocalDateTime from, java.time.LocalDateTime to,
+                                    String payee, String tag, String search, Pageable pageable) {
+        return transactionRepository.searchByUser(user, accountId, type, categoryId,
+                from, to, payee, tag, search, pageable);
     }
 
     @Transactional

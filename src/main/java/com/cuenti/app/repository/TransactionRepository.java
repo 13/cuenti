@@ -3,6 +3,8 @@ package com.cuenti.app.repository;
 import com.cuenti.app.model.Account;
 import com.cuenti.app.model.Transaction;
 import com.cuenti.app.model.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -144,4 +146,52 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Modifying
     @Query("UPDATE Transaction t SET t.category = null WHERE t.category.id = :categoryId")
     int clearCategoryReferences(@Param("categoryId") Long categoryId);
+
+    /**
+     * Paged, filtered search for the REST API. LEFT JOINs keep transactions
+     * with null category/accounts visible; countQuery avoids the fetch-join
+     * count problem. Sorting comes from the Pageable.
+     */
+    @Query(value = "SELECT DISTINCT t FROM Transaction t " +
+           "LEFT JOIN t.fromAccount fa " +
+           "LEFT JOIN t.toAccount ta " +
+           "LEFT JOIN t.category c " +
+           "WHERE (fa.user = :user OR ta.user = :user) " +
+           "AND (:accountId IS NULL OR fa.id = :accountId OR ta.id = :accountId) " +
+           "AND (:type IS NULL OR t.type = :type) " +
+           "AND (:categoryId IS NULL OR c.id = :categoryId) " +
+           "AND (:from IS NULL OR t.transactionDate >= :from) " +
+           "AND (:to IS NULL OR t.transactionDate <= :to) " +
+           "AND (:payee IS NULL OR LOWER(t.payee) LIKE LOWER(CONCAT('%', :payee, '%'))) " +
+           "AND (:tag IS NULL OR LOWER(t.tags) LIKE LOWER(CONCAT('%', :tag, '%'))) " +
+           "AND (:search IS NULL " +
+           "     OR LOWER(t.payee) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "     OR LOWER(t.memo) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "     OR LOWER(t.number) LIKE LOWER(CONCAT('%', :search, '%')))",
+           countQuery = "SELECT COUNT(DISTINCT t) FROM Transaction t " +
+           "LEFT JOIN t.fromAccount fa " +
+           "LEFT JOIN t.toAccount ta " +
+           "LEFT JOIN t.category c " +
+           "WHERE (fa.user = :user OR ta.user = :user) " +
+           "AND (:accountId IS NULL OR fa.id = :accountId OR ta.id = :accountId) " +
+           "AND (:type IS NULL OR t.type = :type) " +
+           "AND (:categoryId IS NULL OR c.id = :categoryId) " +
+           "AND (:from IS NULL OR t.transactionDate >= :from) " +
+           "AND (:to IS NULL OR t.transactionDate <= :to) " +
+           "AND (:payee IS NULL OR LOWER(t.payee) LIKE LOWER(CONCAT('%', :payee, '%'))) " +
+           "AND (:tag IS NULL OR LOWER(t.tags) LIKE LOWER(CONCAT('%', :tag, '%'))) " +
+           "AND (:search IS NULL " +
+           "     OR LOWER(t.payee) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "     OR LOWER(t.memo) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "     OR LOWER(t.number) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Transaction> searchByUser(@Param("user") User user,
+                                   @Param("accountId") Long accountId,
+                                   @Param("type") Transaction.TransactionType type,
+                                   @Param("categoryId") Long categoryId,
+                                   @Param("from") java.time.LocalDateTime from,
+                                   @Param("to") java.time.LocalDateTime to,
+                                   @Param("payee") String payee,
+                                   @Param("tag") String tag,
+                                   @Param("search") String search,
+                                   Pageable pageable);
 }

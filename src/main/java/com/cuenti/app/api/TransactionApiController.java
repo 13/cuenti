@@ -1,18 +1,26 @@
 package com.cuenti.app.api;
 
 import com.cuenti.app.api.dto.DtoMapper;
+import com.cuenti.app.api.dto.PagedResponse;
 import com.cuenti.app.api.dto.TransactionDTO;
 import com.cuenti.app.api.dto.TransactionSplitDTO;
 import com.cuenti.app.model.*;
 import com.cuenti.app.service.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -26,24 +34,67 @@ public class TransactionApiController {
     private final AssetService assetService;
     private final UserService userService;
 
+    private static final Set<String> SORT_WHITELIST = Set.of("transactionDate", "amount", "payee");
+
     @GetMapping
-    public ResponseEntity<List<TransactionDTO>> getTransactions(
-            @RequestParam(required = false) Long accountId) {
+    public ResponseEntity<?> getTransactions(
+            @RequestParam(required = false) Long accountId,
+            @RequestParam(required = false) Transaction.TransactionType type,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
+            @RequestParam(required = false) String payee,
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
         String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
         if (username == null) return ResponseEntity.status(401).build();
         User user = userService.findByUsername(username);
 
-        List<Transaction> transactions;
-        if (accountId != null) {
-            Account account = accountService.findById(accountId);
-            transactions = transactionService.getTransactionsByAccount(account);
-        } else {
-            transactions = transactionService.getTransactionsByUser(user);
+        String sortField = "transactionDate";
+        Sort.Direction sortDirection = Sort.Direction.DESC;
+        if (sort != null && !sort.isBlank()) {
+            String[] parts = sort.split(",");
+            if (!SORT_WHITELIST.contains(parts[0])) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "sort field must be one of " + SORT_WHITELIST));
+            }
+            sortField = parts[0];
+            if (parts.length > 1 && "asc".equalsIgnoreCase(parts[1])) sortDirection = Sort.Direction.ASC;
         }
+        Sort sortSpec = Sort.by(sortDirection, sortField).and(Sort.by(Sort.Direction.DESC, "sortOrder"));
 
-        return ResponseEntity.ok(transactions.stream()
+        boolean paged = page != null || size != null;
+        int effectivePage = page != null ? Math.max(page, 0) : 0;
+        int effectiveSize = size != null ? Math.min(Math.max(size, 1), 200) : 50;
+        Pageable pageable = paged
+                ? PageRequest.of(effectivePage, effectiveSize, sortSpec)
+                : Pageable.unpaged(sortSpec);
+
+        Page<Transaction> result = transactionService.search(user, accountId, type, categoryId,
+                start != null ? start.atStartOfDay() : null,
+                end != null ? end.atTime(23, 59, 59) : null,
+                emptyToNull(payee), emptyToNull(tag), emptyToNull(search), pageable);
+
+        List<TransactionDTO> dtos = result.getContent().stream()
                 .map(DtoMapper::toTransactionDTO)
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList());
+
+        if (!paged) return ResponseEntity.ok(dtos); // back-compat: plain array
+
+        return ResponseEntity.ok(PagedResponse.<TransactionDTO>builder()
+                .content(dtos)
+                .page(result.getNumber())
+                .size(result.getSize())
+                .totalElements(result.getTotalElements())
+                .totalPages(result.getTotalPages())
+                .build());
+    }
+
+    private static String emptyToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s;
     }
 
     @PostMapping

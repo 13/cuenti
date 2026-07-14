@@ -151,6 +151,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * Paged, filtered search for the REST API. LEFT JOINs keep transactions
      * with null category/accounts visible; countQuery avoids the fetch-join
      * count problem. Sorting comes from the Pageable.
+     *
+     * DO NOT remove the {@code CAST(:param AS ...)} wrappers. PostgreSQL cannot
+     * infer the type of a bind parameter that appears only in {@code :p IS NULL}
+     * or inside {@code CONCAT}, and fails the whole query with
+     * "could not determine data type of parameter" (SQLState 42P18). H2 infers
+     * these types, so the H2-based test suite passes even without the casts —
+     * they were dropped once and broke every transactions request in production
+     * on Postgres while all tests stayed green.
      */
     @Query(value = "SELECT DISTINCT t FROM Transaction t " +
            "LEFT JOIN t.fromAccount fa " +
@@ -160,14 +168,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:accountId IS NULL OR fa.id = :accountId OR ta.id = :accountId) " +
            "AND (:type IS NULL OR t.type = :type) " +
            "AND (:categoryId IS NULL OR c.id = :categoryId) " +
-           "AND (:from IS NULL OR t.transactionDate >= :from) " +
-           "AND (:to IS NULL OR t.transactionDate <= :to) " +
-           "AND (:payee IS NULL OR LOWER(t.payee) LIKE LOWER(CONCAT('%', :payee, '%'))) " +
-           "AND (:tag IS NULL OR LOWER(t.tags) LIKE LOWER(CONCAT('%', :tag, '%'))) " +
-           "AND (:search IS NULL " +
-           "     OR LOWER(t.payee) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "     OR LOWER(t.memo) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "     OR LOWER(t.number) LIKE LOWER(CONCAT('%', :search, '%')))",
+           "AND (CAST(:from AS timestamp) IS NULL OR t.transactionDate >= :from) " +
+           "AND (CAST(:to AS timestamp) IS NULL OR t.transactionDate <= :to) " +
+           "AND (CAST(:payee AS string) IS NULL OR LOWER(t.payee) LIKE LOWER(CONCAT('%', CAST(:payee AS string), '%'))) " +
+           "AND (CAST(:tag AS string) IS NULL OR LOWER(t.tags) LIKE LOWER(CONCAT('%', CAST(:tag AS string), '%'))) " +
+           "AND (CAST(:search AS string) IS NULL " +
+           "     OR LOWER(t.payee) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+           "     OR LOWER(t.memo) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+           "     OR LOWER(t.number) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))",
            countQuery = "SELECT COUNT(DISTINCT t) FROM Transaction t " +
            "LEFT JOIN t.fromAccount fa " +
            "LEFT JOIN t.toAccount ta " +
@@ -176,14 +184,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:accountId IS NULL OR fa.id = :accountId OR ta.id = :accountId) " +
            "AND (:type IS NULL OR t.type = :type) " +
            "AND (:categoryId IS NULL OR c.id = :categoryId) " +
-           "AND (:from IS NULL OR t.transactionDate >= :from) " +
-           "AND (:to IS NULL OR t.transactionDate <= :to) " +
-           "AND (:payee IS NULL OR LOWER(t.payee) LIKE LOWER(CONCAT('%', :payee, '%'))) " +
-           "AND (:tag IS NULL OR LOWER(t.tags) LIKE LOWER(CONCAT('%', :tag, '%'))) " +
-           "AND (:search IS NULL " +
-           "     OR LOWER(t.payee) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "     OR LOWER(t.memo) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "     OR LOWER(t.number) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "AND (CAST(:from AS timestamp) IS NULL OR t.transactionDate >= :from) " +
+           "AND (CAST(:to AS timestamp) IS NULL OR t.transactionDate <= :to) " +
+           "AND (CAST(:payee AS string) IS NULL OR LOWER(t.payee) LIKE LOWER(CONCAT('%', CAST(:payee AS string), '%'))) " +
+           "AND (CAST(:tag AS string) IS NULL OR LOWER(t.tags) LIKE LOWER(CONCAT('%', CAST(:tag AS string), '%'))) " +
+           "AND (CAST(:search AS string) IS NULL " +
+           "     OR LOWER(t.payee) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+           "     OR LOWER(t.memo) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+           "     OR LOWER(t.number) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
     Page<Transaction> searchByUser(@Param("user") User user,
                                    @Param("accountId") Long accountId,
                                    @Param("type") Transaction.TransactionType type,

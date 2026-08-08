@@ -63,6 +63,7 @@ html[theme='dark'] {
   --cuenti-chart-cat-5: light-dark(#4a3aa7, #9085e9);
   --cuenti-chart-grid: light-dark(#e1e0d9, #2c2c2a);
   --cuenti-chart-axis-text: var(--vaadin-text-color-secondary);
+  --cuenti-chart-consumption: light-dark(#2a78d6, #3987e5);
 }
 
 /* Headings share Aura's font family with a heavier weight */

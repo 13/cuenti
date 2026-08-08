@@ -466,6 +466,15 @@ vaadin-app-layout:not([overlay])::part(drawer) {
   box-sizing: border-box;
 }
 
+.nav-badge-overdue {
+  background: color-mix(in srgb, var(--aura-red) 22%, transparent);
+  color: var(--aura-red);
+}
+
+vaadin-grid::part(overdue-row) {
+  background: color-mix(in srgb, var(--aura-red) 7%, transparent);
+}
+
 .drawer-nav vaadin-side-nav-item[current] .nav-badge {
   background: color-mix(in srgb, var(--aura-accent-contrast-color) 25%, transparent);
   color: var(--aura-accent-contrast-color);

@@ -1,10 +1,15 @@
 package com.cuenti.app.views;
 
+import com.cuenti.app.model.ScheduledTransaction;
 import com.cuenti.app.model.User;
 import com.cuenti.app.security.SecurityUtils;
 import com.cuenti.app.service.AssetService;
 import com.cuenti.app.service.UserService;
+import com.cuenti.app.util.ScheduledChangeBroadcaster;
+import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.DetachEvent;
+import com.vaadin.flow.component.UIDetachedException;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
@@ -20,6 +25,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
+import com.vaadin.flow.router.AfterNavigationEvent;
+import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
@@ -28,13 +35,18 @@ import com.cuenti.app.views.ThemePreference;
 import jakarta.annotation.security.PermitAll;
 import lombok.extern.slf4j.Slf4j;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @PermitAll
 @Slf4j
-public class MainLayout extends AppLayout {
+public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
     private final SecurityUtils securityUtils;
     private final UserService userService;
@@ -43,6 +55,7 @@ public class MainLayout extends AppLayout {
     private final com.cuenti.app.service.ScheduledTransactionService scheduledService;
     private User currentUser;
     private SideNavItem scheduledItem;
+    private Runnable unregisterScheduledListener;
 
     public MainLayout(SecurityUtils securityUtils, UserService userService, AssetService assetService,
                       com.cuenti.app.service.PayeeService payeeService,
@@ -78,7 +91,6 @@ public class MainLayout extends AppLayout {
         setPrimarySection(Section.DRAWER);
         createHeader();
         createDrawer();
-        notifyDueScheduled();
     }
 
     // ── Theme ──────────────────────────────────────────────────────────────────
@@ -262,24 +274,64 @@ public class MainLayout extends AppLayout {
         addToDrawer(drawer);
     }
 
-    /** One reminder toast per session when scheduled transactions are due. */
-    private void notifyDueScheduled() {
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+        if (currentUser != null) {
+            UI ui = attachEvent.getUI();
+            unregisterScheduledListener = ScheduledChangeBroadcaster.register(currentUser.getId(), () -> {
+                try {
+                    ui.access(this::refreshScheduledBadge);
+                } catch (UIDetachedException ignored) {
+                    // tab closed between broadcast and delivery
+                }
+            });
+        }
+    }
+
+    @Override
+    protected void onDetach(DetachEvent detachEvent) {
+        if (unregisterScheduledListener != null) {
+            unregisterScheduledListener.run();
+            unregisterScheduledListener = null;
+        }
+        super.onDetach(detachEvent);
+    }
+
+    @Override
+    public void afterNavigation(AfterNavigationEvent event) {
         if (currentUser == null) {
             return;
         }
-        com.vaadin.flow.server.VaadinSession session = com.vaadin.flow.server.VaadinSession.getCurrent();
-        if (session == null || session.getAttribute("cuenti.due.notified") != null) {
+        List<ScheduledTransaction> due = scheduledService.findDueSoon(currentUser);
+        applyScheduledBadge(due);
+        notifyDueScheduled(due);
+    }
+
+    /** Reminder toast whenever schedules turn due that this session has not yet announced. */
+    private void notifyDueScheduled(List<ScheduledTransaction> due) {
+        VaadinSession session = VaadinSession.getCurrent();
+        if (session == null || due.isEmpty()) {
             return;
         }
-        session.setAttribute("cuenti.due.notified", Boolean.TRUE);
-        long due = scheduledService.countDueSoon(currentUser);
-        if (due > 0) {
-            com.cuenti.app.views.components.UiNotifier.infoWithAction(
-                    getTranslation("scheduled.due_notification", due),
-                    getTranslation("scheduled.due_notification_action"),
-                    () -> com.vaadin.flow.component.UI.getCurrent()
-                            .navigate(ScheduledTransactionsView.class));
+        @SuppressWarnings("unchecked")
+        Set<Long> notified = (Set<Long>) session.getAttribute("cuenti.due.notified.ids");
+        if (notified == null) {
+            notified = new HashSet<>();
+            session.setAttribute("cuenti.due.notified.ids", notified);
         }
+        Set<Long> known = notified;
+        List<Long> fresh = due.stream().map(ScheduledTransaction::getId)
+                .filter(id -> !known.contains(id))
+                .toList();
+        if (fresh.isEmpty()) {
+            return;
+        }
+        notified.addAll(fresh);
+        com.cuenti.app.views.components.UiNotifier.infoWithAction(
+                getTranslation("scheduled.due_notification", fresh.size()),
+                getTranslation("scheduled.due_notification_action"),
+                () -> UI.getCurrent().navigate(ScheduledTransactionsView.class));
     }
 
     /** Scheduled nav entry with a due-soon count badge (demo pattern). */
@@ -290,19 +342,35 @@ public class MainLayout extends AppLayout {
         return scheduledItem;
     }
 
-    /** Recompute the due-soon badge; views call this after posting/skipping schedules. */
+    /** Recompute the due-soon badge; invoked on navigation and via the change broadcaster. */
     public void refreshScheduledBadge() {
-        if (scheduledItem == null || currentUser == null) {
+        if (currentUser == null) {
             return;
         }
-        long due = scheduledService.countDueSoon(currentUser);
-        if (due > 0) {
-            Span badge = new Span(String.valueOf(due));
-            badge.addClassName("nav-badge");
-            scheduledItem.setSuffixComponent(badge);
-        } else {
-            scheduledItem.setSuffixComponent(null);
+        applyScheduledBadge(scheduledService.findDueSoon(currentUser));
+    }
+
+    private void applyScheduledBadge(List<ScheduledTransaction> due) {
+        if (scheduledItem == null) {
+            return;
         }
+        if (due.isEmpty()) {
+            scheduledItem.setSuffixComponent(null);
+            return;
+        }
+        Span badge = new Span(String.valueOf(due.size()));
+        badge.addClassName("nav-badge");
+        LocalDateTime now = LocalDateTime.now();
+        if (due.stream().anyMatch(st -> st.getNextOccurrence().isBefore(now))) {
+            badge.addClassName("nav-badge-overdue");
+        }
+        BigDecimal total = due.stream()
+                .map(ScheduledTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        badge.getElement().setAttribute("title", getTranslation("scheduled.badge_tooltip",
+                com.cuenti.app.util.CurrencyFormat.format(total, currentUser.getDefaultCurrency(),
+                        Locale.forLanguageTag(currentUser.getLocale()))));
+        scheduledItem.setSuffixComponent(badge);
     }
 
     private SideNav navSection(String label, boolean expanded, SideNavItem... items) {

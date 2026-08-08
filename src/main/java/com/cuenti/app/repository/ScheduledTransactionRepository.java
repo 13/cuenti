@@ -15,6 +15,11 @@ public interface ScheduledTransactionRepository extends JpaRepository<ScheduledT
     List<ScheduledTransaction> findByUser(User user);
 
     /**
+     * Enabled schedules due before the cutoff (nav badge and reminder toast).
+     */
+    List<ScheduledTransaction> findByUserAndEnabledTrueAndNextOccurrenceBefore(User user, java.time.LocalDateTime cutoff);
+
+    /**
      * Count scheduled transactions that reference a specific asset.
      */
     @Query("SELECT COUNT(st) FROM ScheduledTransaction st WHERE st.asset = :asset")

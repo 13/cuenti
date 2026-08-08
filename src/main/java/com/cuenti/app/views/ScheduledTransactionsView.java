@@ -335,6 +335,9 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 java.util.List.of(pendingGrid.getColumnByKey("pending-account"),
                         pendingGrid.getColumnByKey("pending-payee")));
 
+        pendingGrid.setPartNameGenerator(st ->
+                st.getNextOccurrence().isBefore(LocalDateTime.now()) ? "overdue-row" : null);
+
         // Actions: Post (primary), Skip (subtle), Edit (icon)
         pendingGrid.addComponentColumn(st -> {
             Button postBtn = new Button(getTranslation("scheduled.post"), VaadinIcon.CHECK.create(), e -> {
@@ -347,7 +350,14 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
             Button skipBtn = new Button(getTranslation("scheduled.skip"), VaadinIcon.STEP_FORWARD.create(), e -> {
                 scheduledService.skip(st.getId());
                 refreshGrids();
-                com.cuenti.app.views.components.UiNotifier.success(getTranslation("scheduled.skipped"));
+                // st still carries the pre-skip nextOccurrence (service loaded its own copy)
+                com.cuenti.app.views.components.UiNotifier.infoWithAction(
+                        getTranslation("scheduled.skipped"),
+                        getTranslation("scheduled.undo"),
+                        () -> {
+                            scheduledService.save(st);
+                            refreshGrids();
+                        });
             });
             skipBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
@@ -785,11 +795,6 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .sorted(Comparator.comparing(ScheduledTransaction::getNextOccurrence))
                 .toList();
         pendingGrid.setItems(pending);
-
-        MainLayout layout = findAncestor(MainLayout.class);
-        if (layout != null) {
-            layout.refreshScheduledBadge();
-        }
     }
 
     private Div createCard() {

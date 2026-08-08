@@ -51,6 +51,7 @@ public class ScheduledTransactionService {
         ScheduledTransaction saved = repository.save(scheduledTransaction);
         auditService.log(currentUser, created ? "CREATE" : "UPDATE", "ScheduledTransaction",
                 saved.getId(), saved.getPayee());
+        com.cuenti.app.util.ScheduledChangeBroadcaster.broadcast(currentUser.getId());
         return saved;
     }
 
@@ -64,6 +65,7 @@ public class ScheduledTransactionService {
             repository.delete(scheduledTransaction);
             auditService.log(currentUser, "DELETE", "ScheduledTransaction",
                     scheduledTransaction.getId(), scheduledTransaction.getPayee());
+            com.cuenti.app.util.ScheduledChangeBroadcaster.broadcast(currentUser.getId());
         } else {
             throw new SecurityException("Cannot delete scheduled transaction belonging to another user");
         }
@@ -106,6 +108,7 @@ public class ScheduledTransactionService {
 
         transactionService.saveTransaction(transaction);
         updateToNextOccurrence(scheduled);
+        com.cuenti.app.util.ScheduledChangeBroadcaster.broadcast(currentUser.getId());
     }
 
     @Transactional
@@ -122,6 +125,7 @@ public class ScheduledTransactionService {
         }
 
         updateToNextOccurrence(scheduled);
+        com.cuenti.app.util.ScheduledChangeBroadcaster.broadcast(currentUser.getId());
     }
 
     /** Advance one occurrence according to the schedule's recurrence pattern. */
@@ -154,13 +158,10 @@ public class ScheduledTransactionService {
         repository.save(scheduled);
     }
 
-    /** Enabled schedules due within the next 7 days (nav badge). */
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public long countDueSoon(com.cuenti.app.model.User user) {
-        return getByUser(user).stream()
-                .filter(com.cuenti.app.model.ScheduledTransaction::isEnabled)
-                .filter(st -> st.getNextOccurrence() != null
-                        && st.getNextOccurrence().isBefore(java.time.LocalDateTime.now().plusDays(7)))
-                .count();
+    /** Enabled schedules due within the next 7 days (nav badge and reminder toast). */
+    @Transactional(readOnly = true)
+    public List<ScheduledTransaction> findDueSoon(User user) {
+        return repository.findByUserAndEnabledTrueAndNextOccurrenceBefore(user,
+                LocalDateTime.now().plusDays(7));
     }
 }

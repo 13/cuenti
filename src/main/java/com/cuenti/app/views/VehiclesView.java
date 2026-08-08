@@ -5,6 +5,7 @@ import com.cuenti.app.model.Transaction;
 import com.cuenti.app.model.User;
 import com.cuenti.app.security.SecurityUtils;
 import com.cuenti.app.views.components.EmptyStateNotice;
+import com.cuenti.app.views.components.charts.ConsumptionTrendChart;
 import com.cuenti.app.service.CategoryService;
 import com.cuenti.app.service.ExchangeRateService;
 import com.cuenti.app.service.TransactionService;
@@ -517,7 +518,7 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
                 .set("color", "var(--vaadin-text-color-secondary)").set("display", "block")
                 .set("margin-bottom", "var(--vaadin-gap-s)");
         trendSection.add(trendTitle);
-        renderConsumptionChart(trendSection);
+        renderConsumptionChart(trendSection, avgConsumption);
 
         summaryContainer.add(summaryLayout, trendSection);
     }
@@ -529,10 +530,10 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
         return "var(--aura-red)";
     }
 
-    private void renderConsumptionChart(Div container) {
+    private void renderConsumptionChart(Div container, BigDecimal average) {
         List<FuelEntry> withConsumption = fuelEntries.stream()
                 .filter(e -> e.getConsumption() != null)
-                .sorted(java.util.Comparator.comparing(FuelEntry::getDate))
+                .sorted(Comparator.comparing(FuelEntry::getDate))
                 .toList();
         if (withConsumption.isEmpty()) {
             Span none = new Span(getTranslation("vehicles.no_consumption_data"));
@@ -541,41 +542,22 @@ public class VehiclesView extends VerticalLayout implements HasDynamicTitle, Aft
             return;
         }
 
-        BigDecimal maxC = withConsumption.stream().map(FuelEntry::getConsumption).max(BigDecimal::compareTo).orElse(BigDecimal.TEN);
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        List<ConsumptionTrendChart.Point> points = withConsumption.stream()
+                .map(e -> {
+                    StringBuilder tip = new StringBuilder(e.getDate().format(fmt))
+                            .append(" · ").append(e.getConsumption().toPlainString()).append(" L/100km");
+                    if (e.getLiters() != null) {
+                        tip.append(" · ").append(e.getLiters().setScale(1, RoundingMode.HALF_UP)).append(" L");
+                    }
+                    tip.append(" · ").append(formatCurrency(
+                            exchangeRateService.convert(e.getAmount(), e.getCurrency(), currentUser.getDefaultCurrency())));
+                    return new ConsumptionTrendChart.Point(e.getDate(), e.getConsumption(), tip.toString());
+                })
+                .toList();
 
-        Div chartArea = new Div();
-        chartArea.getStyle()
-                .set("display", "flex").set("align-items", "flex-end").set("gap", "6px")
-                .set("height", "80px").set("overflow-x", "auto").set("padding-bottom", "2px");
-
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM");
-        for (FuelEntry e : withConsumption) {
-            double pct = maxC.compareTo(BigDecimal.ZERO) > 0
-                    ? e.getConsumption().divide(maxC, 4, RoundingMode.HALF_UP).doubleValue() * 68 : 2;
-            String color = consumptionColor(e.getConsumption());
-
-            Div barGroup = new Div();
-            barGroup.getStyle().set("display", "flex").set("flex-direction", "column")
-                    .set("align-items", "center").set("gap", "3px").set("min-width", "36px");
-
-            Span value = new Span(e.getConsumption().toPlainString());
-            value.getStyle().set("font-size", "9px").set("font-weight", "700")
-                    .set("color", color).set("white-space", "nowrap");
-
-            Div bar = new Div();
-            bar.getStyle()
-                    .set("width", "24px").set("height", Math.max(4, pct) + "px")
-                    .set("background", "linear-gradient(to top, " + color + ", " + color + "88)")
-                    .set("border-radius", "4px 4px 0 0");
-
-            Span lbl = new Span(e.getDate().format(fmt));
-            lbl.getStyle().set("font-size", "9px").set("color", "var(--vaadin-text-color-secondary)")
-                    .set("white-space", "nowrap");
-
-            barGroup.add(value, bar, lbl);
-            chartArea.add(barGroup);
-        }
-        container.add(chartArea);
+        container.add(new ConsumptionTrendChart(points, average,
+                Locale.forLanguageTag(currentUser.getLocale())));
     }
 
     private Div createSummaryCard(String title, String value, VaadinIcon iconType, String accentColor) {

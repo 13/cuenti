@@ -1,12 +1,13 @@
 package com.cuenti.app.views;
 
+import com.cuenti.app.model.Account;
 import com.cuenti.app.model.ScheduledTransaction;
 import com.cuenti.app.model.Transaction;
 import com.cuenti.app.model.User;
 import com.cuenti.app.repository.AccountRepository;
 import com.cuenti.app.repository.ScheduledTransactionRepository;
 import com.cuenti.app.repository.TransactionRepository;
-import com.cuenti.app.service.UserService;
+import com.cuenti.app.repository.UserRepository;
 import com.cuenti.app.usecase.UseCase;
 import com.vaadin.browserless.SpringBrowserlessTest;
 import com.vaadin.flow.component.button.Button;
@@ -15,8 +16,10 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -25,7 +28,9 @@ import org.springframework.test.context.ActiveProfiles;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,7 +42,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@WithMockUser(username = "demo")
+@WithMockUser(username = "uc109")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class UC109ScheduledBadgeTest extends SpringBrowserlessTest {
 
     private static final String FIXTURE_MEMO = "UC109-fixture";
@@ -49,14 +55,45 @@ class UC109ScheduledBadgeTest extends SpringBrowserlessTest {
     @Autowired
     private AccountRepository accountRepository;
     @Autowired
-    private UserService userService;
+    private UserRepository userRepository;
 
-    private User demo;
+    private User user;
+    private Account account;
     private final List<Long> fixtureIds = new ArrayList<>();
+
+    /**
+     * Dedicated user so mutations never touch the demo seed data other tests
+     * rely on. Created in @BeforeAll because the base class already navigates
+     * during its own setup — the user must exist before that.
+     */
+    @BeforeAll
+    void createUserAndAccount() {
+        user = userRepository.findByUsername("uc109").orElseGet(() -> {
+            User u = new User();
+            u.setUsername("uc109");
+            u.setEmail("uc109@test.local");
+            u.setPassword("not-used");
+            u.setFirstName("UC109");
+            u.setLastName("Tester");
+            u.setEnabled(true);
+            u.setRoles(new HashSet<>(Set.of("ROLE_USER")));
+            u.setLocale("de-DE");
+            u.setDefaultCurrency("EUR");
+            return userRepository.save(u);
+        });
+        account = accountRepository.findByUserOrderBySortOrderAsc(user).stream().findFirst()
+                .orElseGet(() -> {
+                    Account a = new Account();
+                    a.setUser(user);
+                    a.setAccountName("UC109 Konto");
+                    a.setAccountNumber("UC109-0001");
+                    a.setAccountType(Account.AccountType.CURRENT);
+                    return accountRepository.save(a);
+                });
+    }
 
     @BeforeEach
     void createOverdueFixture() {
-        demo = userService.findByUsername("demo");
         createDueSchedule(LocalDateTime.now().minusHours(2));
     }
 
@@ -64,16 +101,16 @@ class UC109ScheduledBadgeTest extends SpringBrowserlessTest {
     void removeFixtures() {
         fixtureIds.forEach(id -> scheduledRepository.findById(id).ifPresent(scheduledRepository::delete));
         fixtureIds.clear();
-        transactionRepository.findByUser(demo).stream()
+        transactionRepository.findByUser(user).stream()
                 .filter(t -> FIXTURE_MEMO.equals(t.getMemo()))
                 .forEach(transactionRepository::delete);
     }
 
     private void createDueSchedule(LocalDateTime nextOccurrence) {
         ScheduledTransaction st = scheduledRepository.save(ScheduledTransaction.builder()
-                .user(demo)
+                .user(user)
                 .type(Transaction.TransactionType.EXPENSE)
-                .fromAccount(accountRepository.findByUserOrderBySortOrderAsc(demo).get(0))
+                .fromAccount(account)
                 .amount(new BigDecimal("42.00"))
                 .payee("UC109 Fixture")
                 .memo(FIXTURE_MEMO)
@@ -170,6 +207,24 @@ class UC109ScheduledBadgeTest extends SpringBrowserlessTest {
         navigate(DashboardView.class);
 
         assertThat(badgeCount()).isEqualTo(before + 1);
+    }
+
+    @Test
+    @UseCase(id = "UC-109", scenario = "Post all due catches up missed occurrences")
+    void postAllDue_catchesUpAndClearsBadge() {
+        createDueSchedule(LocalDateTime.now().minusMonths(2));
+        navigate(ScheduledTransactionsView.class);
+        assertThat(badgeCount()).isEqualTo(2);
+
+        // uc109 user locale defaults to de-DE
+        test($(Button.class).withText("Alle fälligen buchen").single()).click();
+
+        assertThat($(Span.class).withClassName("nav-badge").exists()).isFalse();
+        long posted = transactionRepository.findByUser(user).stream()
+                .filter(t -> FIXTURE_MEMO.equals(t.getMemo()))
+                .count();
+        // 1 catch-up for the -2h fixture, 3 for the -2 months fixture
+        assertThat(posted).isEqualTo(4);
     }
 
     @Test

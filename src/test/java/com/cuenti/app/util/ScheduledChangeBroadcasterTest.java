@@ -14,6 +14,8 @@ class ScheduledChangeBroadcasterTest {
     @AfterEach
     void clearTxSynchronization() {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(s -> s.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
             TransactionSynchronizationManager.clearSynchronization();
         }
     }
@@ -55,6 +57,24 @@ class ScheduledChangeBroadcasterTest {
         ScheduledChangeBroadcaster.broadcast(4L);
         assertThat(calls.get()).isZero();
 
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(TransactionSynchronization::afterCommit);
+        assertThat(calls.get()).isEqualTo(1);
+
+        unregister.run();
+    }
+
+    @Test
+    void repeatedBroadcastsInOneTransaction_coalesceToSingleNotification() {
+        AtomicInteger calls = new AtomicInteger();
+        Runnable unregister = ScheduledChangeBroadcaster.register(5L, calls::incrementAndGet);
+
+        TransactionSynchronizationManager.initSynchronization();
+        ScheduledChangeBroadcaster.broadcast(5L);
+        ScheduledChangeBroadcaster.broadcast(5L);
+        ScheduledChangeBroadcaster.broadcast(5L);
+
+        assertThat(TransactionSynchronizationManager.getSynchronizations()).hasSize(1);
         TransactionSynchronizationManager.getSynchronizations()
                 .forEach(TransactionSynchronization::afterCommit);
         assertThat(calls.get()).isEqualTo(1);

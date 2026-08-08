@@ -108,7 +108,28 @@ public class ScheduledTransactionService {
 
         transactionService.saveTransaction(transaction);
         updateToNextOccurrence(scheduled);
+        auditService.log(currentUser, "POST", "ScheduledTransaction",
+                scheduled.getId(), scheduled.getPayee());
         com.cuenti.app.util.ScheduledChangeBroadcaster.broadcast(currentUser.getId());
+    }
+
+    /** Post every enabled schedule that is currently due, catching up missed occurrences. */
+    @Transactional
+    public int postAllDue() {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        LocalDateTime now = LocalDateTime.now();
+        int posted = 0;
+        for (ScheduledTransaction st : repository.findByUserAndEnabledTrueAndNextOccurrenceBefore(currentUser, now)) {
+            // post() mutates this same managed instance, so the loop sees each advance
+            while (st.isEnabled() && st.getNextOccurrence() != null
+                    && !st.getNextOccurrence().isAfter(now) && posted < 1000) {
+                post(st.getId());
+                posted++;
+            }
+        }
+        return posted;
     }
 
     @Transactional
@@ -125,6 +146,8 @@ public class ScheduledTransactionService {
         }
 
         updateToNextOccurrence(scheduled);
+        auditService.log(currentUser, "SKIP", "ScheduledTransaction",
+                scheduled.getId(), scheduled.getPayee());
         com.cuenti.app.util.ScheduledChangeBroadcaster.broadcast(currentUser.getId());
     }
 

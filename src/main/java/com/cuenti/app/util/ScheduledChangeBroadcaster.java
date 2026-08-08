@@ -36,14 +36,26 @@ public final class ScheduledChangeBroadcaster {
 
     /**
      * Notify all listeners of the given user, deferred until after the current
-     * transaction commits so listeners never read uncommitted state.
+     * transaction commits so listeners never read uncommitted state. Repeated
+     * broadcasts within one transaction (e.g. bulk posting) coalesce into a
+     * single post-commit notification.
      */
     public static void broadcast(Long userId) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            String key = "cuenti.scheduled.broadcast." + userId;
+            if (TransactionSynchronizationManager.hasResource(key)) {
+                return;
+            }
+            TransactionSynchronizationManager.bindResource(key, Boolean.TRUE);
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     fire(userId);
+                }
+
+                @Override
+                public void afterCompletion(int status) {
+                    TransactionSynchronizationManager.unbindResourceIfPossible(key);
                 }
             });
         } else {

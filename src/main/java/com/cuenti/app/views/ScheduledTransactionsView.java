@@ -70,6 +70,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
     private final Grid<ScheduledTransaction> templateGrid = new Grid<>(ScheduledTransaction.class, false);
     private final Grid<ScheduledTransaction> pendingGrid = new Grid<>(ScheduledTransaction.class, false);
     private final Select<Integer> horizonSelect = new Select<>();
+    private final Button postAllButton = new Button();
 
     public ScheduledTransactionsView(ScheduledTransactionService scheduledService, AccountService accountService,
                                      CategoryService categoryService, PayeeService payeeService, TagService tagService,
@@ -125,7 +126,20 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 e -> openEditDialog(new ScheduledTransaction()));
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        HorizontalLayout toolbar = new HorizontalLayout(horizonSelect, addButton);
+        postAllButton.setText(getTranslation("scheduled.post_all"));
+        postAllButton.setIcon(VaadinIcon.CHECK_CIRCLE.create());
+        postAllButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
+        postAllButton.addClickListener(e -> {
+            int posted = scheduledService.postAllDue();
+            refreshGrids();
+            com.cuenti.app.views.components.UiNotifier.success(
+                    getTranslation("scheduled.posted_all", posted));
+        });
+
+        HorizontalLayout toolbarActions = new HorizontalLayout(postAllButton, addButton);
+        toolbarActions.setAlignItems(Alignment.BASELINE);
+
+        HorizontalLayout toolbar = new HorizontalLayout(horizonSelect, toolbarActions);
         toolbar.setWidthFull();
         toolbar.setAlignItems(Alignment.BASELINE);
         toolbar.setJustifyContentMode(JustifyContentMode.BETWEEN);
@@ -795,6 +809,10 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .sorted(Comparator.comparing(ScheduledTransaction::getNextOccurrence))
                 .toList();
         pendingGrid.setItems(pending);
+
+        postAllButton.setVisible(all.stream()
+                .filter(ScheduledTransaction::isEnabled)
+                .anyMatch(st -> !st.getNextOccurrence().isAfter(LocalDateTime.now())));
     }
 
     private Div createCard() {

@@ -78,6 +78,7 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
                 VaadinSession.getCurrent().setLocale(locale);
                 updateAssetPricesAsync();
             } catch (Exception e) {
+                log.error("MainLayout init failed for user '{}', logging out", username, e);
                 securityUtils.logout();
                 return;
             }

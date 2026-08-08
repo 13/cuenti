@@ -785,6 +785,11 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .sorted(Comparator.comparing(ScheduledTransaction::getNextOccurrence))
                 .toList();
         pendingGrid.setItems(pending);
+
+        MainLayout layout = findAncestor(MainLayout.class);
+        if (layout != null) {
+            layout.refreshScheduledBadge();
+        }
     }
 
     private Div createCard() {

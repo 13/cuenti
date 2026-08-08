@@ -42,6 +42,7 @@ public class MainLayout extends AppLayout {
     private final com.cuenti.app.views.components.QuickSearchDialog quickSearch;
     private final com.cuenti.app.service.ScheduledTransactionService scheduledService;
     private User currentUser;
+    private SideNavItem scheduledItem;
 
     public MainLayout(SecurityUtils securityUtils, UserService userService, AssetService assetService,
                       com.cuenti.app.service.PayeeService payeeService,
@@ -283,17 +284,25 @@ public class MainLayout extends AppLayout {
 
     /** Scheduled nav entry with a due-soon count badge (demo pattern). */
     private SideNavItem scheduledNavItem() {
-        SideNavItem item = new SideNavItem(getTranslation("nav.scheduled"),
+        scheduledItem = new SideNavItem(getTranslation("nav.scheduled"),
                 ScheduledTransactionsView.class, VaadinIcon.CALENDAR_CLOCK.create());
-        if (currentUser != null) {
-            long due = scheduledService.countDueSoon(currentUser);
-            if (due > 0) {
-                Span badge = new Span(String.valueOf(due));
-                badge.addClassName("nav-badge");
-                item.setSuffixComponent(badge);
-            }
+        refreshScheduledBadge();
+        return scheduledItem;
+    }
+
+    /** Recompute the due-soon badge; views call this after posting/skipping schedules. */
+    public void refreshScheduledBadge() {
+        if (scheduledItem == null || currentUser == null) {
+            return;
         }
-        return item;
+        long due = scheduledService.countDueSoon(currentUser);
+        if (due > 0) {
+            Span badge = new Span(String.valueOf(due));
+            badge.addClassName("nav-badge");
+            scheduledItem.setSuffixComponent(badge);
+        } else {
+            scheduledItem.setSuffixComponent(null);
+        }
     }
 
     private SideNav navSection(String label, boolean expanded, SideNavItem... items) {

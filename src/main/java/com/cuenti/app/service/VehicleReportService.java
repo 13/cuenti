@@ -32,6 +32,8 @@ public class VehicleReportService {
     private static final Pattern ODOMETER_PATTERN = Pattern.compile("d[=:]\\s*(\\d+(?:[.,]\\d+)?)");
     private static final Pattern LITERS_PATTERN = Pattern.compile("[vl][~=:]\\s*(\\d+(?:[.,]\\d+)?)");
     private static final Pattern FULL_TANK_PATTERN = Pattern.compile("\\b(full)\\b", Pattern.CASE_INSENSITIVE);
+    private static final String SECONDARY_ODOMETER_REGEX = "(\\d{4,})\\s*km";
+    private static final String SECONDARY_LITERS_REGEX = "(\\d+(?:[.,]\\d+)?)\\s*[Ll](?:\\s|$|\\))";
 
     private final TransactionService transactionService;
     private final ExchangeRateService exchangeRateService;
@@ -116,8 +118,8 @@ public class VehicleReportService {
     }
 
     public static FuelEntry parseFuelEntry(Transaction t, String defaultCurrency) {
-        BigDecimal odometer = extractValue(t.getMemo(), ODOMETER_PATTERN, "(\\d{4,})\\s*km");
-        BigDecimal liters = extractValue(t.getMemo(), LITERS_PATTERN, "(\\d+(?:[.,]\\d+)?)\\s*[Ll](?:\\s|$|\\))");
+        BigDecimal odometer = extractValue(t.getMemo(), ODOMETER_PATTERN, SECONDARY_ODOMETER_REGEX);
+        BigDecimal liters = extractValue(t.getMemo(), LITERS_PATTERN, SECONDARY_LITERS_REGEX);
         FuelEntry entry = new FuelEntry(
                 t.getTransactionDate().toLocalDate(),
                 odometer,
@@ -129,6 +131,49 @@ public class VehicleReportService {
         );
         entry.setFullTank(extractFullTank(t.getMemo()));
         return entry;
+    }
+
+    /**
+     * Structured view of a memo's fuel tokens plus whatever free text
+     * remains once they are stripped. Used by the transaction form.
+     */
+    public record FuelTokens(BigDecimal odometer, BigDecimal liters, boolean fullTank, String remainderText) {
+        public boolean hasFuelData() {
+            return odometer != null || liters != null;
+        }
+    }
+
+    public static FuelTokens parseFuelTokens(String memo) {
+        String safe = memo == null ? "" : memo;
+        BigDecimal odometer = extractValue(safe, ODOMETER_PATTERN, SECONDARY_ODOMETER_REGEX);
+        BigDecimal liters = extractValue(safe, LITERS_PATTERN, SECONDARY_LITERS_REGEX);
+        boolean fullTank = extractFullTank(safe);
+        String remainder = ODOMETER_PATTERN.matcher(safe).replaceAll("");
+        remainder = LITERS_PATTERN.matcher(remainder).replaceAll("");
+        remainder = remainder.replaceAll(SECONDARY_ODOMETER_REGEX, "");
+        remainder = remainder.replaceAll(SECONDARY_LITERS_REGEX, " ");
+        remainder = FULL_TANK_PATTERN.matcher(remainder).replaceAll("");
+        remainder = remainder.replaceAll("\\s+", " ").trim();
+        return new FuelTokens(odometer, liters, fullTank, remainder);
+    }
+
+    /** Inverse of {@link #parseFuelTokens}: canonical "d=… l=… full <text>". */
+    public static String buildFuelMemo(BigDecimal odometer, BigDecimal liters, boolean fullTank, String remainderText) {
+        StringBuilder sb = new StringBuilder();
+        if (odometer != null) sb.append("d=").append(odometer.stripTrailingZeros().toPlainString());
+        if (liters != null) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append("l=").append(liters.stripTrailingZeros().toPlainString());
+        }
+        if (fullTank) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append("full");
+        }
+        if (remainderText != null && !remainderText.isBlank()) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(remainderText.trim());
+        }
+        return sb.toString();
     }
 
     private static BigDecimal extractValue(String memo, Pattern primary, String secondaryRegex) {

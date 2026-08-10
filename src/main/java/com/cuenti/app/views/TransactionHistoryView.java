@@ -26,9 +26,14 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.textfield.BigDecimalField;
+import com.vaadin.flow.component.textfield.IntegerField;
+import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.cuenti.app.service.VehicleReportService;
+import com.cuenti.app.service.VehicleReportService.FuelTokens;
 import com.vaadin.flow.data.provider.ListDataProvider;
 import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
@@ -74,6 +79,7 @@ public class TransactionHistoryView extends VerticalLayout
     private final PayeeService payeeService;
     private final TagService tagService;
     private final com.cuenti.app.service.SavedViewService savedViewService;
+    private final VehicleReportService vehicleReportService;
     private final SecurityUtils securityUtils;
     private final User currentUser;
 
@@ -109,10 +115,11 @@ public class TransactionHistoryView extends VerticalLayout
     private final Map<String, com.vaadin.flow.component.contextmenu.MenuItem> columnMenuItems = new HashMap<>();
 
     public TransactionHistoryView(TransactionService transactionService, AccountService accountService,
-                                  UserService userService, ExchangeRateService exchangeRateService, 
+                                  UserService userService, ExchangeRateService exchangeRateService,
                                   CategoryService categoryService, AssetService assetService,
                                   PayeeService payeeService, TagService tagService, SecurityUtils securityUtils,
-                                  com.cuenti.app.service.SavedViewService savedViewService) {
+                                  com.cuenti.app.service.SavedViewService savedViewService,
+                                  VehicleReportService vehicleReportService) {
         this.transactionService = transactionService;
         this.accountService = accountService;
         this.userService = userService;
@@ -123,6 +130,7 @@ public class TransactionHistoryView extends VerticalLayout
         this.tagService = tagService;
         this.securityUtils = securityUtils;
         this.savedViewService = savedViewService;
+        this.vehicleReportService = vehicleReportService;
 
         String username = securityUtils.getAuthenticatedUsername().orElseThrow();
         this.currentUser = userService.findByUsername(username);
@@ -1136,7 +1144,7 @@ public class TransactionHistoryView extends VerticalLayout
         }
     }
 
-    private void openTransactionDialog(Transaction transaction) {
+    void openTransactionDialog(Transaction transaction) { // package-visible for tests
         final Transaction[] currentFormTransaction = {transaction};
         Dialog dialog = new Dialog();
         dialog.setCloseOnOutsideClick(false);
@@ -1297,6 +1305,7 @@ public class TransactionHistoryView extends VerticalLayout
         payeeCombo.setPrefixComponent(VaadinIcon.USER.create());
 
         ComboBox<Category> categoryCombo = new ComboBox<>(getTranslation("transactions.category"));
+        categoryCombo.setId("tx-category");
         categoryCombo.setItemLabelGenerator(Category::getFullName);
         categoryCombo.setAllowCustomValue(true);
         categoryCombo.setWidthFull();
@@ -1391,10 +1400,91 @@ public class TransactionHistoryView extends VerticalLayout
         addNewTagBtn.getStyle().set("flex-shrink", "0");
 
         TextArea memoField = new TextArea(getTranslation("dialog.memo"));
+        memoField.setId("tx-memo");
         memoField.setValue(currentFormTransaction[0].getMemo() != null ? currentFormTransaction[0].getMemo() : "");
         memoField.setWidthFull();
         memoField.setMinHeight("60px");
         memoField.setMaxHeight("100px");
+
+        // ── Fuel section (structured tanking entry) ───────────────────
+        IntegerField fuelOdometerField = new IntegerField(getTranslation("vehicles.form_odometer"));
+        fuelOdometerField.setId("fuel-odometer");
+        fuelOdometerField.setWidthFull();
+        fuelOdometerField.setStepButtonsVisible(false);
+
+        NumberField fuelLitersField = new NumberField(getTranslation("vehicles.form_liters"));
+        fuelLitersField.setId("fuel-liters");
+        fuelLitersField.setWidthFull();
+
+        Checkbox fuelFullTankBox = new Checkbox(getTranslation("vehicles.form_full_tank"));
+        fuelFullTankBox.setId("fuel-full");
+
+        HorizontalLayout fuelRow = new HorizontalLayout(fuelOdometerField, fuelLitersField, fuelFullTankBox);
+        fuelRow.setWidthFull(); fuelRow.setSpacing(false);
+        fuelRow.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.BASELINE);
+        fuelRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
+        fuelOdometerField.getElement().getStyle().set("flex", "1 1 140px").set("min-width", "0");
+        fuelLitersField.getElement().getStyle().set("flex", "1 1 140px").set("min-width", "0");
+
+        Div fuelSection = new Div(fuelRow);
+        fuelSection.setId("fuel-section");
+        fuelSection.setWidthFull();
+        fuelSection.setVisible(false);
+
+        String[] fuelRemainder = {""};
+        boolean[] fuelSyncing = {false};
+        BigDecimal[] fuelLastOdometer = {null};
+
+        Runnable refreshLastOdometerHint = () -> {
+            Category cat = categoryCombo.getValue();
+            LocalDate refDate = datePicker.getValue() != null ? datePicker.getValue() : LocalDate.now();
+            fuelLastOdometer[0] = cat != null && cat.getId() != null
+                    ? vehicleReportService.lastOdometer(currentUser, cat.getId(), refDate)
+                    : null;
+            fuelOdometerField.setHelperText(fuelLastOdometer[0] != null
+                    ? getTranslation("vehicles.form_last", fuelLastOdometer[0].toPlainString())
+                    : null);
+        };
+
+        Runnable syncMemoFromFuelFields = () -> {
+            if (fuelSyncing[0]) return;
+            fuelSyncing[0] = true;
+            BigDecimal od = fuelOdometerField.getValue() != null
+                    ? BigDecimal.valueOf(fuelOdometerField.getValue()) : null;
+            BigDecimal li = fuelLitersField.getValue() != null
+                    ? BigDecimal.valueOf(fuelLitersField.getValue()) : null;
+            memoField.setValue(VehicleReportService.buildFuelMemo(
+                    od, li, Boolean.TRUE.equals(fuelFullTankBox.getValue()), fuelRemainder[0]));
+            fuelSyncing[0] = false;
+        };
+        fuelOdometerField.addValueChangeListener(e -> syncMemoFromFuelFields.run());
+        fuelLitersField.addValueChangeListener(e -> syncMemoFromFuelFields.run());
+        fuelFullTankBox.addValueChangeListener(e -> syncMemoFromFuelFields.run());
+
+        Runnable populateFuelFieldsFromMemo = () -> {
+            FuelTokens tokens = VehicleReportService.parseFuelTokens(memoField.getValue());
+            fuelSyncing[0] = true;
+            fuelOdometerField.setValue(tokens.odometer() != null ? tokens.odometer().intValue() : null);
+            fuelLitersField.setValue(tokens.liters() != null ? tokens.liters().doubleValue() : null);
+            fuelFullTankBox.setValue(tokens.fullTank());
+            fuelRemainder[0] = tokens.remainderText();
+            fuelSyncing[0] = false;
+        };
+        memoField.addValueChangeListener(e -> {
+            if (fuelSyncing[0] || !e.isFromClient()) return;
+            populateFuelFieldsFromMemo.run();
+        });
+
+        Runnable updateFuelVisibility = () -> {
+            Category cat = categoryCombo.getValue();
+            boolean memoParses = VehicleReportService.parseFuelTokens(memoField.getValue()).hasFuelData();
+            boolean show = memoParses || (cat != null && cat.getId() != null
+                    && vehicleReportService.isFuelCategory(currentUser, cat.getId()));
+            fuelSection.setVisible(show);
+            if (show) refreshLastOdometerHint.run();
+        };
+        categoryCombo.addValueChangeListener(e -> updateFuelVisibility.run());
+        datePicker.addValueChangeListener(e -> { if (fuelSection.isVisible()) refreshLastOdometerHint.run(); });
 
         // Autofill fields from payee defaults when a payee is selected
         payeeCombo.addValueChangeListener(e -> {
@@ -1561,6 +1651,10 @@ public class TransactionHistoryView extends VerticalLayout
                 unitPriceField.setValue(currentFormTransaction[0].getAmount()
                         .divide(currentFormTransaction[0].getUnits(), 4, RoundingMode.HALF_UP));
             }
+            if (VehicleReportService.parseFuelTokens(currentFormTransaction[0].getMemo()).hasFuelData()) {
+                populateFuelFieldsFromMemo.run();
+                updateFuelVisibility.run();
+            }
         }
         updateVisibility.run();
         updateTotalAmount(currentSplits, amountField, categoryCombo);
@@ -1583,7 +1677,7 @@ public class TransactionHistoryView extends VerticalLayout
         row3.setWidthFull(); row3.setSpacing(false);
         row3.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
          row3.getChildren().forEach(c -> c.getElement().getStyle().set("flex", "1 1 200px").set("min-width", "0"));
-         coreSection.add(row1, row2, row3, tagsRow, memoField, splitSection, assetSection, hiddenTabs);
+         coreSection.add(row1, row2, fuelSection, row3, tagsRow, memoField, splitSection, assetSection, hiddenTabs);
 
         // Secondary: payment details (number)
         Div extraSection = createFormSection(null);

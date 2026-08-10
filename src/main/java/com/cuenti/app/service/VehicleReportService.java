@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -115,6 +116,30 @@ public class VehicleReportService {
 
         return new VehicleReport(descending, totalCost, totalLiters, attributedDistance,
                 avgConsumption, avgPricePerLiter, user.getDefaultCurrency());
+    }
+
+    /** True when the category already contains at least one parseable fuel memo. */
+    @Transactional(readOnly = true)
+    public boolean isFuelCategory(User user, Long categoryId) {
+        if (categoryId == null) return false;
+        return transactionService.getTransactionsByUser(user).stream()
+                .filter(t -> t.getCategory() != null && categoryId.equals(t.getCategory().getId()))
+                .filter(t -> t.getType() == Transaction.TransactionType.EXPENSE)
+                .anyMatch(t -> parseFuelTokens(t.getMemo()).hasFuelData());
+    }
+
+    /** Latest odometer reading in the category strictly before the given date; null when none. */
+    @Transactional(readOnly = true)
+    public BigDecimal lastOdometer(User user, Long categoryId, LocalDate beforeDate) {
+        if (categoryId == null || beforeDate == null) return null;
+        return transactionService.getTransactionsByUser(user).stream()
+                .filter(t -> t.getCategory() != null && categoryId.equals(t.getCategory().getId()))
+                .filter(t -> t.getType() == Transaction.TransactionType.EXPENSE)
+                .filter(t -> t.getTransactionDate().toLocalDate().isBefore(beforeDate))
+                .sorted(Comparator.comparing(Transaction::getTransactionDate).reversed())
+                .map(t -> parseFuelTokens(t.getMemo()).odometer())
+                .filter(Objects::nonNull)
+                .findFirst().orElse(null);
     }
 
     public static FuelEntry parseFuelEntry(Transaction t, String defaultCurrency) {

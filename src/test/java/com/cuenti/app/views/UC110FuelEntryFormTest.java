@@ -15,6 +15,7 @@ import com.vaadin.flow.component.KeyModifier;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextArea;
@@ -140,5 +141,57 @@ class UC110FuelEntryFormTest extends SpringBrowserlessTest {
         assertThat($(IntegerField.class).withId("fuel-odometer").single().getValue()).isEqualTo(100700);
         assertThat($(NumberField.class).withId("fuel-liters").single().getValue()).isEqualTo(30.0);
         assertThat($(Checkbox.class).withId("fuel-full").single().getValue()).isFalse();
+    }
+
+    @Test
+    @UseCase(id = "UC-110", scenario = "Non-increasing odometer shows warning, save not blocked")
+    void nonIncreasingOdometer_warnsButDoesNotBlock() {
+        seedFuelCategory(); // last odometer = 100000
+        navigate(TransactionHistoryView.class);
+        fireShortcut(Key.KEY_N, KeyModifier.ALT);
+
+        ComboBox<Category> categoryCombo = $(ComboBox.class).withId("tx-category").single();
+        test(categoryCombo).selectItem(fuelCategory.getFullName());
+
+        test($(IntegerField.class).withId("fuel-odometer").single()).setValue(99000);
+
+        Span info = $(Span.class).withId("fuel-info").single();
+        assertThat(info.getText()).contains("100000");
+        assertThat(info.getElement().getThemeList()).contains("badge", "warning");
+    }
+
+    @Test
+    @UseCase(id = "UC-110", scenario = "Distance and consumption info line")
+    void plausibleEntry_showsDistanceAndConsumption() {
+        seedFuelCategory(); // last odometer = 100000
+        navigate(TransactionHistoryView.class);
+        fireShortcut(Key.KEY_N, KeyModifier.ALT);
+
+        ComboBox<Category> categoryCombo = $(ComboBox.class).withId("tx-category").single();
+        test(categoryCombo).selectItem(fuelCategory.getFullName());
+
+        test($(IntegerField.class).withId("fuel-odometer").single()).setValue(100340);
+        test($(NumberField.class).withId("fuel-liters").single()).setValue(41.3);
+        test($(Checkbox.class).withId("fuel-full").single()).click();
+
+        Span info = $(Span.class).withId("fuel-info").single();
+        // 340 km since last, 41.3 L / 340 km = 12.1 L/100km
+        assertThat(info.getText()).contains("340").contains("12.1");
+    }
+
+    @Test
+    @UseCase(id = "UC-110", scenario = "Implausible liters warns")
+    void implausibleLiters_warns() {
+        seedFuelCategory();
+        navigate(TransactionHistoryView.class);
+        fireShortcut(Key.KEY_N, KeyModifier.ALT);
+
+        ComboBox<Category> categoryCombo = $(ComboBox.class).withId("tx-category").single();
+        test(categoryCombo).selectItem(fuelCategory.getFullName());
+
+        test($(NumberField.class).withId("fuel-liters").single()).setValue(413.0);
+
+        NumberField liters = $(NumberField.class).withId("fuel-liters").single();
+        assertThat(liters.getHelperText()).isNotBlank();
     }
 }

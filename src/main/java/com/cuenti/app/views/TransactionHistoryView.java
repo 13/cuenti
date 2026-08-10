@@ -1435,6 +1435,7 @@ public class TransactionHistoryView extends VerticalLayout
         boolean[] fuelSyncing = {false};
         BigDecimal[] fuelLastOdometer = {null};
 
+        Runnable[] updateFuelHintsRef = new Runnable[1];
         Runnable refreshLastOdometerHint = () -> {
             Category cat = categoryCombo.getValue();
             LocalDate refDate = datePicker.getValue() != null ? datePicker.getValue() : LocalDate.now();
@@ -1444,6 +1445,7 @@ public class TransactionHistoryView extends VerticalLayout
             fuelOdometerField.setHelperText(fuelLastOdometer[0] != null
                     ? getTranslation("vehicles.form_last", fuelLastOdometer[0].toPlainString())
                     : null);
+            if (updateFuelHintsRef[0] != null) updateFuelHintsRef[0].run();
         };
 
         Runnable syncMemoFromFuelFields = () -> {
@@ -1457,9 +1459,53 @@ public class TransactionHistoryView extends VerticalLayout
                     od, li, Boolean.TRUE.equals(fuelFullTankBox.getValue()), fuelRemainder[0]));
             fuelSyncing[0] = false;
         };
-        fuelOdometerField.addValueChangeListener(e -> syncMemoFromFuelFields.run());
-        fuelLitersField.addValueChangeListener(e -> syncMemoFromFuelFields.run());
-        fuelFullTankBox.addValueChangeListener(e -> syncMemoFromFuelFields.run());
+
+        Span fuelInfoLine = new Span();
+        fuelInfoLine.setId("fuel-info");
+        fuelInfoLine.setVisible(false);
+        fuelSection.add(fuelInfoLine);
+
+        Runnable updateFuelHints = () -> {
+            // liters plausibility
+            Double liters = fuelLitersField.getValue();
+            fuelLitersField.setHelperText(liters != null && (liters <= 0 || liters > 200)
+                    ? getTranslation("vehicles.warn_liters_implausible") : null);
+
+            // odometer vs last known
+            Integer odometer = fuelOdometerField.getValue();
+            BigDecimal last = fuelLastOdometer[0];
+            fuelInfoLine.setVisible(false);
+            fuelInfoLine.getElement().getThemeList().clear();
+            if (odometer == null || last == null) return;
+
+            BigDecimal distance = BigDecimal.valueOf(odometer).subtract(last);
+            if (distance.compareTo(BigDecimal.ZERO) <= 0) {
+                fuelInfoLine.setText(getTranslation("vehicles.warn_odometer_not_increasing", last.toPlainString()));
+                fuelInfoLine.getElement().getThemeList().addAll(java.util.List.of("badge", "warning"));
+                fuelInfoLine.setVisible(true);
+            } else if (distance.compareTo(BigDecimal.valueOf(2000)) > 0) {
+                fuelInfoLine.setText(getTranslation("vehicles.warn_odometer_jump", distance.toPlainString()));
+                fuelInfoLine.getElement().getThemeList().addAll(java.util.List.of("badge", "warning"));
+                fuelInfoLine.setVisible(true);
+            } else if (liters != null && liters > 0 && Boolean.TRUE.equals(fuelFullTankBox.getValue())) {
+                BigDecimal consumption = BigDecimal.valueOf(liters)
+                        .divide(distance, 6, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100)).setScale(1, RoundingMode.HALF_UP);
+                fuelInfoLine.setText(getTranslation("vehicles.form_info_consumption",
+                        distance.toPlainString(), consumption.toPlainString()));
+                fuelInfoLine.getElement().getThemeList().add("badge");
+                fuelInfoLine.setVisible(true);
+            } else {
+                fuelInfoLine.setText(getTranslation("vehicles.form_info", distance.toPlainString()));
+                fuelInfoLine.getElement().getThemeList().add("badge");
+                fuelInfoLine.setVisible(true);
+            }
+        };
+        updateFuelHintsRef[0] = updateFuelHints;
+
+        fuelOdometerField.addValueChangeListener(e -> { syncMemoFromFuelFields.run(); updateFuelHints.run(); });
+        fuelLitersField.addValueChangeListener(e -> { syncMemoFromFuelFields.run(); updateFuelHints.run(); });
+        fuelFullTankBox.addValueChangeListener(e -> { syncMemoFromFuelFields.run(); updateFuelHints.run(); });
 
         Runnable populateFuelFieldsFromMemo = () -> {
             FuelTokens tokens = VehicleReportService.parseFuelTokens(memoField.getValue());
@@ -1473,6 +1519,7 @@ public class TransactionHistoryView extends VerticalLayout
         memoField.addValueChangeListener(e -> {
             if (fuelSyncing[0] || !e.isFromClient()) return;
             populateFuelFieldsFromMemo.run();
+            updateFuelHints.run();
         });
 
         Runnable updateFuelVisibility = () -> {
@@ -1716,6 +1763,10 @@ public class TransactionHistoryView extends VerticalLayout
                     Transaction saveTx = currentFormTransaction[0];
                     saveTx.getSplits().clear();
                     for (TransactionSplit s : currentSplits) saveTx.addSplit(s);
+                    if (fuelSection.isVisible()
+                            && fuelOdometerField.getValue() == null && fuelLitersField.getValue() == null) {
+                        Notification.show(getTranslation("vehicles.warn_no_fuel_data"), 4000, Notification.Position.MIDDLE);
+                    }
                     saveFromTabs(saveTx, hiddenTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsCombo);
                     refreshGrid(); dialog.close();
                     com.cuenti.app.views.components.UiNotifier.success(getTranslation("transactions.saved"));
@@ -1735,6 +1786,10 @@ public class TransactionHistoryView extends VerticalLayout
             Transaction keepTx = currentFormTransaction[0];
             keepTx.getSplits().clear();
             for (TransactionSplit s : currentSplits) keepTx.addSplit(s);
+            if (fuelSection.isVisible()
+                    && fuelOdometerField.getValue() == null && fuelLitersField.getValue() == null) {
+                Notification.show(getTranslation("vehicles.warn_no_fuel_data"), 4000, Notification.Position.MIDDLE);
+            }
             saveFromTabs(keepTx, hiddenTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsCombo);
             refreshGrid();
             com.cuenti.app.views.components.UiNotifier.success(getTranslation("transactions.saved"));

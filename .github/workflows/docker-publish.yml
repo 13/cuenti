@@ -44,10 +44,23 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=ci-${{ github.sha }},enable=${{ !startsWith(github.ref, 'refs/tags/') }}
 
-      - name: Build and push
+      # On Gitea, buildx's single-shot `--push` uses BuildKit's own registry
+      # client, which does not read /etc/docker/certs.d and fails TLS
+      # verification against the self-signed gitea.muh registry even with
+      # the docker driver. Build and load into the daemon instead, then push
+      # with the classic `docker push`, which does honor /etc/docker/certs.d.
+      - name: Build
         uses: docker/build-push-action@v7
         with:
           context: .
-          push: true
+          push: ${{ github.server_url == 'https://github.com' }}
+          load: ${{ github.server_url != 'https://github.com' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Push images (Gitea)
+        if: github.server_url != 'https://github.com'
+        run: |
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && docker push "$tag"
+          done <<< "${{ steps.meta.outputs.tags }}"

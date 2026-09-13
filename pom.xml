@@ -272,7 +272,33 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>-javaagent:${settings.localRepository}/net/bytebuddy/byte-buddy-agent/${byte-buddy.version}/byte-buddy-agent-${byte-buddy.version}.jar -Xshare:off</argLine>
+                    <!--
+                      PostgreSQL (Testcontainers) tests run in their own forked
+                      JVM, in the execution below. Starting their Spring context
+                      in the same JVM as the H2 suite replaces process-wide
+                      security state, and every later H2 test that calls a
+                      service directly under @WithMockUser then finds no
+                      authenticated user (NoSuchElementException from
+                      getAuthenticatedUsername). `./mvnw test` still runs both.
+                    -->
+                    <excludes>
+                        <exclude>**/*PostgresTest.java</exclude>
+                    </excludes>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>postgres-tests</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <excludes combine.self="override"/>
+                            <includes>
+                                <include>**/*PostgresTest.java</include>
+                            </includes>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- Spring Boot -->

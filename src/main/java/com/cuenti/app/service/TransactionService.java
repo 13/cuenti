@@ -51,6 +51,7 @@ public class TransactionService {
             reverseBalanceEffect(existing);
         }
 
+        transaction.touch();
         return finishSave(transaction, currentUser, created);
     }
 
@@ -69,6 +70,18 @@ public class TransactionService {
      */
     @Transactional
     public Transaction updateTransaction(Long id, java.util.function.Consumer<Transaction> mutator) {
+        return updateTransaction(id, null, mutator);
+    }
+
+    /**
+     * {@link #updateTransaction(Long, java.util.function.Consumer)}, refused with
+     * {@link StaleTransactionException} when {@code ifMatch} no longer matches the
+     * stored row. Checked on the row loaded inside this write transaction and
+     * before the balance reversal, so a refused write changes nothing.
+     */
+    @Transactional
+    public Transaction updateTransaction(Long id, String ifMatch,
+                                         java.util.function.Consumer<Transaction> mutator) {
         String username = securityUtils.getAuthenticatedUsername()
                 .orElseThrow(() -> new SecurityException("User not authenticated"));
         User currentUser = userService.findByUsername(username);
@@ -80,6 +93,10 @@ public class TransactionService {
             throw new SecurityException("Cannot modify transaction belonging to another user");
         }
 
+        if (!existing.matchesVersion(ifMatch)) {
+            throw new StaleTransactionException(id);
+        }
+
         // Reverse using the OLD amount/type/accounts before the mutator changes anything.
         reverseBalanceEffect(existing);
 
@@ -89,6 +106,7 @@ public class TransactionService {
         validateAmountNotNegative(existing);
         checkAccountOwnership(existing, currentUser);
 
+        existing.touch();
         return finishSave(existing, currentUser, false);
     }
 
@@ -265,6 +283,16 @@ public class TransactionService {
 
     @Transactional
     public void deleteTransaction(Transaction transaction) {
+        deleteTransaction(transaction, null);
+    }
+
+    /**
+     * Deletes the transaction unless {@code ifMatch} is given and no longer
+     * matches the stored row, in which case {@link StaleTransactionException}
+     * is thrown and nothing changes.
+     */
+    @Transactional
+    public void deleteTransaction(Transaction transaction, String ifMatch) {
         String username = securityUtils.getAuthenticatedUsername()
                 .orElseThrow(() -> new SecurityException("User not authenticated"));
         User currentUser = userService.findByUsername(username);
@@ -274,6 +302,9 @@ public class TransactionService {
             User transactionUser = getTransactionUser(t);
             if (!transactionUser.getId().equals(currentUser.getId())) {
                 throw new SecurityException("Cannot delete transaction belonging to another user");
+            }
+            if (!t.matchesVersion(ifMatch)) {
+                throw new StaleTransactionException(t.getId());
             }
 
             reverseBalanceEffect(t);

@@ -50,6 +50,7 @@ public final class DtoMapper {
                 .assetName(t.getAsset() != null ? t.getAsset().getName() : null)
                 .units(t.getUnits())
                 .sortOrder(t.getSortOrder())
+                .version(t.version())
                 .splits(t.getSplits().stream()
                         .map(s -> TransactionSplitDTO.builder()
                                 .id(s.getId())

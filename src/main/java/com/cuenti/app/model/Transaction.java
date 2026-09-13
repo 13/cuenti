@@ -79,6 +79,51 @@ public class Transaction {
     @Builder.Default
     private java.util.List<TransactionSplit> splits = new java.util.ArrayList<>();
 
+    /**
+     * When this row was last written through the service, truncated to
+     * milliseconds so it survives a database round trip unchanged. API
+     * clients see it as an opaque {@link #version()} and echo it back in
+     * {@code If-Match}, so a change made against an older copy is refused
+     * instead of silently overwriting a newer one. Null for rows written
+     * before the column existed.
+     *
+     * <p>Stamped explicitly by {@code TransactionService} rather than by
+     * {@code @PreUpdate}: that callback fires at flush, which can come after
+     * the response was built, handing clients a version the row no longer
+     * has. Creates are covered by {@link #touch()} as {@code @PrePersist}.
+     */
+    @Column(name = "updated_at", columnDefinition = "TIMESTAMP")
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    public void touch() {
+        updatedAt = LocalDateTime.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
+    }
+
+    /** The concurrency token clients send back in {@code If-Match}. */
+    public String version() {
+        return updatedAt == null
+                ? "0"
+                : Long.toString(updatedAt.toInstant(java.time.ZoneOffset.UTC).toEpochMilli());
+    }
+
+    /**
+     * Whether an {@code If-Match} value still describes this row. Absent or
+     * {@code *} always matches, so clients that do not send the header keep
+     * last-write-wins. Accepts the value quoted or weak-prefixed, the way
+     * HTTP entity tags are usually echoed.
+     */
+    public boolean matchesVersion(String ifMatch) {
+        if (ifMatch == null || ifMatch.isBlank()) return true;
+        String value = ifMatch.trim();
+        if (value.equals("*")) return true;
+        if (value.startsWith("W/")) value = value.substring(2);
+        if (value.length() >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
+            value = value.substring(1, value.length() - 1);
+        }
+        return value.equals(version());
+    }
+
     public void addSplit(TransactionSplit split) {
         splits.add(split);
         split.setTransaction(this);

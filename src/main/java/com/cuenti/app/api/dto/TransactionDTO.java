@@ -33,4 +33,11 @@ public class TransactionDTO {
     private BigDecimal units;
     private Integer sortOrder;
     private List<TransactionSplitDTO> splits;
+
+    /**
+     * Opaque concurrency token. Send it back in {@code If-Match} on PUT or
+     * DELETE to have the write refused (409) if the row changed since.
+     * Ignored on input.
+     */
+    private String version;
 }

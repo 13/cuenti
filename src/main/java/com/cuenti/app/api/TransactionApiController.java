@@ -7,6 +7,7 @@ import com.cuenti.app.api.dto.TransactionSplitDTO;
 import com.cuenti.app.model.*;
 import com.cuenti.app.service.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +34,7 @@ public class TransactionApiController {
     private final CategoryService categoryService;
     private final AssetService assetService;
     private final UserService userService;
+    private final IdempotencyService idempotencyService;
 
     private static final Set<String> SORT_WHITELIST = Set.of("transactionDate", "amount", "payee");
 
@@ -102,10 +104,29 @@ public class TransactionApiController {
         return (s == null || s.isBlank()) ? null : s;
     }
 
+    /**
+     * Creates a transaction. With an {@code Idempotency-Key} header, repeating
+     * the request returns the transaction the first one created (marked
+     * {@code Idempotent-Replayed: true}) instead of creating another -- what
+     * lets an offline client safely resend a write whose response it lost.
+     */
     @PostMapping
-    public ResponseEntity<?> createTransaction(@RequestBody TransactionDTO dto) {
+    public ResponseEntity<?> createTransaction(
+            @RequestBody TransactionDTO dto,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
         if (username == null) return ResponseEntity.status(401).build();
+
+        String key = idempotencyKey == null ? null : idempotencyKey.trim();
+        if (key != null && (key.isEmpty() || key.length() > IdempotencyService.MAX_KEY_LENGTH)) {
+            return ResponseEntity.badRequest().body(Map.of("error",
+                    "Idempotency-Key must be 1-" + IdempotencyService.MAX_KEY_LENGTH + " characters"));
+        }
+        Long userId = key == null ? null : userService.findByUsername(username).getId();
+        if (key != null) {
+            ResponseEntity<?> replayed = replay(userId, key);
+            if (replayed != null) return replayed;
+        }
 
         String splitError = validateSplits(dto);
         if (splitError != null) {
@@ -113,12 +134,45 @@ public class TransactionApiController {
         }
         Transaction transaction = mapFromDTO(dto);
         applySplitsMutation(transaction, dto);
-        Transaction saved = transactionService.saveTransaction(transaction);
-        return ResponseEntity.ok(DtoMapper.toTransactionDTO(saved));
+        if (key == null) {
+            Transaction saved = transactionService.saveTransaction(transaction);
+            return ResponseEntity.ok(DtoMapper.toTransactionDTO(saved));
+        }
+        try {
+            Transaction saved = idempotencyService.createOnce(userId, key, transaction);
+            return ResponseEntity.ok(DtoMapper.toTransactionDTO(saved));
+        } catch (DataIntegrityViolationException e) {
+            // A concurrent request with the same key committed first, and its
+            // result is this request's result. Anything else is a real failure.
+            ResponseEntity<?> raced = replay(userId, key);
+            if (raced != null) return raced;
+            throw e;
+        }
+    }
+
+    /** What an earlier request with this key already got, or null if there was none. */
+    private ResponseEntity<?> replay(Long userId, String key) {
+        return idempotencyService.find(userId, key)
+                .<ResponseEntity<?>>map(found -> found.transaction()
+                        .<ResponseEntity<?>>map(t -> ResponseEntity.ok()
+                                .header("Idempotent-Replayed", "true")
+                                .body(DtoMapper.toTransactionDTO(t)))
+                        .orElseGet(() -> ResponseEntity.status(409).body(Map.of("error",
+                                "This transaction was already created and has since been deleted."))))
+                .orElse(null);
+    }
+
+    /** 409 for a write made against an outdated copy. */
+    private static ResponseEntity<?> staleConflict() {
+        return ResponseEntity.status(409).body(Map.of("error",
+                "This transaction was changed after this edit was made. Reload it and apply the change again."));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateTransaction(@PathVariable Long id, @RequestBody TransactionDTO dto) {
+    public ResponseEntity<?> updateTransaction(
+            @PathVariable Long id,
+            @RequestBody TransactionDTO dto,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
         String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
         if (username == null) return ResponseEntity.status(401).build();
 
@@ -144,15 +198,22 @@ public class TransactionApiController {
             return ResponseEntity.badRequest().body(Map.of("error", sumError));
         }
 
-        Transaction saved = transactionService.updateTransaction(id, fresh -> {
-            applySplitsMutation(fresh, dto);
-            applyDtoFields(fresh, dto);
-        });
+        Transaction saved;
+        try {
+            saved = transactionService.updateTransaction(id, ifMatch, fresh -> {
+                applySplitsMutation(fresh, dto);
+                applyDtoFields(fresh, dto);
+            });
+        } catch (StaleTransactionException e) {
+            return staleConflict();
+        }
         return ResponseEntity.ok(DtoMapper.toTransactionDTO(saved));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTransaction(@PathVariable Long id) {
+    public ResponseEntity<?> deleteTransaction(
+            @PathVariable Long id,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
         String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
         if (username == null) return ResponseEntity.status(401).build();
 
@@ -166,7 +227,11 @@ public class TransactionApiController {
                 .orElse(null);
         if (existing == null) return ResponseEntity.notFound().build();
 
-        transactionService.deleteTransaction(existing);
+        try {
+            transactionService.deleteTransaction(existing, ifMatch);
+        } catch (StaleTransactionException e) {
+            return staleConflict();
+        }
         return ResponseEntity.ok().build();
     }
 

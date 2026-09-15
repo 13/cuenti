@@ -6,7 +6,10 @@ import lombok.*;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "transaction_splits")
+@Table(name = "transaction_splits", indexes = {
+        // keep in sync with V7__transaction_indexes.sql
+        @Index(name = "idx_transaction_splits_transaction", columnList = "transaction_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor

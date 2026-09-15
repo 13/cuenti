@@ -2,28 +2,55 @@ package com.cuenti.app.service;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.HashMap;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class ExchangeRateService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    /** How long a fetched rate is reused before asking the provider again. */
+    static final Duration RATE_TTL = Duration.ofHours(6);
+    /**
+     * How long a failed lookup is remembered. Without this, every conversion
+     * (e.g. one per grid row) retries the HTTP call while offline.
+     */
+    static final Duration FAILURE_TTL = Duration.ofMinutes(10);
+
+    private record CachedRate(BigDecimal rate, Instant expiresAt) {}
+
+    private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final Map<String, BigDecimal> rateCache = new HashMap<>();
+    private final Map<String, CachedRate> rateCache = new ConcurrentHashMap<>();
+
+    public ExchangeRateService() {
+        this(createRestTemplate());
+    }
+
+    /** Package-visible for tests. */
+    ExchangeRateService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    private static RestTemplate createRestTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(3));
+        factory.setReadTimeout(Duration.ofSeconds(5));
+        return new RestTemplate(factory);
+    }
 
     public BigDecimal getExchangeRate(String from, String to) {
         if (from.equals(to)) {
@@ -31,26 +58,30 @@ public class ExchangeRateService {
         }
 
         String pair = from + to;
-        if (rateCache.containsKey(pair)) {
-            return rateCache.get(pair);
+        Instant now = Instant.now();
+        CachedRate cached = rateCache.get(pair);
+        if (cached != null && cached.expiresAt().isAfter(now)) {
+            return cached.rate();
         }
 
         BigDecimal rate = fetchRate(from, to);
+        if (rate == null) {
+            // Try inverse if direct failed
+            BigDecimal inverseRate = fetchRate(to, from);
+            if (inverseRate != null && inverseRate.compareTo(BigDecimal.ZERO) != 0) {
+                rate = BigDecimal.ONE.divide(inverseRate, 10, RoundingMode.HALF_UP);
+            }
+        }
         if (rate != null) {
-            rateCache.put(pair, rate);
+            rateCache.put(pair, new CachedRate(rate, now.plus(RATE_TTL)));
             return rate;
         }
 
-        // Try inverse if direct failed
-        BigDecimal inverseRate = fetchRate(to, from);
-        if (inverseRate != null && inverseRate.compareTo(BigDecimal.ZERO) != 0) {
-            rate = BigDecimal.ONE.divide(inverseRate, 10, RoundingMode.HALF_UP);
-            rateCache.put(pair, rate);
-            return rate;
-        }
-
-        log.warn("Could not find exchange rate for {} to {}. Using 1.0", from, to);
-        return BigDecimal.ONE;
+        // Keep serving the last known rate rather than falling back to 1.0
+        BigDecimal fallback = cached != null ? cached.rate() : BigDecimal.ONE;
+        log.warn("Could not find exchange rate for {} to {}. Using {}", from, to, fallback);
+        rateCache.put(pair, new CachedRate(fallback, now.plus(FAILURE_TTL)));
+        return fallback;
     }
 
     private BigDecimal fetchRate(String from, String to) {

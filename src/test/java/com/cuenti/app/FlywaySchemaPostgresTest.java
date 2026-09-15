@@ -56,7 +56,12 @@ class FlywaySchemaPostgresTest {
         String latest = jdbc.queryForObject(
                 "select version from flyway_schema_history where success order by installed_rank desc limit 1",
                 String.class);
-        assertThat(latest).isEqualTo("6");
+        assertThat(latest).isEqualTo("7");
+
+        assertThat(jdbc.queryForObject(
+                "select count(*) from pg_indexes "
+                        + "where tablename in ('transactions', 'transaction_splits') and indexname like 'idx_%'",
+                Integer.class)).isEqualTo(5);
 
         assertThat(jdbc.queryForObject(
                 "select count(*) from information_schema.columns "

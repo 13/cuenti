@@ -11,7 +11,13 @@ import java.time.LocalDateTime;
  * Can be an expense, income, or transfer.
  */
 @Entity
-@Table(name = "transactions")
+@Table(name = "transactions", indexes = {
+        // keep in sync with V7__transaction_indexes.sql
+        @Index(name = "idx_transactions_from_account", columnList = "from_account_id"),
+        @Index(name = "idx_transactions_to_account", columnList = "to_account_id"),
+        @Index(name = "idx_transactions_date", columnList = "transaction_date"),
+        @Index(name = "idx_transactions_category", columnList = "category_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor

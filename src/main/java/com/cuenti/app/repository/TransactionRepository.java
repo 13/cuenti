@@ -49,6 +49,18 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "ORDER BY t.transactionDate DESC, t.sortOrder DESC")
     List<Transaction> findByUser(@Param("user") User user);
 
+    /**
+     * Raw comma-separated tag strings used on the user's transactions. Tags
+     * are stored as text on the transaction, so names can exist here without
+     * a matching {@code Tag} row (e.g. after an import).
+     */
+    @Query("SELECT DISTINCT t.tags FROM Transaction t " +
+           "LEFT JOIN t.fromAccount fa " +
+           "LEFT JOIN t.toAccount ta " +
+           "WHERE (fa.user = :user OR ta.user = :user) " +
+           "AND t.tags IS NOT NULL AND t.tags <> ''")
+    List<String> findDistinctTagStringsByUser(@Param("user") User user);
+
     /** Expense totals per category in a period (budget tracking). */
     @Query("SELECT t.category.id, SUM(t.amount) FROM Transaction t " +
            "WHERE (t.fromAccount.user = :user OR t.toAccount.user = :user) " +

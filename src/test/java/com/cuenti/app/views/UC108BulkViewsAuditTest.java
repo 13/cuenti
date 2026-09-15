@@ -96,6 +96,33 @@ class UC108BulkViewsAuditTest extends SpringBrowserlessTest {
     }
 
     @Test
+    @UseCase(id = "UC-108", scenario = "Saved view round-trips the column filters")
+    void savedView_serializeAndApply_restoresColumnFilters() {
+        navigate(TransactionHistoryView.class);
+        TransactionHistoryView view = (TransactionHistoryView) getCurrentView();
+
+        test(view.headerPayeeFilter).setValue("Hausverwaltung | Schmidt");
+        test(view.headerCategoryFilter).selectItem("Wohnen");
+        test(view.headerTagFilter).selectItem("Monatlich");
+        String params = view.serializeFilters();
+
+        test(view.headerPayeeFilter).setValue("");
+        view.headerCategoryFilter.clear();
+        view.headerTagFilter.clear();
+        view.applyFilterParams(params);
+
+        assertThat(view.headerPayeeFilter.getValue()).isEqualTo("Hausverwaltung | Schmidt");
+        assertThat(view.headerCategoryFilter.getValue()).isEqualTo("Wohnen");
+        assertThat(view.headerTagFilter.getValue()).isEqualTo("Monatlich");
+
+        // older saved views without column filters clear them
+        view.applyFilterParams("account=all|type=ALL|from=|to=|q=");
+        assertThat(view.headerPayeeFilter.getValue()).isEmpty();
+        assertThat(view.headerCategoryFilter.getValue()).isNull();
+        assertThat(view.headerTagFilter.getValue()).isNull();
+    }
+
+    @Test
     @UseCase(id = "UC-108", scenario = "Data changes appear in the audit log")
     void budgetCreation_writesAuditEntry_andAuditViewRenders() {
         long before = auditLogRepository.count();

@@ -60,8 +60,21 @@ public class TransactionHistoryView extends VerticalLayout
 
     @Override
     public void afterNavigation(com.vaadin.flow.router.AfterNavigationEvent event) {
-        event.getLocation().getQueryParameters().getSingleParameter("q")
-                .ifPresent(searchField::setValue);
+        com.vaadin.flow.router.QueryParameters params = event.getLocation().getQueryParameters();
+        if (Stream.of("q", "payee", "category", "tag").noneMatch(params.getParameters()::containsKey)) {
+            return;
+        }
+        withFiltersBatched(() -> {
+            // Deep link (quick search): replace all column filters with the given ones
+            searchField.setValue(params.getSingleParameter("q").orElse(""));
+            headerPayeeFilter.setValue(params.getSingleParameter("payee").orElse(""));
+            headerCategoryFilter.setValue(params.getSingleParameter("category").orElse(null));
+            setTagFilter(params.getSingleParameter("tag").orElse(null));
+            // search the whole history, not only the default current month
+            dateFrom.setValue(null);
+            dateTo.setValue(null);
+        });
+        loadWindow(false);
     }
 
     @Override
@@ -106,13 +119,20 @@ public class TransactionHistoryView extends VerticalLayout
     private final Map<String, Boolean> colPrefs = new HashMap<>(Map.of(
             "category", true, "tags", true, "balance", true, "memo", true));
     final TextField headerPayeeFilter = new TextField(); // package-visible for tests
-    private final ComboBox<String> headerCategoryFilter = new ComboBox<>();
+    final ComboBox<String> headerCategoryFilter = new ComboBox<>(); // package-visible for tests
+    final ComboBox<String> headerTagFilter = new ComboBox<>(); // package-visible for tests
     private final java.util.Set<Long> firstOfDayIds = new java.util.HashSet<>();
     private boolean dayGroupingActive = true;
     private boolean mixedCurrencies;
     private com.vaadin.flow.component.grid.FooterRow footerRow;
     private Runnable reapplyColumns = () -> {};
     private final Map<String, com.vaadin.flow.component.contextmenu.MenuItem> columnMenuItems = new HashMap<>();
+    /** Transaction ids per day in manual sort order (top first), for the reorder buttons. */
+    private final Map<LocalDate, List<Long>> sameDayOrder = new HashMap<>();
+    /** Tag names for the tag filter; reloaded when data changes, not on every filter change. */
+    private List<String> tagNames = List.of();
+    /** While true, filter control changes don't reload or re-filter the grid. */
+    private boolean batchingFilters;
 
     public TransactionHistoryView(TransactionService transactionService, AccountService accountService,
                                   UserService userService, ExchangeRateService exchangeRateService,
@@ -140,7 +160,8 @@ public class TransactionHistoryView extends VerticalLayout
         setPadding(false);
         setSpacing(false);
         
-        setupUI();
+        // initial control values would each trigger a reload; load once afterwards
+        withFiltersBatched(this::setupUI);
         refreshGrid();
     }
 
@@ -162,13 +183,13 @@ public class TransactionHistoryView extends VerticalLayout
         // Select "All Accounts" by default so the view initially shows all transactions
         accountSelector.setValue(allAccounts);
         accountSelector.setClearButtonVisible(true);
-        accountSelector.addValueChangeListener(e -> refreshGrid());
+        accountSelector.addValueChangeListener(e -> reloadWindow());
         accountSelector.setWidth("200px");
 
         LocalDate now = LocalDate.now();
         dateFrom.setPlaceholder(getTranslation("dialog.from"));
         dateFrom.setClearButtonVisible(true);
-        dateFrom.addValueChangeListener(e -> refreshGrid());
+        dateFrom.addValueChangeListener(e -> reloadWindow());
         dateFrom.setWidth("150px");
         dateFrom.setLocale(getLocale());
 
@@ -179,7 +200,7 @@ public class TransactionHistoryView extends VerticalLayout
 
         dateTo.setPlaceholder(getTranslation("dialog.to"));
         dateTo.setClearButtonVisible(true);
-        dateTo.addValueChangeListener(e -> refreshGrid());
+        dateTo.addValueChangeListener(e -> reloadWindow());
         dateTo.setWidth("150px");
         dateTo.setLocale(getLocale());
 
@@ -333,7 +354,7 @@ public class TransactionHistoryView extends VerticalLayout
             else if (selectedTab == expenses) selectedTypeFilter = Transaction.TransactionType.EXPENSE;
             else if (selectedTab == income) selectedTypeFilter = Transaction.TransactionType.INCOME;
             else if (selectedTab == transfers) selectedTypeFilter = Transaction.TransactionType.TRANSFER;
-            refreshGrid();
+            reloadWindow();
         });
     }
 
@@ -531,9 +552,19 @@ public class TransactionHistoryView extends VerticalLayout
         String type = selectedTypeFilter == null ? "ALL" : selectedTypeFilter.name();
         String from = dateFrom.getValue() != null ? dateFrom.getValue().toString() : "";
         String to = dateTo.getValue() != null ? dateTo.getValue().toString() : "";
-        String q = java.net.URLEncoder.encode(searchField.getValue() == null ? "" : searchField.getValue(),
-                java.nio.charset.StandardCharsets.UTF_8);
-        return "account=" + account + "|type=" + type + "|from=" + from + "|to=" + to + "|q=" + q;
+        return "account=" + account + "|type=" + type + "|from=" + from + "|to=" + to
+                + "|q=" + encodeParam(searchField.getValue())
+                + "|payee=" + encodeParam(headerPayeeFilter.getValue())
+                + "|category=" + encodeParam(headerCategoryFilter.getValue())
+                + "|tag=" + encodeParam(headerTagFilter.getValue());
+    }
+
+    private static String encodeParam(String value) {
+        return java.net.URLEncoder.encode(value == null ? "" : value, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private static String decodeParam(Map<String, String> map, String key) {
+        return java.net.URLDecoder.decode(map.getOrDefault(key, ""), java.nio.charset.StandardCharsets.UTF_8);
     }
 
     void applyFilterParams(String params) { // package-visible for tests
@@ -544,30 +575,35 @@ public class TransactionHistoryView extends VerticalLayout
                 map.put(pair.substring(0, idx), pair.substring(idx + 1));
             }
         }
-        String account = map.getOrDefault("account", "all");
-        accountSelector.getListDataView().getItems()
-                .filter(a -> "all".equals(account)
-                        ? isAllAccountsSelected(a)
-                        : a.getId() != null && a.getId().toString().equals(account))
-                .findFirst().ifPresent(accountSelector::setValue);
+        withFiltersBatched(() -> {
+            String account = map.getOrDefault("account", "all");
+            accountSelector.getListDataView().getItems()
+                    .filter(a -> "all".equals(account)
+                            ? isAllAccountsSelected(a)
+                            : a.getId() != null && a.getId().toString().equals(account))
+                    .findFirst().ifPresent(accountSelector::setValue);
 
-        String from = map.getOrDefault("from", "");
-        dateFrom.setValue(from.isEmpty() ? null : LocalDate.parse(from));
-        String to = map.getOrDefault("to", "");
-        dateTo.setValue(to.isEmpty() ? null : LocalDate.parse(to));
+            String from = map.getOrDefault("from", "");
+            dateFrom.setValue(from.isEmpty() ? null : LocalDate.parse(from));
+            String to = map.getOrDefault("to", "");
+            dateTo.setValue(to.isEmpty() ? null : LocalDate.parse(to));
 
-        String type = map.getOrDefault("type", "ALL");
-        int tabIndex = switch (type) {
-            case "EXPENSE" -> 1;
-            case "INCOME" -> 2;
-            case "TRANSFER" -> 3;
-            default -> 0;
-        };
-        typeTabs.setSelectedIndex(tabIndex);
+            String type = map.getOrDefault("type", "ALL");
+            int tabIndex = switch (type) {
+                case "EXPENSE" -> 1;
+                case "INCOME" -> 2;
+                case "TRANSFER" -> 3;
+                default -> 0;
+            };
+            typeTabs.setSelectedIndex(tabIndex);
 
-        searchField.setValue(java.net.URLDecoder.decode(map.getOrDefault("q", ""),
-                java.nio.charset.StandardCharsets.UTF_8));
-        refreshGrid();
+            searchField.setValue(decodeParam(map, "q"));
+            headerPayeeFilter.setValue(decodeParam(map, "payee"));
+            String category = decodeParam(map, "category");
+            headerCategoryFilter.setValue(category.isEmpty() ? null : category);
+            setTagFilter(decodeParam(map, "tag"));
+        });
+        loadWindow(false);
     }
 
     private void openSavedViewsDialog() {
@@ -654,25 +690,99 @@ public class TransactionHistoryView extends VerticalLayout
     }
 
     private void updateFilters() {
+        if (batchingFilters) {
+            return;
+        }
         ListDataProvider<Transaction> dataProvider = (ListDataProvider<Transaction>) grid.getDataProvider();
         String filter = searchField.getValue().toLowerCase();
 
         String payeeFilter = headerPayeeFilter.getValue() != null
                 ? headerPayeeFilter.getValue().toLowerCase() : "";
         String categoryFilter = headerCategoryFilter.getValue();
+        String tagFilter = headerTagFilter.getValue();
 
         dataProvider.setFilter(t -> {
             boolean searchMatch = filter.isEmpty()
                     || (t.getPayee() != null && t.getPayee().toLowerCase().contains(filter))
                     || (t.getMemo() != null && t.getMemo().toLowerCase().contains(filter))
-                    || (t.getCategory() != null && t.getCategory().getFullName().toLowerCase().contains(filter));
+                    || (t.getCategory() != null && t.getCategory().getFullName().toLowerCase().contains(filter))
+                    || (t.getTags() != null && t.getTags().toLowerCase().contains(filter));
             boolean payeeMatch = payeeFilter.isEmpty()
                     || (t.getPayee() != null && t.getPayee().toLowerCase().contains(payeeFilter));
-            boolean categoryMatch = categoryFilter == null
-                    || (t.getCategory() != null && t.getCategory().getFullName().equals(categoryFilter));
-            return searchMatch && payeeMatch && categoryMatch;
+            boolean categoryMatch = categoryFilter == null || matchesCategory(t, categoryFilter);
+            boolean tagMatch = tagFilter == null || hasTag(t, tagFilter);
+            return searchMatch && payeeMatch && categoryMatch && tagMatch;
         });
         updateTotalsFooter();
+    }
+
+    /**
+     * A parent category includes its subcategories ("Bike" matches "Bike:Motor").
+     * Split transactions match when any split is in the category.
+     */
+    static boolean matchesCategory(Transaction t, String fullName) {
+        if (isSameOrSubcategory(t.getCategory(), fullName)) {
+            return true;
+        }
+        return t.getSplits() != null
+                && t.getSplits().stream().anyMatch(s -> isSameOrSubcategory(s.getCategory(), fullName));
+    }
+
+    private static boolean isSameOrSubcategory(com.cuenti.app.model.Category category, String fullName) {
+        if (category == null) {
+            return false;
+        }
+        String name = category.getFullName();
+        return name.equals(fullName) || name.startsWith(fullName + ":");
+    }
+
+    /** Exact tag match on the comma-separated tag list, ignoring case and spaces. */
+    static boolean hasTag(Transaction t, String tag) {
+        return t.getTags() != null
+                && Arrays.stream(t.getTags().split(",")).map(String::trim).anyMatch(tag.trim()::equalsIgnoreCase);
+    }
+
+    /** Reloads the tag filter choices (managed tags + tags used on transactions), keeping the selection. */
+    private void refreshTagFilterItems() {
+        String current = headerTagFilter.getValue();
+        List<String> names = new ArrayList<>(tagNames);
+        if (current != null && names.stream().noneMatch(current::equalsIgnoreCase)) {
+            names.add(current);
+        }
+        withFiltersBatched(() -> {
+            headerTagFilter.setItems(names);
+            if (current != null && !current.equals(headerTagFilter.getValue())) {
+                headerTagFilter.setValue(current);
+            }
+        });
+    }
+
+    /** Selects a tag in the header filter using the known spelling; blank clears it. */
+    private void setTagFilter(String tag) {
+        if (tag == null || tag.isBlank()) {
+            headerTagFilter.clear();
+            return;
+        }
+        String wanted = tag.trim();
+        String match = tagNames.stream().filter(wanted::equalsIgnoreCase).findFirst().orElse(null);
+        if (match == null) {
+            List<String> names = new ArrayList<>(tagNames);
+            names.add(wanted);
+            headerTagFilter.setItems(names);
+            match = wanted;
+        }
+        headerTagFilter.setValue(match);
+    }
+
+    /** Runs control changes without reloading or re-filtering per change; callers reload once afterwards. */
+    private void withFiltersBatched(Runnable changes) {
+        boolean outer = batchingFilters;
+        batchingFilters = true;
+        try {
+            changes.run();
+        } finally {
+            batchingFilters = outer;
+        }
     }
 
     private void setupGrid() {
@@ -845,18 +955,10 @@ public class TransactionHistoryView extends VerticalLayout
             Account selected = accountSelector.getValue();
             boolean allSelected = (selected == null) || (selected.getId() != null && selected.getId().equals(-1L));
             if (!allSelected) {
-                LocalDate date = t.getTransactionDate().toLocalDate();
-                List<Transaction> sameDay = allAccountTransactions.stream()
-                        .filter(tr -> tr.getTransactionDate().toLocalDate().equals(date))
-                        .sorted(Comparator.comparing(Transaction::getSortOrder).reversed()
-                                .thenComparing(Transaction::getId))
-                        .collect(Collectors.toList());
+                List<Long> sameDay = sameDayOrder.getOrDefault(t.getTransactionDate().toLocalDate(), List.of());
 
                 if (sameDay.size() > 1) {
-                    int index = -1;
-                    for (int i = 0; i < sameDay.size(); i++) {
-                        if (sameDay.get(i).getId().equals(t.getId())) { index = i; break; }
-                    }
+                    int index = sameDay.indexOf(t.getId());
                     if (index >= 0) {
                         final int idx = index;
                         Button upBtn = new Button(VaadinIcon.ARROW_UP.create(), e -> moveTransaction(t, -1));
@@ -916,6 +1018,14 @@ public class TransactionHistoryView extends VerticalLayout
         headerCategoryFilter.addValueChangeListener(e -> updateFilters());
         headerCategoryFilter.setWidthFull();
         filterRow.getCell(categoryCol).setComponent(headerCategoryFilter);
+
+        headerTagFilter.setPlaceholder(getTranslation("dialog.tags"));
+        headerTagFilter.setClearButtonVisible(true);
+        tagNames = tagService.getAllTagNames();
+        headerTagFilter.setItems(tagNames);
+        headerTagFilter.addValueChangeListener(e -> updateFilters());
+        headerTagFilter.setWidthFull();
+        filterRow.getCell(tagsCol).setComponent(headerTagFilter);
 
 
         // Filtered totals footer
@@ -1046,7 +1156,19 @@ public class TransactionHistoryView extends VerticalLayout
         refreshGrid();
     }
 
+    /** Reloads after data changed (save, delete, import): also refreshes the tag filter choices. */
     private void refreshGrid() {
+        loadWindow(true);
+    }
+
+    /** Reload triggered by a filter control (account, dates, type); skipped while batching. */
+    private void reloadWindow() {
+        if (!batchingFilters) {
+            loadWindow(false);
+        }
+    }
+
+    private void loadWindow(boolean dataChanged) {
         Account selected = accountSelector.getValue();
         Account accountFilter = isAllAccountsSelected(selected) ? null : selected;
 
@@ -1060,7 +1182,8 @@ public class TransactionHistoryView extends VerticalLayout
 
         // The SQL running balance sums raw amounts; that's only meaningful in
         // one currency. Per-account view is always single-currency.
-        mixedCurrencies = accountService.getAccountsByUser(currentUser).stream()
+        List<Account> userAccounts = accountService.getAccountsByUser(currentUser);
+        mixedCurrencies = userAccounts.stream()
                 .map(Account::getCurrency)
                 .filter(Objects::nonNull)
                 .distinct()
@@ -1070,7 +1193,7 @@ public class TransactionHistoryView extends VerticalLayout
         // only the visible window's offsets are shifted by start balances.
         BigDecimal offset;
         if (accountFilter == null) {
-            offset = accountService.getAccountsByUser(currentUser).stream()
+            offset = userAccounts.stream()
                     .map(Account::getStartBalance)
                     .filter(Objects::nonNull)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -1086,10 +1209,23 @@ public class TransactionHistoryView extends VerticalLayout
         allAccountTransactions.sort(Comparator.comparing(Transaction::getTransactionDate)
                 .thenComparing(Transaction::getSortOrder)
                 .reversed());
+        sameDayOrder.clear();
+        allAccountTransactions.stream()
+                .collect(Collectors.groupingBy(t -> t.getTransactionDate().toLocalDate()))
+                .forEach((day, sameDay) -> sameDayOrder.put(day, sameDay.stream()
+                        .sorted(Comparator.comparing(Transaction::getSortOrder).reversed()
+                                .thenComparing(Transaction::getId))
+                        .map(Transaction::getId)
+                        .toList()));
+
         grid.deselectAll();
         grid.setItems(allAccountTransactions);
+        if (dataChanged) {
+            tagNames = tagService.getAllTagNames();
+            refreshTagFilterItems();
+        }
+        // applies the column filters and recomputes the footer
         updateFilters();
-        updateTotalsFooter();
     }
 
     private void updateTabCounts(List<Transaction> window) {
@@ -1931,23 +2067,29 @@ public class TransactionHistoryView extends VerticalLayout
 
         Account selected = accountSelector.getValue();
         boolean allSelected = isAllAccountsSelected(selected);
-        BigDecimal net = BigDecimal.ZERO;
         String targetCurrency = currentUser.getDefaultCurrency();
+        // Sum per source currency first, then convert once per currency
+        Map<String, BigDecimal> netByCurrency = new HashMap<>();
         for (Transaction t : visible) {
             BigDecimal amount = t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO;
             Account currencySource = t.getType() == Transaction.TransactionType.INCOME
                     ? t.getToAccount() : t.getFromAccount();
-            BigDecimal converted = currencySource != null
-                    ? exchangeRateService.convert(amount, currencySource.getCurrency(), targetCurrency)
-                    : amount;
+            String currency = currencySource != null && currencySource.getCurrency() != null
+                    ? currencySource.getCurrency() : targetCurrency;
+            BigDecimal signed = BigDecimal.ZERO;
             if (t.getType() == Transaction.TransactionType.INCOME) {
-                net = net.add(converted);
+                signed = amount;
             } else if (t.getType() == Transaction.TransactionType.EXPENSE) {
-                net = net.subtract(converted);
+                signed = amount.negate();
             } else if (!allSelected && selected != null) {
-                if (t.getToAccount() != null && t.getToAccount().getId().equals(selected.getId())) net = net.add(converted);
-                if (t.getFromAccount() != null && t.getFromAccount().getId().equals(selected.getId())) net = net.subtract(converted);
+                if (t.getToAccount() != null && t.getToAccount().getId().equals(selected.getId())) signed = signed.add(amount);
+                if (t.getFromAccount() != null && t.getFromAccount().getId().equals(selected.getId())) signed = signed.subtract(amount);
             }
+            netByCurrency.merge(currency, signed, BigDecimal::add);
+        }
+        BigDecimal net = BigDecimal.ZERO;
+        for (Map.Entry<String, BigDecimal> e : netByCurrency.entrySet()) {
+            net = net.add(exchangeRateService.convert(e.getValue(), e.getKey(), targetCurrency));
         }
 
         Span sum = new Span("Σ " + formatCurrency(net));

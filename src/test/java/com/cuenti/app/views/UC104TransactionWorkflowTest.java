@@ -1,5 +1,6 @@
 package com.cuenti.app.views;
 
+import com.cuenti.app.model.Transaction;
 import com.cuenti.app.usecase.UseCase;
 import com.vaadin.browserless.SpringBrowserlessTest;
 import com.vaadin.flow.component.Key;
@@ -46,6 +47,49 @@ class UC104TransactionWorkflowTest extends SpringBrowserlessTest {
         assertThat(test(grid).size()).isEqualTo(0);
 
         test(view.headerPayeeFilter).setValue("");
+        assertThat(test(grid).size()).isEqualTo(all);
+    }
+
+    @Test
+    @UseCase(id = "UC-104", scenario = "Parent Category Filter Includes Subcategories")
+    @SuppressWarnings("unchecked")
+    void headerCategoryFilter_parentIncludesSubcategories() {
+        TransactionHistoryView view = navigate(TransactionHistoryView.class);
+        view.applyFilterParams("account=all|type=ALL|from=|to=|q=");
+        Grid<Transaction> grid = $(Grid.class).single();
+
+        test(view.headerCategoryFilter).selectItem("Wohnen");
+
+        int rows = test(grid).size();
+        assertThat(rows).isGreaterThan(0);
+        for (int i = 0; i < rows; i++) {
+            Transaction t = (Transaction) test(grid).getRow(i);
+            assertThat(t.getCategory().getFullName()).startsWith("Wohnen:");
+        }
+    }
+
+    @Test
+    @UseCase(id = "UC-104", scenario = "Tag Filter Matches Whole Tags Only")
+    void tagFilter_matchesWholeTagsIgnoringCase() {
+        Transaction t = new Transaction();
+        t.setTags("Hobby, ebike");
+        assertThat(TransactionHistoryView.hasTag(t, "EBIKE")).isTrue();
+        assertThat(TransactionHistoryView.hasTag(t, "hobby")).isTrue();
+        assertThat(TransactionHistoryView.hasTag(t, "bike")).isFalse();
+    }
+
+    @Test
+    @UseCase(id = "UC-104", scenario = "Header Tag Filter Narrows Rows")
+    void headerTagFilter_narrowsRows() {
+        TransactionHistoryView view = navigate(TransactionHistoryView.class);
+        Grid<?> grid = $(Grid.class).single();
+        int all = test(grid).size();
+
+        // demo data has the managed tag but no transaction using it
+        test(view.headerTagFilter).selectItem("Arbeit");
+        assertThat(test(grid).size()).isEqualTo(0);
+
+        view.headerTagFilter.clear();
         assertThat(test(grid).size()).isEqualTo(all);
     }
 

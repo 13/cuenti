@@ -48,7 +48,7 @@ public class QuickSearchDialog extends Dialog {
         input.setValueChangeMode(ValueChangeMode.LAZY);
         input.addValueChangeListener(e -> updateResults(e.getValue()));
         // Enter jumps straight to the transactions view with the raw term
-        input.addKeyDownListener(com.vaadin.flow.component.Key.ENTER, e -> jump(input.getValue()));
+        input.addKeyDownListener(com.vaadin.flow.component.Key.ENTER, e -> jump("q", input.getValue()));
 
         results.getStyle().set("display", "flex").set("flex-direction", "column")
                 .set("gap", "2px").set("margin-top", "var(--vaadin-gap-s)")
@@ -77,40 +77,45 @@ public class QuickSearchDialog extends Dialog {
 
         payeeService.searchPayees(term).stream()
                 .limit(5)
-                .forEach(p -> addResult(VaadinIcon.USERS, p.getName(), budget));
+                .forEach(p -> addResult(VaadinIcon.USERS, "payee", p.getName(), budget));
 
         categoryService.getAllCategories().stream()
                 .filter(c -> c.getFullName().toLowerCase(Locale.ROOT).contains(lower))
                 .limit(5)
-                .forEach(c -> addResult(VaadinIcon.SITEMAP, c.getFullName(), budget));
+                .forEach(c -> addResult(VaadinIcon.SITEMAP, "category", c.getFullName(), budget));
 
-        tagService.searchTags(term).stream()
+        tagService.searchTagNames(term).stream()
                 .limit(4)
-                .forEach(t -> addResult(VaadinIcon.TAGS, t.getName(), budget));
+                .forEach(name -> addResult(VaadinIcon.TAGS, "tag", name, budget));
 
         Button all = new Button(getTranslation("search.show_all"),
-                VaadinIcon.ARROW_RIGHT.create(), e -> jump(term));
+                VaadinIcon.ARROW_RIGHT.create(), e -> jump("q", term));
         all.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
         results.add(all);
     }
 
-    private void addResult(VaadinIcon icon, String label, int[] budget) {
+    private void addResult(VaadinIcon icon, String filter, String label, int[] budget) {
         if (budget[0]-- <= 0) {
             return;
         }
-        Button item = new Button(label, icon.create(), e -> jump(label));
+        Button item = new Button(label, icon.create(), e -> jump(filter, label));
         item.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         item.getStyle().set("justify-content", "flex-start");
         item.setWidthFull();
         results.add(item);
     }
 
-    private void jump(String term) {
+    /**
+     * Opens the transactions view with one filter set: {@code q} (free text),
+     * {@code payee}, {@code category} or {@code tag}. The view then searches
+     * the whole history instead of the current month.
+     */
+    private void jump(String filter, String term) {
         if (term == null || term.isBlank()) {
             return;
         }
         close();
         UI.getCurrent().navigate(TransactionHistoryView.class,
-                QueryParameters.of("q", term));
+                QueryParameters.of(filter, term));
     }
 }

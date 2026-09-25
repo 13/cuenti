@@ -481,6 +481,11 @@ vaadin-grid::part(overdue-row) {
   color: var(--aura-accent-contrast-color);
 }
 
+.drawer-nav vaadin-side-nav-item[current] .nav-badge-overdue {
+  background: var(--aura-red);
+  color: #fff;
+}
+
 .drawer-nav vaadin-side-nav-item[current] vaadin-icon {
   color: var(--aura-accent-contrast-color) !important;
 }

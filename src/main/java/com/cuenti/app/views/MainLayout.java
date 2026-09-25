@@ -304,7 +304,7 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
         if (currentUser == null) {
             return;
         }
-        List<ScheduledTransaction> due = scheduledService.findDueSoon(currentUser);
+        List<ScheduledTransaction> due = scheduledService.findDue(currentUser);
         applyScheduledBadge(due);
         notifyDueScheduled(due);
     }
@@ -335,7 +335,7 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
                 () -> UI.getCurrent().navigate(ScheduledTransactionsView.class));
     }
 
-    /** Scheduled nav entry with a due-soon count badge (demo pattern). */
+    /** Scheduled nav entry with a due count badge (demo pattern). */
     private SideNavItem scheduledNavItem() {
         scheduledItem = new SideNavItem(getTranslation("nav.scheduled"),
                 ScheduledTransactionsView.class, VaadinIcon.CALENDAR_CLOCK.create());
@@ -343,12 +343,12 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
         return scheduledItem;
     }
 
-    /** Recompute the due-soon badge; invoked on navigation and via the change broadcaster. */
+    /** Recompute the due badge; invoked on navigation and via the change broadcaster. */
     public void refreshScheduledBadge() {
         if (currentUser == null) {
             return;
         }
-        applyScheduledBadge(scheduledService.findDueSoon(currentUser));
+        applyScheduledBadge(scheduledService.findDue(currentUser));
     }
 
     private void applyScheduledBadge(List<ScheduledTransaction> due) {

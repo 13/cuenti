@@ -35,7 +35,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The scheduled-transactions nav badge must reflect the current due-soon count
+ * The scheduled-transactions nav badge must reflect the current due count
  * after posting or skipping a schedule, mark overdue schedules, carry a total-
  * amount tooltip, refresh on navigation, and the due reminder toast must fire
  * again when schedules turn due that the session has not yet announced.
@@ -203,10 +203,23 @@ class UC109ScheduledBadgeTest extends SpringBrowserlessTest {
         long before = badgeCount();
 
         // repository write bypasses the service broadcast — only navigation can pick it up
-        createDueSchedule(LocalDateTime.now().plusDays(1));
+        createDueSchedule(LocalDateTime.now().minusHours(1));
         navigate(DashboardView.class);
 
         assertThat(badgeCount()).isEqualTo(before + 1);
+    }
+
+    @Test
+    @UseCase(id = "UC-109", scenario = "Badge ignores schedules that are not yet due")
+    void futureSchedule_notCountedInBadge() {
+        navigate(ScheduledTransactionsView.class);
+        long before = badgeCount();
+
+        createDueSchedule(LocalDateTime.now().plusDays(1).toLocalDate().atStartOfDay());
+        createDueSchedule(LocalDateTime.now().plusDays(3));
+        navigate(DashboardView.class);
+
+        assertThat(badgeCount()).isEqualTo(before);
     }
 
     @Test
@@ -254,7 +267,7 @@ class UC109ScheduledBadgeTest extends SpringBrowserlessTest {
         navigate(DashboardView.class);
         assertThat($(Notification.class).all().size()).isEqualTo(afterFirstNav);
 
-        createDueSchedule(LocalDateTime.now().plusDays(2));
+        createDueSchedule(LocalDateTime.now().minusHours(1));
         navigate(ScheduledTransactionsView.class);
         assertThat($(Notification.class).all().size()).isEqualTo(afterFirstNav + 1);
     }

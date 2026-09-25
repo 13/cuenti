@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
@@ -181,10 +182,10 @@ public class ScheduledTransactionService {
         repository.save(scheduled);
     }
 
-    /** Enabled schedules due within the next 7 days (nav badge and reminder toast). */
+    /** Enabled schedules due today or overdue (nav badge and reminder toast). */
     @Transactional(readOnly = true)
-    public List<ScheduledTransaction> findDueSoon(User user) {
+    public List<ScheduledTransaction> findDue(User user) {
         return repository.findByUserAndEnabledTrueAndNextOccurrenceBefore(user,
-                LocalDateTime.now().plusDays(7));
+                LocalDate.now().plusDays(1).atStartOfDay());
     }
 }

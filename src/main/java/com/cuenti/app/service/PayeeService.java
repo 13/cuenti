@@ -24,6 +24,14 @@ public class PayeeService {
         return payeeRepository.findAllWithDetailsByUser(currentUser);
     }
 
+    /** Whether the current user already has a payee with this name (ignoring case). */
+    public boolean existsByName(String name) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        return payeeRepository.existsByUserAndNameIgnoreCase(currentUser, name.trim());
+    }
+
     public List<Payee> searchPayees(String searchTerm) {
         String username = securityUtils.getAuthenticatedUsername()
                 .orElseThrow(() -> new SecurityException("User not authenticated"));

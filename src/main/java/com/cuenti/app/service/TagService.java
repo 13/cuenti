@@ -55,9 +55,39 @@ public class TagService {
      * spelling seen (managed tags win), sorted case-insensitively.
      */
     public List<String> getAllTagNames() {
-        String username = securityUtils.getAuthenticatedUsername()
-                .orElseThrow(() -> new SecurityException("User not authenticated"));
-        User currentUser = userService.findByUsername(username);
+        User currentUser = currentUser();
+        // Every dialog with a tag field asks for this; scanning all transactions each time is wasteful.
+        CachedNames cached = nameCache.get(currentUser.getId());
+        if (cached != null && cached.loadedAt() > System.currentTimeMillis() - NAME_CACHE_MILLIS) {
+            return cached.names();
+        }
+        List<String> names = loadTagNames(currentUser);
+        nameCache.put(currentUser.getId(), new CachedNames(names, System.currentTimeMillis()));
+        return names;
+    }
+
+    /** Forget the cached names so the next tag field sees tag changes at once. */
+    public void invalidateNames() {
+        securityUtils.getAuthenticatedUsername()
+                .map(userService::findByUsername)
+                .ifPresent(u -> nameCache.remove(u.getId()));
+    }
+
+    /** Forget one user's cached names (a transaction with tags was saved). */
+    public void invalidateNames(User user) {
+        if (user != null && user.getId() != null) {
+            nameCache.remove(user.getId());
+        }
+    }
+
+    private static final long NAME_CACHE_MILLIS = 60_000;
+
+    private record CachedNames(List<String> names, long loadedAt) {
+    }
+
+    private final Map<Long, CachedNames> nameCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private List<String> loadTagNames(User currentUser) {
         Map<String, String> byLower = new LinkedHashMap<>();
         for (Tag tag : tagRepository.findByUser(currentUser)) {
             addTagName(byLower, tag.getName());
@@ -69,7 +99,7 @@ public class TagService {
         }
         List<String> names = new ArrayList<>(byLower.values());
         names.sort(String.CASE_INSENSITIVE_ORDER);
-        return names;
+        return List.copyOf(names);
     }
 
     /** Tag names (see {@link #getAllTagNames()}) containing the term, ignoring case. */
@@ -115,7 +145,10 @@ public class TagService {
         User currentUser = userService.findByUsername(username);
         return tagRepository.findByUserAndNameIgnoreCase(currentUser, trimmed).stream()
                 .findFirst()
-                .orElseGet(() -> tagRepository.save(Tag.builder().name(trimmed).user(currentUser).build()));
+                .orElseGet(() -> {
+                    nameCache.remove(currentUser.getId());
+                    return tagRepository.save(Tag.builder().name(trimmed).user(currentUser).build());
+                });
     }
 
     /**
@@ -163,6 +196,7 @@ public class TagService {
             }
             tag.setUser(currentUser);
         }
+        nameCache.remove(currentUser.getId());
         return tagRepository.save(tag);
     }
 
@@ -174,6 +208,7 @@ public class TagService {
         // Security check: only allow deletion if tag belongs to current user
         if (tag.getUser().getId().equals(currentUser.getId())) {
             tagRepository.delete(tag);
+            nameCache.remove(currentUser.getId());
         } else {
             throw new SecurityException("Cannot delete tag belonging to another user");
         }
@@ -233,6 +268,7 @@ public class TagService {
             result = tagRepository.save(existing);
         }
         rewrite(currentUser, oldName, target);
+        nameCache.remove(currentUser.getId());
         return result;
     }
 
@@ -250,6 +286,7 @@ public class TagService {
         taggedPayees(currentUser, name).forEach(p -> payees.put(p.getId(), p.getDefaultTags()));
         rewrite(currentUser, name, null);
         tagRepository.delete(existing);
+        nameCache.remove(currentUser.getId());
         Tag snapshot = Tag.builder().name(name).build();
         return new TagRemoval(snapshot, tx, sched, payees);
     }
@@ -258,6 +295,7 @@ public class TagService {
     @Transactional
     public Tag restore(TagRemoval removal) {
         User currentUser = currentUser();
+        nameCache.remove(currentUser.getId());
         Tag tag = findOrCreate(removal.tag().getName());
         removal.transactions().forEach((id, tags) -> transactionRepository.findById(id)
                 .filter(t -> ownsTransaction(t, currentUser))

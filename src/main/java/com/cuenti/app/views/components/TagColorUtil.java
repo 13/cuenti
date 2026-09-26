@@ -24,6 +24,13 @@ public final class TagColorUtil {
         return badge;
     }
 
+    /** {@code [background, text]} hex colours of a tag, as used by {@link #createTagBadge}. */
+    public static String[] colors(String rawTag) {
+        String tag = rawTag == null ? "" : rawTag.trim();
+        String bg = lettersToHsl(tag);
+        return new String[]{bg, textColor(bg)};
+    }
+
     private static String lettersToHsl(String tag) {
         String normalized = tag == null ? "" : tag.toLowerCase();
 

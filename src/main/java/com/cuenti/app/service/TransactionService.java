@@ -26,6 +26,7 @@ public class TransactionService {
     private final UserService userService;
     private final SecurityUtils securityUtils;
     private final AuditService auditService;
+    private final TagService tagService;
 
     /**
      * Create or update a transaction and update account balances.
@@ -159,6 +160,9 @@ public class TransactionService {
         }
 
         transaction.setTags(com.cuenti.app.util.TagNames.normalize(transaction.getTags()));
+        if (transaction.getTags() != null) {
+            tagService.invalidateNames(currentUser); // new names show up in tag fields and filters at once
+        }
         applyBalanceEffect(transaction);
 
         transaction.setStatus(Transaction.TransactionStatus.COMPLETED);
@@ -255,6 +259,15 @@ public class TransactionService {
      * Get all transactions for an account.
      */
     @Transactional(readOnly = true)
+    /** Sort order that places a new booking last on its day in the account (steps of 10). */
+    public int nextSortOrder(Account account, java.time.LocalDate day) {
+        if (account == null) {
+            return 10;
+        }
+        Integer max = transactionRepository.maxSortOrder(account, day.atStartOfDay(), day.plusDays(1).atStartOfDay());
+        return (max != null ? max : 0) + 10;
+    }
+
     public List<Transaction> getTransactionsByAccount(Account account) {
         return transactionRepository.findByAccount(account);
     }

@@ -244,6 +244,16 @@ public class DataInitializer implements CommandLineRunner {
         createScheduledTransaction(demoUser, Transaction.TransactionType.EXPENSE, n26, null, new BigDecimal("39.95"), "Deutsche Telekom", internet, "Internet Bill", ScheduledTransaction.RecurrencePattern.MONTHLY, 1, LocalDateTime.now().plusMonths(1).withDayOfMonth(5).withHour(11).withMinute(0));
         createScheduledTransaction(demoUser, Transaction.TransactionType.EXPENSE, n26, null, new BigDecimal("15.99"), "Netflix", streaming, "Netflix Subscription", ScheduledTransaction.RecurrencePattern.MONTHLY, 1, LocalDateTime.now().minusDays(2).withHour(8).withMinute(0)); // Late one
 
+        // Demo bookings are written straight to the repository (no balance effects), so pick
+        // each start balance such that start + bookings equals the shown balance; otherwise
+        // the balance check would report the demo accounts as inconsistent.
+        for (Account account : java.util.List.of(n26, ing, invest)) {
+            Account fresh = accountService.getAccountById(account.getId());
+            BigDecimal net = transactionRepository.sumInflow(fresh).subtract(transactionRepository.sumOutflow(fresh));
+            fresh.setStartBalance(fresh.getBalance().subtract(net));
+            accountService.saveAccountForUser(fresh, demoUser);
+        }
+
         log.info("Comprehensive demo data initialization complete!");
     }
 

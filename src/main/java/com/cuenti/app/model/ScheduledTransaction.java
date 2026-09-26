@@ -75,6 +75,12 @@ public class ScheduledTransaction {
     @Builder.Default
     private boolean enabled = true;
 
+    /** Last date an occurrence may fall on; the schedule switches off after it (null = open-ended). */
+    private java.time.LocalDate endDate;
+
+    /** Occurrences still to post, counted down on post/skip; the schedule switches off at 0 (null = unlimited). */
+    private Integer remainingOccurrences;
+
     /** Schedules are date-based; drop any time-of-day so due/overdue checks agree within a day. */
     @PrePersist
     @PreUpdate
@@ -90,9 +96,21 @@ public class ScheduledTransaction {
         MONTHLY,
         MONTHLY_LAST_DAY,
         YEARLY,
-        EVERY_FRIDAY,
-        EVERY_SATURDAY,
+        /** @deprecated legacy; migrated to WEEKLY (value 1) on a Friday. Kept so old imports parse. */
+        @Deprecated EVERY_FRIDAY,
+        /** @deprecated legacy; migrated to WEEKLY (value 1) on a Saturday. Kept so old imports parse. */
+        @Deprecated EVERY_SATURDAY,
         EVERY_WEEKDAY,
-        BI_WEEKLY
+        /** @deprecated legacy; migrated to WEEKLY with value 2. Kept so old imports parse. */
+        @Deprecated BI_WEEKLY;
+
+        /** Patterns offered when creating or editing a schedule. */
+        public static final java.util.List<RecurrencePattern> SELECTABLE =
+                java.util.List.of(DAILY, WEEKLY, MONTHLY, MONTHLY_LAST_DAY, YEARLY, EVERY_WEEKDAY);
+
+        /** Whether "every N" applies to this pattern. */
+        public boolean hasInterval() {
+            return this != EVERY_WEEKDAY && this != EVERY_FRIDAY && this != EVERY_SATURDAY && this != BI_WEEKLY;
+        }
     }
 }

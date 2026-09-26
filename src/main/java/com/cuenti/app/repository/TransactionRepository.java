@@ -35,6 +35,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "ORDER BY t.transactionDate DESC, t.sortOrder DESC")
     List<Transaction> findByAccount(@Param("account") Account account);
 
+    /** Highest sort order among the account's transactions in [from, to). */
+    @Query("SELECT MAX(t.sortOrder) FROM Transaction t " +
+           "WHERE (t.fromAccount = :account OR t.toAccount = :account) " +
+           "AND t.transactionDate >= :from AND t.transactionDate < :to")
+    Integer maxSortOrder(@Param("account") Account account,
+                         @Param("from") java.time.LocalDateTime from, @Param("to") java.time.LocalDateTime to);
+
     /**
      * Find all transactions for a specific user.
      * Uses JOIN FETCH to avoid LazyInitializationException in the UI.

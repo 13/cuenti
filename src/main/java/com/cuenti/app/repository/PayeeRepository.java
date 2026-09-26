@@ -15,6 +15,8 @@ public interface PayeeRepository extends JpaRepository<Payee, Long> {
 
     List<Payee> findByUser(User user);
 
+    boolean existsByUserAndNameIgnoreCase(User user, String name);
+
     List<Payee> findByUserAndNameContainingIgnoreCase(User user, String name);
 
     @Query("SELECT DISTINCT p FROM Payee p LEFT JOIN FETCH p.defaultCategory c LEFT JOIN FETCH c.parent WHERE p.user = :user")

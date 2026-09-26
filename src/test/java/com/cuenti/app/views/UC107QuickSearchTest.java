@@ -46,6 +46,8 @@ class UC107QuickSearchTest extends SpringBrowserlessTest {
     private UserService userService;
     @Autowired
     private AccountService accountService;
+    @Autowired
+    private com.cuenti.app.service.TagService tagService;
 
     /** Tagged transaction outside the default current-month window. */
     private Transaction oldTagged;
@@ -66,6 +68,8 @@ class UC107QuickSearchTest extends SpringBrowserlessTest {
         t.setTransactionDate(LocalDateTime.of(2025, 2, 3, 12, 0));
         t.setStatus(Transaction.TransactionStatus.COMPLETED);
         oldTagged = transactionRepository.save(t);
+        // saved past TransactionService, so drop the cached tag names ourselves
+        tagService.invalidateNames(demo);
     }
 
     @AfterEach

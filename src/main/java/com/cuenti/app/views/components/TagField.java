@@ -27,6 +27,7 @@ public class TagField extends CustomField<String> {
     private final TagService tagService;
     private final MultiSelectComboBox<String> combo = new MultiSelectComboBox<>();
     private final Div suggestions = new Div();
+    private final com.vaadin.flow.dom.Element chipStyles = new com.vaadin.flow.dom.Element("style");
     private final List<String> items = new ArrayList<>();
     private List<String> suggested = List.of();
 
@@ -43,6 +44,8 @@ public class TagField extends CustomField<String> {
         combo.setAutoExpand(MultiSelectComboBox.AutoExpandMode.VERTICAL);
         combo.setPlaceholder(getTranslation("tags.field_placeholder"));
         combo.setRenderer(new ComponentRenderer<>(TagColorUtil::createTagBadge));
+        // Chips take their tag colour through a class; the matching rules live in chipStyles.
+        combo.setClassNameGenerator(TagField::chipClassFor);
         combo.setAriaLabel(label);
         combo.addCustomValueSetListener(e -> addTags(List.of(e.getDetail())));
         combo.addValueChangeListener(e -> {
@@ -56,6 +59,8 @@ public class TagField extends CustomField<String> {
         setHelperText(getTranslation("tags.field_helper"));
 
         Div wrapper = new Div(combo, suggestions);
+        wrapper.getElement().appendChild(chipStyles);
+        refreshChipStyles();
         wrapper.setWidthFull();
         wrapper.getStyle().set("display", "flex").set("flex-direction", "column").set("gap", "var(--vaadin-gap-xs)");
         add(wrapper);
@@ -71,6 +76,7 @@ public class TagField extends CustomField<String> {
                         items.add(created);
                         items.sort(String.CASE_INSENSITIVE_ORDER);
                         combo.getListDataView().refreshAll();
+                        refreshChipStyles();
                         return created;
                     });
             selection.add(item);
@@ -102,6 +108,7 @@ public class TagField extends CustomField<String> {
             String item = items.stream().filter(i -> TagNames.same(i, name)).findFirst().orElseGet(() -> {
                 items.add(name);
                 combo.getListDataView().refreshAll();
+                refreshChipStyles();
                 return name;
             });
             selection.add(item);
@@ -114,6 +121,25 @@ public class TagField extends CustomField<String> {
         super.setReadOnly(readOnly);
         combo.setReadOnly(readOnly);
         renderSuggestions();
+    }
+
+    /** CSS class carrying a tag's colours (hex values, so equal colours share a class). */
+    public static String chipClassFor(String tag) {
+        String[] c = TagColorUtil.colors(tag);
+        return "tagc-" + c[0].substring(1) + ("#FFFFFF".equals(c[1]) ? "-l" : "-d");
+    }
+
+    /** One rule per distinct tag colour; chips live in light DOM, so document CSS reaches them. */
+    private void refreshChipStyles() {
+        StringBuilder css = new StringBuilder();
+        items.stream().map(TagField::chipClassFor).distinct().forEach(cls -> {
+            String hex = cls.substring(5, 11);
+            String fg = cls.endsWith("-l") ? "#FFFFFF" : "#111111";
+            css.append("vaadin-multi-select-combo-box-chip.").append(cls)
+                    .append("{background:#").append(hex).append(";color:").append(fg)
+                    .append(";--vaadin-multi-select-combo-box-chip-remove-color:").append(fg).append(";}");
+        });
+        chipStyles.setText(css.toString());
     }
 
     private void renderSuggestions() {

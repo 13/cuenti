@@ -56,7 +56,7 @@ class FlywaySchemaPostgresTest {
         String latest = jdbc.queryForObject(
                 "select version from flyway_schema_history where success order by installed_rank desc limit 1",
                 String.class);
-        assertThat(latest).isEqualTo("10");
+        assertThat(latest).isEqualTo("11");
 
         assertThat(jdbc.queryForObject(
                 "select count(*) from pg_indexes "
@@ -120,5 +120,35 @@ class FlywaySchemaPostgresTest {
         assertThat(jdbc.queryForObject("select to_account_id from " + s + "scheduled_transactions where id = 1", Long.class)).isEqualTo(1L);
         assertThat(jdbc.queryForObject("select tags from " + s + "scheduled_transactions where id = 1", String.class)).isEqualTo("Gehalt");
         assertThat(jdbc.queryForList("select name from " + s + "tags order by id", String.class)).containsExactly("Gehalt", "Fix");
+    }
+
+    /** V11 turns legacy Friday/Saturday/bi-weekly schedules into weekly ones on the right weekday. */
+    @Test
+    void v11_migratesLegacyPatterns() {
+        String schema = "v11check";
+        org.flywaydb.core.Flyway.configure()
+                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .schemas(schema).target("10").load().migrate();
+        String s = schema + ".";
+        jdbc.update("insert into " + s + "users (id, username, email, password, first_name, last_name, "
+                + "enabled, api_enabled, dark_mode, created_at) values (1, 'v11', 'v11@x', 'x', 'V', 'Eleven', true, false, false, now())");
+        // 2026-09-23 is a Wednesday
+        jdbc.update("insert into " + s + "scheduled_transactions (id, user_id, type, amount, next_occurrence, recurrence_pattern, enabled) values "
+                + "(1, 1, 'EXPENSE', 1, '2026-09-23', 'EVERY_FRIDAY', true), "
+                + "(2, 1, 'EXPENSE', 1, '2026-09-26', 'EVERY_SATURDAY', true), "
+                + "(3, 1, 'EXPENSE', 1, '2026-09-23', 'BI_WEEKLY', true)");
+
+        org.flywaydb.core.Flyway.configure()
+                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .schemas(schema).load().migrate();
+
+        var rows = jdbc.queryForList("select id, recurrence_pattern, recurrence_value, next_occurrence::date as d from "
+                + s + "scheduled_transactions order by id");
+        assertThat(rows.get(0)).containsEntry("recurrence_pattern", "WEEKLY").containsEntry("recurrence_value", 1)
+                .containsEntry("d", java.sql.Date.valueOf("2026-09-25"));
+        assertThat(rows.get(1)).containsEntry("recurrence_pattern", "WEEKLY")
+                .containsEntry("d", java.sql.Date.valueOf("2026-09-26"));
+        assertThat(rows.get(2)).containsEntry("recurrence_pattern", "WEEKLY").containsEntry("recurrence_value", 2)
+                .containsEntry("d", java.sql.Date.valueOf("2026-09-23"));
     }
 }

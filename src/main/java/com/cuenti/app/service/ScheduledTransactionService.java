@@ -106,32 +106,7 @@ public class ScheduledTransactionService {
             throw new SecurityException("Cannot post scheduled transaction belonging to another user");
         }
 
-        // Older schedules (and API/import clients) may keep an income's account in "from";
-        // the ledger credits income to "to", so place it on the side the type expects.
-        Account[] accounts = accountsForType(scheduled.getType(),
-                scheduled.getFromAccount() != null ? accountService.findById(scheduled.getFromAccount().getId()) : null,
-                scheduled.getToAccount() != null ? accountService.findById(scheduled.getToAccount().getId()) : null);
-        Account from = accounts[0];
-        Account to = accounts[1];
-
-        Transaction transaction = Transaction.builder()
-                .type(scheduled.getType())
-                .fromAccount(from)
-                .toAccount(to)
-                .amount(amountOverride != null ? amountOverride : scheduled.getAmount())
-                .payee(scheduled.getPayee())
-                .category(scheduled.getCategory())
-                .memo(scheduled.getMemo())
-                .tags(TagNames.normalize(scheduled.getTags()))
-                .number(scheduled.getNumber())
-                .paymentMethod(scheduled.getPaymentMethod() != null ? scheduled.getPaymentMethod() : Transaction.PaymentMethod.NONE)
-                .asset(scheduled.getAsset())
-                .units(scheduled.getUnits())
-                .transactionDate(dateOverride != null ? dateOverride.atStartOfDay() : scheduled.getNextOccurrence())
-                .status(Transaction.TransactionStatus.COMPLETED)
-                .scheduledTransactionId(scheduled.getId())
-                .build();
-
+        Transaction transaction = buildOccurrence(scheduled, amountOverride, dateOverride);
         transactionService.saveTransaction(transaction);
         updateToNextOccurrence(scheduled);
         auditService.log(currentUser, "POST", "ScheduledTransaction",
@@ -150,6 +125,91 @@ public class ScheduledTransactionService {
             return st.getToAccount() != null ? st.getToAccount() : st.getFromAccount();
         }
         return st.getFromAccount() != null ? st.getFromAccount() : st.getToAccount();
+    }
+
+    /**
+     * The transaction the next occurrence would book, not saved; the caller may edit
+     * it (category, tags, account, amount...) and hand it to {@link #postEdited}.
+     */
+    @Transactional(readOnly = true)
+    public Transaction draftOccurrence(Long scheduledId) {
+        return buildOccurrence(ownedSchedule(scheduledId), null, null);
+    }
+
+    /**
+     * Books an edited occurrence (see {@link #draftOccurrence}) and advances the schedule,
+     * in one transaction. The schedule itself keeps its own values.
+     */
+    @Transactional
+    public Transaction postEdited(Long scheduledId, Transaction edited) {
+        ScheduledTransaction scheduled = ownedSchedule(scheduledId);
+        edited.setScheduledTransactionId(scheduled.getId());
+        Transaction saved = transactionService.saveTransaction(edited);
+        updateToNextOccurrence(scheduled);
+        auditService.log(scheduled.getUser(), "POST", "ScheduledTransaction", scheduled.getId(), scheduled.getPayee());
+        com.cuenti.app.util.ScheduledChangeBroadcaster.broadcast(scheduled.getUser().getId());
+        return saved;
+    }
+
+    /**
+     * A new, unsaved schedule copying an existing transaction, starting one month after
+     * it ("Als Planung speichern").
+     */
+    public static ScheduledTransaction draftFrom(Transaction t) {
+        return ScheduledTransaction.builder()
+                .type(t.getType())
+                .fromAccount(t.getFromAccount())
+                .toAccount(t.getToAccount())
+                .amount(t.getAmount())
+                .payee(t.getPayee())
+                .category(t.getCategory())
+                .memo(t.getMemo())
+                .tags(t.getTags())
+                .number(t.getNumber())
+                .paymentMethod(t.getPaymentMethod() != null ? t.getPaymentMethod() : Transaction.PaymentMethod.NONE)
+                .recurrencePattern(ScheduledTransaction.RecurrencePattern.MONTHLY)
+                .recurrenceValue(1)
+                .nextOccurrence((t.getTransactionDate() != null ? t.getTransactionDate() : LocalDateTime.now())
+                        .toLocalDate().plusMonths(1).atStartOfDay())
+                .enabled(true)
+                .build();
+    }
+
+    private Transaction buildOccurrence(ScheduledTransaction scheduled, BigDecimal amountOverride, LocalDate dateOverride) {
+        // Older schedules (and API/import clients) may keep an income's account in "from";
+        // the ledger credits income to "to", so place it on the side the type expects.
+        Account[] accounts = accountsForType(scheduled.getType(),
+                scheduled.getFromAccount() != null ? accountService.findById(scheduled.getFromAccount().getId()) : null,
+                scheduled.getToAccount() != null ? accountService.findById(scheduled.getToAccount().getId()) : null);
+        return Transaction.builder()
+                .type(scheduled.getType())
+                .fromAccount(accounts[0])
+                .toAccount(accounts[1])
+                .amount(amountOverride != null ? amountOverride : scheduled.getAmount())
+                .payee(scheduled.getPayee())
+                .category(scheduled.getCategory())
+                .memo(scheduled.getMemo())
+                .tags(TagNames.normalize(scheduled.getTags()))
+                .number(scheduled.getNumber())
+                .paymentMethod(scheduled.getPaymentMethod() != null ? scheduled.getPaymentMethod() : Transaction.PaymentMethod.NONE)
+                .asset(scheduled.getAsset())
+                .units(scheduled.getUnits())
+                .transactionDate(dateOverride != null ? dateOverride.atStartOfDay() : scheduled.getNextOccurrence())
+                .status(Transaction.TransactionStatus.COMPLETED)
+                .scheduledTransactionId(scheduled.getId())
+                .build();
+    }
+
+    private ScheduledTransaction ownedSchedule(Long scheduledId) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        ScheduledTransaction scheduled = repository.findById(scheduledId)
+                .orElseThrow(() -> new IllegalArgumentException("Scheduled transaction not found"));
+        if (!scheduled.getUser().getId().equals(currentUser.getId())) {
+            throw new SecurityException("Cannot access scheduled transaction belonging to another user");
+        }
+        return scheduled;
     }
 
     /** Post every enabled schedule that is currently due, catching up missed occurrences. */
@@ -201,7 +261,7 @@ public class ScheduledTransactionService {
             case WEEKLY -> next = next.plusWeeks(value);
             case BI_WEEKLY -> next = next.plusWeeks(2);
             case MONTHLY -> next = next.plusMonths(value);
-            case MONTHLY_LAST_DAY -> next = next.plusMonths(1).with(TemporalAdjusters.lastDayOfMonth());
+            case MONTHLY_LAST_DAY -> next = next.plusMonths(value).with(TemporalAdjusters.lastDayOfMonth());
             case YEARLY -> next = next.plusYears(value);
             case EVERY_FRIDAY -> next = next.with(TemporalAdjusters.next(DayOfWeek.FRIDAY));
             case EVERY_SATURDAY -> next = next.with(TemporalAdjusters.next(DayOfWeek.SATURDAY));
@@ -215,9 +275,28 @@ public class ScheduledTransactionService {
         return next;
     }
 
+    /**
+     * Moves to the next occurrence. A schedule with an end switches itself off once
+     * its last occurrence is posted or skipped (count reaches 0, or the next date
+     * falls after the end date).
+     */
     private void updateToNextOccurrence(ScheduledTransaction scheduled) {
-        scheduled.setNextOccurrence(advanceOccurrence(scheduled.getNextOccurrence(), scheduled));
+        LocalDateTime next = advanceOccurrence(scheduled.getNextOccurrence(), scheduled);
+        scheduled.setNextOccurrence(next);
+        if (scheduled.getRemainingOccurrences() != null) {
+            scheduled.setRemainingOccurrences(Math.max(0, scheduled.getRemainingOccurrences() - 1));
+        }
+        if (isFinished(scheduled)) {
+            scheduled.setEnabled(false);
+        }
         repository.save(scheduled);
+    }
+
+    /** No occurrence left: count used up or the next date lies past the end date. */
+    public static boolean isFinished(ScheduledTransaction st) {
+        return (st.getRemainingOccurrences() != null && st.getRemainingOccurrences() <= 0)
+                || (st.getEndDate() != null && st.getNextOccurrence() != null
+                    && st.getNextOccurrence().toLocalDate().isAfter(st.getEndDate()));
     }
 
     /** Start of tomorrow: anything before it is due (today) or overdue. Shared by badge, list and post-all. */

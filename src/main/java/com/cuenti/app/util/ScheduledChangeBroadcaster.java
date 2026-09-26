@@ -63,6 +63,11 @@ public final class ScheduledChangeBroadcaster {
         }
     }
 
+    /** Notify every registered listener (e.g. day rollover changes what is due for everyone). */
+    public static void broadcastAll() {
+        LISTENERS.keySet().forEach(ScheduledChangeBroadcaster::fire);
+    }
+
     private static void fire(Long userId) {
         Set<Runnable> set = LISTENERS.get(userId);
         if (set != null) {

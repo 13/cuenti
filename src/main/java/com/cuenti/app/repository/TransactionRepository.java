@@ -214,4 +214,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
                                    @Param("tag") String tag,
                                    @Param("search") String search,
                                    Pageable pageable);
+
+    /** Booking history of one schedule, newest first. */
+    List<Transaction> findByScheduledTransactionIdOrderByTransactionDateDesc(Long scheduledTransactionId);
 }

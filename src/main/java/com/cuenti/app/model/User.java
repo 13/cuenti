@@ -81,4 +81,10 @@ public class User {
     private boolean apiEnabled = false;
 
     private Long defaultVehicleCategoryId;
+
+    /** Nav badge counts schedules due within this many days; null or 0 = due today or overdue. */
+    private Integer scheduledBadgeDays;
+
+    /** Remembered horizon of the pending list on the scheduled view; null = 7, -1 = unlimited. */
+    private Integer scheduledHorizonDays;
 }

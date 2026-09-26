@@ -1,6 +1,7 @@
 package com.cuenti.app.views;
 
 import com.cuenti.app.model.ScheduledTransaction;
+import com.cuenti.app.model.Transaction;
 import com.cuenti.app.model.User;
 import com.cuenti.app.security.SecurityUtils;
 import com.cuenti.app.service.AssetService;
@@ -36,7 +37,6 @@ import jakarta.annotation.security.PermitAll;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -361,17 +361,36 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
         }
         Span badge = new Span(String.valueOf(due.size()));
         badge.addClassName("nav-badge");
-        LocalDateTime now = LocalDateTime.now();
-        if (due.stream().anyMatch(st -> st.getNextOccurrence().isBefore(now))) {
+        if (due.stream().anyMatch(com.cuenti.app.service.ScheduledTransactionService::isOverdue)) {
             badge.addClassName("nav-badge-overdue");
         }
+        badge.getElement().setAttribute("title", badgeTooltip(due));
+        scheduledItem.setSuffixComponent(badge);
+    }
+
+    /** Count plus expense/income totals; transfers listed apart since they move money, not spend it. */
+    private String badgeTooltip(List<ScheduledTransaction> due) {
+        Integer lookAhead = currentUser.getScheduledBadgeDays();
+        StringBuilder text = new StringBuilder(lookAhead != null && lookAhead > 0
+                ? getTranslation("scheduled.badge_tooltip_days", due.size(), lookAhead)
+                : getTranslation("scheduled.badge_tooltip", due.size()));
+        appendTotal(text, due, Transaction.TransactionType.EXPENSE, "scheduled.badge_expenses");
+        appendTotal(text, due, Transaction.TransactionType.INCOME, "scheduled.badge_income");
+        appendTotal(text, due, Transaction.TransactionType.TRANSFER, "scheduled.badge_transfers");
+        return text.toString();
+    }
+
+    private void appendTotal(StringBuilder text, List<ScheduledTransaction> due,
+                             Transaction.TransactionType type, String key) {
         BigDecimal total = due.stream()
+                .filter(st -> st.getType() == type)
                 .map(ScheduledTransaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        badge.getElement().setAttribute("title", getTranslation("scheduled.badge_tooltip",
-                com.cuenti.app.util.CurrencyFormat.format(total, currentUser.getDefaultCurrency(),
-                        Locale.forLanguageTag(currentUser.getLocale()))));
-        scheduledItem.setSuffixComponent(badge);
+        if (total.signum() != 0) {
+            text.append(" · ").append(getTranslation(key,
+                    com.cuenti.app.util.CurrencyFormat.format(total, currentUser.getDefaultCurrency(),
+                            Locale.forLanguageTag(currentUser.getLocale()))));
+        }
     }
 
     private SideNav navSection(String label, boolean expanded, SideNavItem... items) {

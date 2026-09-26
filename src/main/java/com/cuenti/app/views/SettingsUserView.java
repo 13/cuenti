@@ -186,6 +186,35 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
         cleanupButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
         dangerCard.add(cleanupButton);
 
-        container.add(card, localizationCard, passCard, dangerCard);
+        container.add(card, localizationCard, scheduledCard(), passCard, dangerCard);
+    }
+
+    /** What the Geplant nav badge counts: due/overdue only, or a look-ahead window. */
+    private Div scheduledCard() {
+        Div scheduledCard = createCard();
+        scheduledCard.add(cardHeader(VaadinIcon.CALENDAR_CLOCK, getTranslation("settings.scheduled_title"),
+                getTranslation("settings.scheduled_desc"), "var(--aura-orange)"));
+
+        com.vaadin.flow.component.select.Select<Integer> badgeDays = new com.vaadin.flow.component.select.Select<>();
+        badgeDays.setLabel(getTranslation("settings.scheduled_badge"));
+        badgeDays.setItems(0, 3, 7, 14);
+        badgeDays.setItemLabelGenerator(d -> d == 0
+                ? getTranslation("settings.scheduled_badge.0")
+                : getTranslation("settings.scheduled_badge.n", d));
+        Integer current = currentUser.getScheduledBadgeDays();
+        badgeDays.setValue(current != null && java.util.List.of(0, 3, 7, 14).contains(current) ? current : 0);
+        badgeDays.setWidth("min(320px, 100%)");
+
+        Button save = new Button(getTranslation("settings.save"), VaadinIcon.CHECK.create(), e -> {
+            userService.updateScheduledPreferences(currentUser, badgeDays.getValue(),
+                    currentUser.getScheduledHorizonDays());
+            com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.saved"));
+            // badge lives in MainLayout with its own user snapshot
+            UI.getCurrent().getPage().reload();
+        });
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        scheduledCard.add(badgeDays, save);
+        return scheduledCard;
     }
 }

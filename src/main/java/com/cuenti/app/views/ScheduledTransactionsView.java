@@ -118,8 +118,14 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         horizonSelect.setLabel(getTranslation("scheduled.horizon.label"));
         horizonSelect.setItems(7, 30, 90, -1);
         horizonSelect.setItemLabelGenerator(this::getHorizonLabel);
-        horizonSelect.setValue(7);
-        horizonSelect.addValueChangeListener(e -> refreshGrids());
+        Integer savedHorizon = currentUser.getScheduledHorizonDays();
+        horizonSelect.setValue(savedHorizon != null && List.of(7, 30, 90, -1).contains(savedHorizon) ? savedHorizon : 7);
+        horizonSelect.addValueChangeListener(e -> {
+            if (e.isFromClient() && e.getValue() != null) {
+                userService.updateScheduledPreferences(currentUser, currentUser.getScheduledBadgeDays(), e.getValue());
+            }
+            refreshGrids();
+        });
         horizonSelect.setWidth("200px");
 
         Button addButton = new Button(getTranslation("scheduled.new"), VaadinIcon.PLUS.create(),
@@ -200,39 +206,42 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         templateGrid.addItemDoubleClickListener(e -> openEditDialog(e.getItem()));
         templateGrid.setAllRowsVisible(true);
 
-        // Account
-        templateGrid.addComponentColumn(st -> {
-            Span s = new Span(st.getFromAccount() != null ? st.getFromAccount().getAccountName() : "—");
-            s.getStyle().set("font-size", "var(--aura-font-size-s)");
-            return s;
-        }).setHeader(getTranslation("dialog.account")).setAutoWidth(true).setSortable(true)
-                .setComparator(Comparator.comparing(st -> st.getFromAccount() != null ? st.getFromAccount().getAccountName() : ""));
-
-        // Payee
+        // Payee (flexes; the key columns stay visible on narrow screens)
         templateGrid.addComponentColumn(st -> {
             Span s = new Span(st.getPayee() != null ? st.getPayee() : "—");
             s.getStyle().set("font-weight", "600").set("font-size", "var(--aura-font-size-s)");
             return s;
-        }).setHeader(getTranslation("transactions.payee")).setAutoWidth(true).setSortable(true)
+        }).setHeader(getTranslation("transactions.payee")).setWidth("9rem").setFlexGrow(1).setSortable(true)
                 .setComparator(Comparator.comparing(st -> st.getPayee() != null ? st.getPayee() : ""));
 
         // Amount
         templateGrid.addComponentColumn(st -> createAmountSpan(st.getAmount(), st.getType()))
                 .setHeader(getTranslation("dialog.amount"))
-                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END).setAutoWidth(true).setSortable(true)
+                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END).setAutoWidth(true).setFlexGrow(0).setSortable(true)
                 .setComparator(Comparator.comparing(ScheduledTransaction::getAmount));
-
-        // Recurrence pill
-        templateGrid.addComponentColumn(st -> createRecurrenceBadge(st.getRecurrencePattern(), st.getRecurrenceValue()))
-                .setHeader(getTranslation("scheduled.recurrence")).setAutoWidth(true);
 
         // Next date
         templateGrid.addComponentColumn(st -> {
             Span d = new Span(st.getNextOccurrence().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")));
             d.getStyle().set("font-size", "var(--aura-font-size-s)");
             return d;
-        }).setHeader(getTranslation("scheduled.next_date")).setAutoWidth(true).setSortable(true)
+        }).setHeader(getTranslation("scheduled.next_date")).setAutoWidth(true).setFlexGrow(0).setSortable(true)
                 .setComparator(Comparator.comparing(ScheduledTransaction::getNextOccurrence));
+
+        // Recurrence pill
+        templateGrid.addComponentColumn(st -> createRecurrenceBadge(st.getRecurrencePattern(), st.getRecurrenceValue()))
+                .setHeader(getTranslation("scheduled.recurrence")).setAutoWidth(true).setFlexGrow(0);
+
+        // Account
+        com.vaadin.flow.component.grid.Grid.Column<ScheduledTransaction> templateAccountCol =
+        templateGrid.addComponentColumn(st -> {
+            Span s = new Span(st.getFromAccount() != null ? st.getFromAccount().getAccountName() : "—");
+            s.getStyle().set("font-size", "var(--aura-font-size-s)");
+            return s;
+        }).setHeader(getTranslation("dialog.account")).setWidth("7rem").setFlexGrow(1).setSortable(true)
+                .setComparator(Comparator.comparing(st -> st.getFromAccount() != null ? st.getFromAccount().getAccountName() : ""));
+        com.cuenti.app.views.components.ResponsiveGridColumns.hideBelow(520, templateGrid,
+                java.util.List.of(templateAccountCol));
 
         // Tags
         com.vaadin.flow.component.grid.Grid.Column<ScheduledTransaction> templateTagsCol =
@@ -266,7 +275,12 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
             deleteBtn.getElement().setAttribute("title", getTranslation("transactions.actions"));
 
-            HorizontalLayout hl = new HorizontalLayout(editBtn, deleteBtn);
+            Button historyBtn = new Button(VaadinIcon.TIME_BACKWARD.create(), e -> openHistoryDialog(st));
+            historyBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            historyBtn.getElement().setAttribute("title", getTranslation("scheduled.history"));
+            historyBtn.getElement().setAttribute("aria-label", getTranslation("scheduled.history"));
+
+            HorizontalLayout hl = new HorizontalLayout(editBtn, historyBtn, deleteBtn);
             hl.setSpacing(false);
             hl.getStyle().set("gap", "var(--vaadin-gap-xs)");
             return hl;
@@ -279,9 +293,8 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
 
         // Due date with urgency badge
         pendingGrid.addComponentColumn(st -> {
-            LocalDateTime now = LocalDateTime.now();
-            boolean overdue = st.getNextOccurrence().isBefore(now);
-            boolean dueToday = !overdue && st.getNextOccurrence().toLocalDate().isEqual(now.toLocalDate());
+            boolean overdue = ScheduledTransactionService.isOverdue(st);
+            boolean dueToday = !overdue && st.getNextOccurrence().toLocalDate().isEqual(java.time.LocalDate.now());
 
             Span date = new Span(st.getNextOccurrence().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")));
             date.getStyle().set("font-size", "var(--aura-font-size-s)").set("font-weight", "600");
@@ -313,30 +326,31 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 cell.add(badge);
             }
             return cell;
-        }).setHeader(getTranslation("scheduled.due_date")).setAutoWidth(true).setSortable(true)
+        }).setHeader(getTranslation("scheduled.due_date")).setAutoWidth(true).setFlexGrow(0).setSortable(true)
                 .setComparator(Comparator.comparing(ScheduledTransaction::getNextOccurrence));
 
-        // Account
-        pendingGrid.addComponentColumn(st -> {
-            Span s = new Span(st.getFromAccount() != null ? st.getFromAccount().getAccountName() : "—");
-            s.getStyle().set("font-size", "var(--aura-font-size-s)");
-            return s;
-        }).setKey("pending-account").setHeader(getTranslation("dialog.account")).setAutoWidth(true).setSortable(true)
-                .setComparator(Comparator.comparing(st -> st.getFromAccount() != null ? st.getFromAccount().getAccountName() : ""));
+        // Amount right after the date: the one value that must never scroll out of view
+        pendingGrid.addComponentColumn(st -> createAmountSpan(st.getAmount(), st.getType()))
+                .setKey("pending-amount")
+                .setHeader(getTranslation("dialog.amount"))
+                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END).setAutoWidth(true).setFlexGrow(0).setSortable(true)
+                .setComparator(Comparator.comparing(ScheduledTransaction::getAmount));
 
         // Payee
         pendingGrid.addComponentColumn(st -> {
             Span s = new Span(st.getPayee() != null ? st.getPayee() : "—");
             s.getStyle().set("font-weight", "600").set("font-size", "var(--aura-font-size-s)");
             return s;
-        }).setKey("pending-payee").setHeader(getTranslation("transactions.payee")).setAutoWidth(true).setSortable(true)
+        }).setKey("pending-payee").setHeader(getTranslation("transactions.payee")).setWidth("9rem").setFlexGrow(1).setSortable(true)
                 .setComparator(Comparator.comparing(st -> st.getPayee() != null ? st.getPayee() : ""));
 
-        // Amount
-        pendingGrid.addComponentColumn(st -> createAmountSpan(st.getAmount(), st.getType()))
-                .setHeader(getTranslation("dialog.amount"))
-                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END).setAutoWidth(true).setSortable(true)
-                .setComparator(Comparator.comparing(ScheduledTransaction::getAmount));
+        // Account
+        pendingGrid.addComponentColumn(st -> {
+            Span s = new Span(st.getFromAccount() != null ? st.getFromAccount().getAccountName() : "—");
+            s.getStyle().set("font-size", "var(--aura-font-size-s)");
+            return s;
+        }).setKey("pending-account").setHeader(getTranslation("dialog.account")).setWidth("7rem").setFlexGrow(1).setSortable(true)
+                .setComparator(Comparator.comparing(st -> st.getFromAccount() != null ? st.getFromAccount().getAccountName() : ""));
 
         // Tags
         com.vaadin.flow.component.grid.Grid.Column<ScheduledTransaction> pendingTagsCol =
@@ -350,7 +364,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                         pendingGrid.getColumnByKey("pending-payee")));
 
         pendingGrid.setPartNameGenerator(st ->
-                st.getNextOccurrence().isBefore(LocalDateTime.now()) ? "overdue-row" : null);
+                ScheduledTransactionService.isOverdue(st) ? "overdue-row" : null);
 
         // Actions: Post (primary), Skip (subtle), Edit (icon)
         pendingGrid.addComponentColumn(st -> {
@@ -375,11 +389,16 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
             });
             skipBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
+            Button adjustBtn = new Button(VaadinIcon.SLIDERS.create(), e -> openAdjustPostDialog(st));
+            adjustBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            adjustBtn.getElement().setAttribute("title", getTranslation("scheduled.post_adjust"));
+            adjustBtn.getElement().setAttribute("aria-label", getTranslation("scheduled.post_adjust"));
+
             Button editBtn = new Button(VaadinIcon.EDIT.create(), e -> openEditDialog(st));
             editBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             editBtn.getElement().setAttribute("title", getTranslation("dialog.edit_transaction"));
 
-            HorizontalLayout actions = new HorizontalLayout(postBtn, skipBtn, editBtn);
+            HorizontalLayout actions = new HorizontalLayout(postBtn, adjustBtn, skipBtn, editBtn);
             actions.setSpacing(false);
             actions.setAlignItems(Alignment.CENTER);
             actions.getStyle().set("gap", "var(--vaadin-gap-xs)");
@@ -712,6 +731,84 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         dialog.open();
     }
 
+    /** Post one occurrence with a different amount or date (variable bills); the schedule keeps its amount. */
+    private void openAdjustPostDialog(ScheduledTransaction st) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("scheduled.post_adjust_title") + ": "
+                + (st.getPayee() != null ? st.getPayee() : ""));
+        dialog.setWidth("min(420px, 96vw)");
+
+        BigDecimalField amount = new BigDecimalField(getTranslation("dialog.amount"));
+        amount.setValue(st.getAmount());
+        amount.setRequiredIndicatorVisible(true);
+        amount.setWidthFull();
+
+        DatePicker date = new DatePicker(getTranslation("scheduled.booking_date"));
+        date.setValue(st.getNextOccurrence().toLocalDate());
+        date.setRequiredIndicatorVisible(true);
+        date.setWidthFull();
+
+        VerticalLayout body = new VerticalLayout(amount, date);
+        body.setPadding(false);
+        dialog.add(body);
+
+        Button post = new Button(getTranslation("scheduled.post"), VaadinIcon.CHECK.create(), e -> {
+            if (amount.getValue() == null || amount.getValue().signum() <= 0 || date.getValue() == null) {
+                amount.setInvalid(amount.getValue() == null || amount.getValue().signum() <= 0);
+                date.setInvalid(date.getValue() == null);
+                return;
+            }
+            scheduledService.post(st.getId(), amount.getValue(), date.getValue());
+            refreshGrids();
+            dialog.close();
+            com.cuenti.app.views.components.UiNotifier.success(getTranslation("scheduled.posted"));
+        });
+        post.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
+        Button cancel = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
+        cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        dialog.getFooter().add(cancel, post);
+        dialog.open();
+        amount.focus();
+    }
+
+    /** Transactions previously posted from this schedule. */
+    private void openHistoryDialog(ScheduledTransaction st) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("scheduled.history_title",
+                st.getPayee() != null ? st.getPayee() : ""));
+        dialog.setWidth("min(560px, 96vw)");
+
+        List<Transaction> history = scheduledService.getHistory(st.getId());
+        if (history.isEmpty()) {
+            Span empty = new Span(getTranslation("scheduled.history_empty"));
+            empty.getStyle().set("color", "var(--vaadin-text-color-secondary)");
+            dialog.add(empty);
+        } else {
+            Grid<Transaction> grid = new Grid<>(Transaction.class, false);
+            grid.addThemeVariants(GridVariant.LUMO_NO_BORDER, GridVariant.LUMO_COMPACT);
+            grid.setAllRowsVisible(history.size() <= 12);
+            if (history.size() > 12) {
+                grid.setHeight("420px");
+            }
+            grid.addColumn(t -> t.getTransactionDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")))
+                    .setHeader(getTranslation("scheduled.booking_date")).setAutoWidth(true).setFlexGrow(0);
+            grid.addComponentColumn(t -> createAmountSpan(t.getAmount(), t.getType()))
+                    .setHeader(getTranslation("dialog.amount"))
+                    .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END).setAutoWidth(true).setFlexGrow(0);
+            grid.addColumn(t -> {
+                Account a = t.getFromAccount() != null ? t.getFromAccount() : t.getToAccount();
+                return a != null ? a.getAccountName() : "—";
+            }).setHeader(getTranslation("dialog.account")).setFlexGrow(1);
+            grid.setItems(history);
+            dialog.add(grid);
+        }
+
+        Button close = new Button(getTranslation("dialog.close"), e -> dialog.close());
+        close.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        dialog.getFooter().add(close);
+        dialog.open();
+    }
+
     /** Creates a padded section container with an optional all-caps label. */
     private Div createFormSection(String label) {
         Div section = new Div();
@@ -803,16 +900,15 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         Integer selectedHorizon = horizonSelect.getValue();
         int days = selectedHorizon == null || selectedHorizon < 0 ? 36500 : selectedHorizon;
 
+        LocalDateTime horizonEnd = ScheduledTransactionService.dueCutoff().plusDays(days);
         List<ScheduledTransaction> pending = all.stream()
                 .filter(ScheduledTransaction::isEnabled)
-                .filter(st -> st.getNextOccurrence().isBefore(LocalDateTime.now().plusDays(days)))
+                .filter(st -> st.getNextOccurrence().isBefore(horizonEnd))
                 .sorted(Comparator.comparing(ScheduledTransaction::getNextOccurrence))
                 .toList();
         pendingGrid.setItems(pending);
 
-        postAllButton.setVisible(all.stream()
-                .filter(ScheduledTransaction::isEnabled)
-                .anyMatch(st -> !st.getNextOccurrence().isAfter(LocalDateTime.now())));
+        postAllButton.setVisible(all.stream().anyMatch(ScheduledTransactionService::isDue));
     }
 
     private Div createCard() {

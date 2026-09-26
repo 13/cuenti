@@ -56,17 +56,22 @@ class FlywaySchemaPostgresTest {
         String latest = jdbc.queryForObject(
                 "select version from flyway_schema_history where success order by installed_rank desc limit 1",
                 String.class);
-        assertThat(latest).isEqualTo("7");
+        assertThat(latest).isEqualTo("8");
 
         assertThat(jdbc.queryForObject(
                 "select count(*) from pg_indexes "
                         + "where tablename in ('transactions', 'transaction_splits') and indexname like 'idx_%'",
-                Integer.class)).isEqualTo(5);
+                Integer.class)).isEqualTo(6);
 
         assertThat(jdbc.queryForObject(
                 "select count(*) from information_schema.columns "
                         + "where table_name = 'transactions' and column_name = 'updated_at'",
                 Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from information_schema.columns "
+                        + "where (table_name = 'users' and column_name in ('scheduled_badge_days', 'scheduled_horizon_days')) "
+                        + "or (table_name = 'transactions' and column_name = 'scheduled_transaction_id')",
+                Integer.class)).isEqualTo(3);
         assertThat(jdbc.queryForObject(
                 "select count(*) from information_schema.table_constraints "
                         + "where table_name = 'idempotency_keys' and constraint_type = 'UNIQUE'",

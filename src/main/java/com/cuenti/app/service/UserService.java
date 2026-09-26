@@ -316,6 +316,13 @@ public class UserService implements UserDetailsService {
      * Update user's locale.
      */
     @Transactional
+    public void updateScheduledPreferences(User user, Integer badgeDays, Integer horizonDays) {
+        evictSessionUser();
+        user.setScheduledBadgeDays(badgeDays);
+        user.setScheduledHorizonDays(horizonDays);
+        userRepository.save(user);
+    }
+
     public void updateLocale(User user, String locale) {
         evictSessionUser();
         user.setLocale(locale);

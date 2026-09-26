@@ -5,11 +5,14 @@ import com.cuenti.app.model.ScheduledTransaction;
 import com.cuenti.app.model.Transaction;
 import com.cuenti.app.model.User;
 import com.cuenti.app.repository.ScheduledTransactionRepository;
+import com.cuenti.app.repository.TransactionRepository;
 import com.cuenti.app.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,6 +30,7 @@ public class ScheduledTransactionService {
 
     private final SecurityUtils securityUtils;
     private final AuditService auditService;
+    private final TransactionRepository transactionRepository;
 
     public List<ScheduledTransaction> getByUser(User user) {
         return repository.findByUser(user);
@@ -74,6 +78,16 @@ public class ScheduledTransactionService {
 
     @Transactional
     public void post(Long scheduledId) {
+        post(scheduledId, null, null);
+    }
+
+    /**
+     * Post the current occurrence, optionally overriding amount and booking date
+     * for this one transaction (variable bills); the schedule itself is unchanged
+     * apart from advancing to its next occurrence.
+     */
+    @Transactional
+    public void post(Long scheduledId, BigDecimal amountOverride, LocalDate dateOverride) {
         String username = securityUtils.getAuthenticatedUsername()
                 .orElseThrow(() -> new SecurityException("User not authenticated"));
         User currentUser = userService.findByUsername(username);
@@ -94,7 +108,7 @@ public class ScheduledTransactionService {
                 .type(scheduled.getType())
                 .fromAccount(from)
                 .toAccount(to)
-                .amount(scheduled.getAmount())
+                .amount(amountOverride != null ? amountOverride : scheduled.getAmount())
                 .payee(scheduled.getPayee())
                 .category(scheduled.getCategory())
                 .memo(scheduled.getMemo())
@@ -103,8 +117,9 @@ public class ScheduledTransactionService {
                 .paymentMethod(scheduled.getPaymentMethod() != null ? scheduled.getPaymentMethod() : Transaction.PaymentMethod.NONE)
                 .asset(scheduled.getAsset())
                 .units(scheduled.getUnits())
-                .transactionDate(scheduled.getNextOccurrence())
+                .transactionDate(dateOverride != null ? dateOverride.atStartOfDay() : scheduled.getNextOccurrence())
                 .status(Transaction.TransactionStatus.COMPLETED)
+                .scheduledTransactionId(scheduled.getId())
                 .build();
 
         transactionService.saveTransaction(transaction);
@@ -120,12 +135,12 @@ public class ScheduledTransactionService {
         String username = securityUtils.getAuthenticatedUsername()
                 .orElseThrow(() -> new SecurityException("User not authenticated"));
         User currentUser = userService.findByUsername(username);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime cutoff = dueCutoff();
         int posted = 0;
-        for (ScheduledTransaction st : repository.findByUserAndEnabledTrueAndNextOccurrenceBefore(currentUser, now)) {
+        for (ScheduledTransaction st : repository.findByUserAndEnabledTrueAndNextOccurrenceBefore(currentUser, cutoff)) {
             // post() mutates this same managed instance, so the loop sees each advance
             while (st.isEnabled() && st.getNextOccurrence() != null
-                    && !st.getNextOccurrence().isAfter(now) && posted < 1000) {
+                    && st.getNextOccurrence().isBefore(cutoff) && posted < 1000) {
                 post(st.getId());
                 posted++;
             }
@@ -182,10 +197,48 @@ public class ScheduledTransactionService {
         repository.save(scheduled);
     }
 
-    /** Enabled schedules due today or overdue (nav badge and reminder toast). */
+    /** Start of tomorrow: anything before it is due (today) or overdue. Shared by badge, list and post-all. */
+    public static LocalDateTime dueCutoff() {
+        return LocalDate.now().plusDays(1).atStartOfDay();
+    }
+
+    /** Due on an earlier day than today. */
+    public static boolean isOverdue(ScheduledTransaction st) {
+        return st.getNextOccurrence().isBefore(LocalDate.now().atStartOfDay());
+    }
+
+    /** Enabled schedules due now (today or overdue); both badge and toast use this. */
+    public static boolean isDue(ScheduledTransaction st) {
+        return st.isEnabled() && st.getNextOccurrence().isBefore(dueCutoff());
+    }
+
+    /**
+     * Enabled schedules for the nav badge and reminder toast: due today or overdue,
+     * extended by the user's badge look-ahead ({@link User#getScheduledBadgeDays()}).
+     */
     @Transactional(readOnly = true)
     public List<ScheduledTransaction> findDue(User user) {
-        return repository.findByUserAndEnabledTrueAndNextOccurrenceBefore(user,
-                LocalDate.now().plusDays(1).atStartOfDay());
+        int lookAhead = user.getScheduledBadgeDays() != null ? Math.max(0, user.getScheduledBadgeDays()) : 0;
+        return repository.findByUserAndEnabledTrueAndNextOccurrenceBefore(user, dueCutoff().plusDays(lookAhead));
+    }
+
+    /** Transactions posted from a schedule, newest first. */
+    @Transactional(readOnly = true)
+    public List<Transaction> getHistory(Long scheduledId) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        ScheduledTransaction scheduled = repository.findById(scheduledId)
+                .orElseThrow(() -> new IllegalArgumentException("Scheduled transaction not found"));
+        if (!scheduled.getUser().getId().equals(currentUser.getId())) {
+            throw new SecurityException("Cannot read history of scheduled transaction belonging to another user");
+        }
+        return transactionRepository.findByScheduledTransactionIdOrderByTransactionDateDesc(scheduledId);
+    }
+
+    /** Day rollover turns schedules due without any user action; repaint every open badge. */
+    @Scheduled(cron = "5 0 0 * * *")
+    public void refreshBadgesAtMidnight() {
+        com.cuenti.app.util.ScheduledChangeBroadcaster.broadcastAll();
     }
 }

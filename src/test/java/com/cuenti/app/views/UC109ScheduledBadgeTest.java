@@ -94,7 +94,7 @@ class UC109ScheduledBadgeTest extends SpringBrowserlessTest {
 
     @BeforeEach
     void createOverdueFixture() {
-        createDueSchedule(LocalDateTime.now().minusHours(2));
+        createDueSchedule(LocalDateTime.now().minusDays(1));
     }
 
     @AfterEach
@@ -140,7 +140,7 @@ class UC109ScheduledBadgeTest extends SpringBrowserlessTest {
                 .findFirst().orElseThrow();
     }
 
-    /** Click the action button at the given index (0 = Post, 1 = Skip) of the first pending row. */
+    /** Click the action button at the given index (0 = Post, 1 = Adjust & post, 2 = Skip) of the first pending row. */
     private void clickRowAction(int buttonIndex) {
         Grid<?> grid = pendingGrid();
         HorizontalLayout actions = (HorizontalLayout) test(grid)
@@ -167,7 +167,7 @@ class UC109ScheduledBadgeTest extends SpringBrowserlessTest {
         long before = badgeCount();
         assertThat(before).isGreaterThan(0);
 
-        clickRowAction(1);
+        clickRowAction(2);
 
         assertThat(badgeCount()).isEqualTo(before - 1);
     }
@@ -180,7 +180,7 @@ class UC109ScheduledBadgeTest extends SpringBrowserlessTest {
 
         int guard = 0;
         while ($(Span.class).withClassName("nav-badge").exists() && guard++ < 25) {
-            clickRowAction(1);
+            clickRowAction(2);
         }
 
         assertThat($(Span.class).withClassName("nav-badge").exists()).isFalse();
@@ -236,7 +236,7 @@ class UC109ScheduledBadgeTest extends SpringBrowserlessTest {
         long posted = transactionRepository.findByUser(user).stream()
                 .filter(t -> FIXTURE_MEMO.equals(t.getMemo()))
                 .count();
-        // 1 catch-up for the -2h fixture, 3 for the -2 months fixture
+        // 1 catch-up for the -1 day fixture, 3 for the -2 months fixture
         assertThat(posted).isEqualTo(4);
     }
 
@@ -247,7 +247,7 @@ class UC109ScheduledBadgeTest extends SpringBrowserlessTest {
         long before = badgeCount();
         assertThat(before).isGreaterThan(0);
 
-        clickRowAction(1);
+        clickRowAction(2);
         assertThat(badgeCount()).isEqualTo(before - 1);
 
         // demo user locale is de-DE

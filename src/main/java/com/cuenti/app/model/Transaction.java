@@ -101,6 +101,10 @@ public class Transaction {
     @Column(name = "updated_at", columnDefinition = "TIMESTAMP")
     private LocalDateTime updatedAt;
 
+    /** Schedule this transaction was posted from (booking history); null for manual entries. */
+    @Column(name = "scheduled_transaction_id")
+    private Long scheduledTransactionId;
+
     @PrePersist
     public void touch() {
         updatedAt = LocalDateTime.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);

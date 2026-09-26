@@ -74,6 +74,15 @@ public class ScheduledTransaction {
     @Builder.Default
     private boolean enabled = true;
 
+    /** Schedules are date-based; drop any time-of-day so due/overdue checks agree within a day. */
+    @PrePersist
+    @PreUpdate
+    void truncateNextOccurrence() {
+        if (nextOccurrence != null) {
+            nextOccurrence = nextOccurrence.toLocalDate().atStartOfDay();
+        }
+    }
+
     public enum RecurrencePattern {
         DAILY,
         WEEKLY,

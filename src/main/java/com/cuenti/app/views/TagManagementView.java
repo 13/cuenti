@@ -159,7 +159,13 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
         nameField.setWidthFull();
 
         Binder<Tag> binder = new Binder<>(Tag.class);
-        binder.forField(nameField).asRequired(getTranslation("accounts.name_required")).bind(Tag::getName, Tag::setName);
+        binder.forField(nameField).asRequired(getTranslation("accounts.name_required"))
+                .withConverter(String::trim, v -> v == null ? "" : v)
+                .withValidator(n -> tagService.getAllTags().stream()
+                                .noneMatch(t -> !java.util.Objects.equals(t.getId(), tag.getId())
+                                        && com.cuenti.app.util.TagNames.same(t.getName(), n)),
+                        getTranslation("tags.name_exists"))
+                .bind(Tag::getName, Tag::setName);
         binder.setBean(tag);
 
         Div body = new Div(nameField);

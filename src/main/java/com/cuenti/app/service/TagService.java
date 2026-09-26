@@ -91,6 +91,52 @@ public class TagService {
         return tagRepository.findByUserAndName(currentUser, name);
     }
 
+    /**
+     * The user's tag with this name ignoring case, created when missing. Every UI
+     * path that turns typed text into a tag goes through here so no duplicate
+     * tag rows appear.
+     */
+    @Transactional
+    public Tag findOrCreate(String name) {
+        String trimmed = name == null ? "" : name.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("Tag name must not be blank");
+        }
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        return tagRepository.findByUserAndNameIgnoreCase(currentUser, trimmed).stream()
+                .findFirst()
+                .orElseGet(() -> tagRepository.save(Tag.builder().name(trimmed).user(currentUser).build()));
+    }
+
+    /**
+     * Tag names the current user attached to earlier transactions with this payee,
+     * most used first. Feeds the quick suggestions in the tag field.
+     */
+    public List<String> suggestTagNames(String payee, int limit) {
+        if (payee == null || payee.isBlank()) {
+            return List.of();
+        }
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        Map<String, String> spelling = new LinkedHashMap<>();
+        for (String tags : transactionRepository.findTagStringsByUserAndPayee(currentUser, payee.trim())) {
+            for (String name : com.cuenti.app.util.TagNames.parse(tags)) {
+                String key = name.toLowerCase(Locale.ROOT);
+                spelling.putIfAbsent(key, name);
+                counts.merge(key, 1, Integer::sum);
+            }
+        }
+        return counts.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .limit(limit)
+                .map(e -> spelling.get(e.getKey()))
+                .toList();
+    }
+
     @Transactional
     public Tag saveTag(Tag tag) {
         String username = securityUtils.getAuthenticatedUsername()

@@ -8,7 +8,6 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
-import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
@@ -25,8 +24,6 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
-import com.vaadin.flow.component.tabs.Tab;
-import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.textfield.BigDecimalField;
 import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextArea;
@@ -42,11 +39,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Route(value = "scheduled", layout = MainLayout.class)
 @PermitAll
@@ -235,11 +229,11 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         // Account
         com.vaadin.flow.component.grid.Grid.Column<ScheduledTransaction> templateAccountCol =
         templateGrid.addComponentColumn(st -> {
-            Span s = new Span(st.getFromAccount() != null ? st.getFromAccount().getAccountName() : "—");
+            Span s = new Span(accountLabel(st));
             s.getStyle().set("font-size", "var(--aura-font-size-s)");
             return s;
         }).setHeader(getTranslation("dialog.account")).setWidth("7rem").setFlexGrow(1).setSortable(true)
-                .setComparator(Comparator.comparing(st -> st.getFromAccount() != null ? st.getFromAccount().getAccountName() : ""));
+                .setComparator(Comparator.comparing(this::accountLabel));
         com.cuenti.app.views.components.ResponsiveGridColumns.hideBelow(520, templateGrid,
                 java.util.List.of(templateAccountCol));
 
@@ -346,11 +340,11 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
 
         // Account
         pendingGrid.addComponentColumn(st -> {
-            Span s = new Span(st.getFromAccount() != null ? st.getFromAccount().getAccountName() : "—");
+            Span s = new Span(accountLabel(st));
             s.getStyle().set("font-size", "var(--aura-font-size-s)");
             return s;
         }).setKey("pending-account").setHeader(getTranslation("dialog.account")).setWidth("7rem").setFlexGrow(1).setSortable(true)
-                .setComparator(Comparator.comparing(st -> st.getFromAccount() != null ? st.getFromAccount().getAccountName() : ""));
+                .setComparator(Comparator.comparing(this::accountLabel));
 
         // Tags
         com.vaadin.flow.component.grid.Grid.Column<ScheduledTransaction> pendingTagsCol =
@@ -406,7 +400,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
     }
 
-    private void openEditDialog(ScheduledTransaction st) {
+    void openEditDialog(ScheduledTransaction st) { // package-visible for tests
         Dialog dialog = new Dialog();
         dialog.setCloseOnOutsideClick(false);
         dialog.setWidth("min(700px, 96vw)");
@@ -415,26 +409,20 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .set("padding", "0")
                 .set("overflow-x", "hidden");
 
-        // ── Type selector: coloured pill buttons ─────────────────────
+        // ── Type selector: coloured pill buttons (as in the transaction dialog) ──
         Button expenseBtn  = new Button(getTranslation("transaction.type.expense"));
         Button incomeBtn   = new Button(getTranslation("transaction.type.income"));
         Button transferBtn = new Button(getTranslation("transaction.type.transfer"));
-
-        // Hidden Tabs kept for binder selectedType logic
-        Tabs typeTabs = new Tabs();
-        Tab expenseTab  = new Tab(getTranslation("transaction.type.expense"));
-        Tab incomeTab   = new Tab(getTranslation("transaction.type.income"));
-        Tab transferTab = new Tab(getTranslation("transaction.type.transfer"));
-        typeTabs.add(expenseTab, incomeTab, transferTab);
-        typeTabs.setVisible(false);
-
+        Button[] typeBtns = {expenseBtn, incomeBtn, transferBtn};
+        Transaction.TransactionType[] types = {
+                Transaction.TransactionType.EXPENSE, Transaction.TransactionType.INCOME, Transaction.TransactionType.TRANSFER};
         String[] TYPE_COLORS = {
             "var(--aura-red)",
             "var(--aura-green)",
             "var(--aura-accent-color)"
         };
-        Button[] typeBtns = {expenseBtn, incomeBtn, transferBtn};
-        Tab[]    typeTabArr = {expenseTab, incomeTab, transferTab};
+        Transaction.TransactionType[] selectedType = {
+                st.getType() != null ? st.getType() : Transaction.TransactionType.EXPENSE};
 
         Div accentBar = new Div();
         accentBar.setWidthFull();
@@ -443,36 +431,6 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .set("border-radius", "var(--vaadin-radius-l) var(--vaadin-radius-l) 0 0")
                 .set("transition", "background 0.2s");
 
-        Runnable[] applyTypeStyle = {null};
-        applyTypeStyle[0] = () -> {
-            int sel = 0;
-            for (int i = 0; i < typeTabArr.length; i++) {
-                if (typeTabs.getSelectedTab() == typeTabArr[i]) { sel = i; break; }
-            }
-            final int fs = sel;
-            for (int i = 0; i < typeBtns.length; i++) {
-                boolean active = (i == fs);
-                typeBtns[i].getElement().getStyle()
-                        .set("background", active ? TYPE_COLORS[i] : "var(--vaadin-background-container)")
-                        .set("color", active ? "white" : "var(--vaadin-text-color-secondary)")
-                        .set("border", "none").set("border-radius", "99px")
-                        .set("font-weight", active ? "700" : "500")
-                        .set("font-size", "var(--aura-font-size-s)")
-                        .set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-m)")
-                        .set("cursor", "pointer").set("transition", "all 0.15s");
-            }
-            accentBar.getStyle().set("background", TYPE_COLORS[fs]);
-        };
-
-        expenseBtn.addClickListener(e  -> { typeTabs.setSelectedTab(expenseTab);  applyTypeStyle[0].run(); });
-        incomeBtn.addClickListener(e   -> { typeTabs.setSelectedTab(incomeTab);   applyTypeStyle[0].run(); });
-        transferBtn.addClickListener(e -> { typeTabs.setSelectedTab(transferTab); applyTypeStyle[0].run(); });
-
-        // Initialise from existing transaction type
-        if (st.getType() == Transaction.TransactionType.INCOME) typeTabs.setSelectedTab(incomeTab);
-        else if (st.getType() == Transaction.TransactionType.TRANSFER) typeTabs.setSelectedTab(transferTab);
-        else typeTabs.setSelectedTab(expenseTab);
-
         HorizontalLayout typeRow = new HorizontalLayout(expenseBtn, incomeBtn, transferBtn);
         typeRow.setSpacing(false);
         typeRow.getStyle()
@@ -480,19 +438,16 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l)")
                 .set("flex-wrap", "wrap");
 
-        // ── Helper: resolve current type from tabs ────────────────────
-        java.util.function.Supplier<Transaction.TransactionType> selectedType = () -> {
-            if (typeTabs.getSelectedTab() == incomeTab)   return Transaction.TransactionType.INCOME;
-            if (typeTabs.getSelectedTab() == transferTab) return Transaction.TransactionType.TRANSFER;
-            return Transaction.TransactionType.EXPENSE;
-        };
-
         // ── Hero: Amount field ────────────────────────────────────────
         BigDecimalField amount = new BigDecimalField();
+        amount.setId("st-amount");
         amount.setWidthFull();
         amount.setRequiredIndicatorVisible(true);
-        amount.getElement().getStyle()
-                .set("font-size", "var(--cuenti-font-size-xxl)").set("font-weight", "800");
+        amount.getStyle()
+                .set("font-size", "var(--cuenti-font-size-xxl)")
+                .set("font-weight", "800")
+                .set("--vaadin-text-field-default-width", "100%");
+        amount.getElement().getStyle().set("font-size", "var(--cuenti-font-size-xxl)").set("font-weight", "800");
 
         Span amountLabel = new Span(getTranslation("dialog.amount").toUpperCase());
         amountLabel.addClassName("text-overline");
@@ -503,43 +458,33 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .set("padding", "var(--vaadin-gap-m) var(--vaadin-gap-l) var(--vaadin-gap-l)")
                 .set("background", "var(--vaadin-background-container)")
                 .set("border-bottom", "1px solid var(--vaadin-border-color-secondary)")
-                .set("box-sizing", "border-box")
-                .set("display", "flex").set("flex-direction", "column").set("gap", "var(--vaadin-gap-xs)");
+                .set("box-sizing", "border-box");
 
-        // ── Date + Enabled toggle ─────────────────────────────────────
+        // ── Date + account ────────────────────────────────────────────
         DatePicker nextDate = new DatePicker(getTranslation("scheduled.next_date"));
+        nextDate.setId("st-next-date");
+        com.cuenti.app.views.components.LocalizedDatePicker.applyLocale(nextDate, getLocale());
         nextDate.setWidthFull();
 
-        Checkbox enabled = new Checkbox(getTranslation("scheduled.enabled"));
-
-        HorizontalLayout dateRow = new HorizontalLayout(nextDate, enabled);
-        dateRow.setWidthFull(); dateRow.setSpacing(false);
-        dateRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap")
-                .set("align-items", "center");
-        nextDate.getStyle().set("flex", "1 1 160px");
-
-        // ── Accounts ──────────────────────────────────────────────────
         List<Account> accounts = accountService.getAccountsByUser(currentUser);
-        ComboBox<Account> fromAccount = new ComboBox<>(getTranslation("dialog.from"));
-        fromAccount.setItems(accounts);
-        fromAccount.setItemLabelGenerator(Account::getAccountName);
-        fromAccount.setWidthFull();
+        // One "Konto" field; saved to the side the type books on (income: to, expense: from).
+        ComboBox<Account> account = new ComboBox<>(getTranslation("dialog.account"));
+        account.setId("st-account");
+        account.setItems(accounts);
+        account.setItemLabelGenerator(Account::getAccountName);
+        account.setRequired(true);
+        account.setWidthFull();
 
         ComboBox<Account> toAccount = new ComboBox<>(getTranslation("dialog.to"));
+        toAccount.setId("st-to-account");
         toAccount.setItems(accounts);
         toAccount.setItemLabelGenerator(Account::getAccountName);
         toAccount.setWidthFull();
 
-        HorizontalLayout accountRow = new HorizontalLayout(fromAccount, toAccount);
-        accountRow.setWidthFull(); accountRow.setSpacing(false);
-        accountRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
-        fromAccount.getStyle().set("flex", "1 1 200px");
-        toAccount.getStyle().set("flex", "1 1 200px");
-
         // ── Payee + Category ──────────────────────────────────────────
         ComboBox<String> payee = new ComboBox<>(getTranslation("transactions.payee"));
-        List<String> existingPayees = payeeService.getAllPayees().stream().map(Payee::getName).distinct().toList();
-        payee.setItems(existingPayees);
+        List<Payee> allPayees = payeeService.getAllPayees();
+        payee.setItems(allPayees.stream().map(Payee::getName).distinct().toList());
         payee.setAllowCustomValue(true);
         payee.addCustomValueSetListener(e -> payee.setValue(e.getDetail()));
         payee.setWidthFull();
@@ -550,13 +495,28 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         category.setAllowCustomValue(true);
         category.setWidthFull();
 
-        HorizontalLayout payeeCatRow = new HorizontalLayout(payee, category);
-        payeeCatRow.setWidthFull(); payeeCatRow.setSpacing(false);
-        payeeCatRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
-        payee.getStyle().set("flex", "1 1 200px");
-        category.getStyle().set("flex", "1 1 200px");
+        // ── Payment + Number ──────────────────────────────────────────
+        ComboBox<Transaction.PaymentMethod> paymentMethod = new ComboBox<>(getTranslation("dialog.payment_method"));
+        paymentMethod.setItems(Transaction.PaymentMethod.values());
+        paymentMethod.setItemLabelGenerator(pm -> pm == Transaction.PaymentMethod.NONE ? getTranslation("dialog.none") : pm.getLabel());
+        paymentMethod.setWidthFull();
 
-        // ── Recurrence section ────────────────────────────────────────
+        TextField number = new TextField(getTranslation("dialog.number"));
+        number.setWidthFull();
+
+        // ── Tags + Memo ───────────────────────────────────────────────
+        com.cuenti.app.views.components.TagField tags =
+                new com.cuenti.app.views.components.TagField(tagService, getTranslation("dialog.tags"));
+        tags.setId("st-tags");
+        tags.setSuggestionsFor(st.getPayee());
+        payee.addValueChangeListener(e -> tags.setSuggestionsFor(e.getValue()));
+
+        TextArea memo = new TextArea(getTranslation("dialog.memo"));
+        memo.setWidthFull();
+        memo.setMinHeight("60px");
+        memo.setMaxHeight("100px");
+
+        // ── Recurrence ────────────────────────────────────────────────
         ComboBox<ScheduledTransaction.RecurrencePattern> pattern = new ComboBox<>(getTranslation("scheduled.recurrence"));
         pattern.setItems(ScheduledTransaction.RecurrencePattern.values());
         pattern.setItemLabelGenerator(this::getRecurrenceLabel);
@@ -567,45 +527,44 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         recValue.setStepButtonsVisible(true);
         recValue.setWidthFull();
 
-        HorizontalLayout recurrenceRow = new HorizontalLayout(pattern, recValue);
-        recurrenceRow.setWidthFull(); recurrenceRow.setSpacing(false);
-        recurrenceRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
-        pattern.getStyle().set("flex", "2 1 200px");
-        recValue.getStyle().set("flex", "1 1 120px");
+        Span preview = new Span();
+        preview.setId("st-preview");
+        preview.getStyle()
+                .set("font-size", "var(--aura-font-size-s)")
+                .set("color", "var(--vaadin-text-color-secondary)");
 
-        // ── Payment method ────────────────────────────────────────────
-        ComboBox<Transaction.PaymentMethod> paymentMethod = new ComboBox<>(getTranslation("dialog.payment_method"));
-        paymentMethod.setItems(Transaction.PaymentMethod.values());
-        paymentMethod.setItemLabelGenerator(pm -> pm == Transaction.PaymentMethod.NONE ? getTranslation("dialog.none") : pm.getLabel());
-        paymentMethod.setWidthFull();
+        Checkbox enabled = new Checkbox(getTranslation("scheduled.enabled"));
+        enabled.setHelperText(getTranslation("scheduled.enabled_helper"));
 
-        // ── Tags + Memo ───────────────────────────────────────────────
-        MultiSelectComboBox<Tag> tags = new MultiSelectComboBox<>(getTranslation("dialog.tags"));
-        tags.setItems(tagService.getAllTags());
-        tags.setItemLabelGenerator(Tag::getName);
-        tags.setAllowCustomValue(true);
-        tags.setWidthFull();
-        tags.addCustomValueSetListener(e -> {
-            Tag newTag = Tag.builder().name(e.getDetail()).build();
-            tagService.saveTag(newTag);
-            tags.setItems(tagService.getAllTags());
-            Set<Tag> current = new HashSet<>(tags.getValue());
-            current.add(newTag);
-            tags.setValue(current);
-        });
+        Runnable updatePreview = () -> {
+            if (nextDate.getValue() == null || pattern.getValue() == null) {
+                preview.setVisible(false);
+                return;
+            }
+            ScheduledTransaction probe = new ScheduledTransaction();
+            probe.setRecurrencePattern(pattern.getValue());
+            probe.setRecurrenceValue(recValue.getValue());
+            DateTimeFormatter fmt = DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)
+                    .withLocale(getLocale());
+            List<String> dates = new java.util.ArrayList<>();
+            LocalDateTime current = nextDate.getValue().atStartOfDay();
+            for (int i = 0; i < 3; i++) {
+                dates.add(current.format(fmt));
+                current = ScheduledTransactionService.advanceOccurrence(current, probe);
+            }
+            preview.setText(getTranslation("scheduled.preview", String.join(" · ", dates)));
+            preview.setVisible(true);
+        };
+        nextDate.addValueChangeListener(e -> updatePreview.run());
+        pattern.addValueChangeListener(e -> updatePreview.run());
+        recValue.addValueChangeListener(e -> updatePreview.run());
 
-        TextArea memo = new TextArea(getTranslation("dialog.memo"));
-        memo.setWidthFull();
-        memo.setMinHeight("60px");
-        memo.setMaxHeight("100px");
-
-        // ── Category update helper ────────────────────────────────────
+        // ── Category list follows the type ────────────────────────────
         Runnable updateCategoryItems = () -> {
-            Transaction.TransactionType transactionType = selectedType.get();
             Category currentCat = category.getValue();
-            if (transactionType == Transaction.TransactionType.INCOME) {
+            if (selectedType[0] == Transaction.TransactionType.INCOME) {
                 category.setItems(categoryService.getCategoriesByType(Category.CategoryType.INCOME));
-            } else if (transactionType == Transaction.TransactionType.EXPENSE) {
+            } else if (selectedType[0] == Transaction.TransactionType.EXPENSE) {
                 category.setItems(categoryService.getCategoriesByType(Category.CategoryType.EXPENSE));
             } else {
                 category.setItems(categoryService.getAllCategories());
@@ -615,7 +574,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
 
         category.addCustomValueSetListener(e -> {
             String newCatName = e.getDetail();
-            Category.CategoryType categoryType = selectedType.get() == Transaction.TransactionType.INCOME
+            Category.CategoryType categoryType = selectedType[0] == Transaction.TransactionType.INCOME
                     ? Category.CategoryType.INCOME : Category.CategoryType.EXPENSE;
             Category saved;
             if (newCatName != null && newCatName.contains(":")) {
@@ -639,25 +598,70 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
             category.setValue(saved);
         });
 
-        // On type change: update visible fields + category list
-        typeTabs.addSelectedChangeListener(e -> {
-            boolean isTransfer = selectedType.get() == Transaction.TransactionType.TRANSFER;
-            toAccount.setVisible(isTransfer);
-            paymentMethod.setVisible(!isTransfer);
-            updateCategoryItems.run();
-            applyTypeStyle[0].run();
+        // Autofill from payee defaults, as in the transaction dialog
+        payee.addValueChangeListener(e -> {
+            if (!e.isFromClient() || e.getValue() == null || e.getValue().isEmpty()) return;
+            allPayees.stream()
+                    .filter(p -> p.getName().equalsIgnoreCase(e.getValue()))
+                    .findFirst()
+                    .ifPresent(p -> {
+                        if (p.getDefaultCategory() != null) {
+                            category.setItems(categoryService.getCategoriesByType(p.getDefaultCategory().getType()));
+                            category.setValue(p.getDefaultCategory());
+                        }
+                        if (p.getDefaultPaymentMethod() != null
+                                && p.getDefaultPaymentMethod() != Transaction.PaymentMethod.NONE) {
+                            paymentMethod.setValue(p.getDefaultPaymentMethod());
+                        }
+                        if (p.getDefaultMemo() != null && !p.getDefaultMemo().isEmpty()) {
+                            memo.setValue(p.getDefaultMemo());
+                        }
+                        tags.addTags(com.cuenti.app.util.TagNames.parse(p.getDefaultTags()));
+                    });
         });
 
-        // ── Binder ────────────────────────────────────────────────────
+        // ── Type switching ────────────────────────────────────────────
+        Runnable applyType = () -> {
+            int sel = java.util.Arrays.asList(types).indexOf(selectedType[0]);
+            for (int i = 0; i < typeBtns.length; i++) {
+                boolean active = (i == sel);
+                typeBtns[i].getElement().getStyle()
+                        .set("background", active ? TYPE_COLORS[i] : "var(--vaadin-background-container)")
+                        .set("color", active ? "white" : "var(--vaadin-text-color-secondary)")
+                        .set("border", "none").set("border-radius", "99px")
+                        .set("font-weight", active ? "700" : "500")
+                        .set("font-size", "var(--aura-font-size-s)")
+                        .set("padding", "var(--vaadin-gap-xs) var(--vaadin-gap-m)")
+                        .set("cursor", "pointer").set("transition", "all 0.15s");
+            }
+            accentBar.getStyle().set("background", TYPE_COLORS[sel]);
+            boolean isTransfer = selectedType[0] == Transaction.TransactionType.TRANSFER;
+            toAccount.setVisible(isTransfer);
+            toAccount.setRequired(isTransfer);
+            paymentMethod.setVisible(!isTransfer);
+            account.setLabel(isTransfer ? getTranslation("dialog.from") : getTranslation("dialog.account"));
+            updateCategoryItems.run();
+        };
+        for (int i = 0; i < typeBtns.length; i++) {
+            Transaction.TransactionType type = types[i];
+            typeBtns[i].addClickListener(e -> { selectedType[0] = type; applyType.run(); });
+        }
+
+        // ── Binder (buffered: cancelling leaves the grid row untouched) ──
         Binder<ScheduledTransaction> binder = new Binder<>(ScheduledTransaction.class);
         binder.forField(nextDate).asRequired()
-                .bind(t -> t.getNextOccurrence().toLocalDate(), (t, v) -> t.setNextOccurrence(v.atStartOfDay()));
+                .bind(t -> t.getNextOccurrence() != null ? t.getNextOccurrence().toLocalDate() : null,
+                        (t, v) -> t.setNextOccurrence(v.atStartOfDay()));
         binder.forField(amount).asRequired()
+                .withValidator(v -> v.signum() > 0, getTranslation("dialog.amount_positive"))
                 .bind(ScheduledTransaction::getAmount, ScheduledTransaction::setAmount);
         binder.bind(payee, ScheduledTransaction::getPayee, ScheduledTransaction::setPayee);
-        binder.forField(fromAccount).asRequired()
-                .bind(ScheduledTransaction::getFromAccount, ScheduledTransaction::setFromAccount);
-        binder.bind(toAccount, ScheduledTransaction::getToAccount, ScheduledTransaction::setToAccount);
+        binder.forField(account).asRequired()
+                .bind(ScheduledTransactionService::primaryAccount, (t, v) -> { });
+        binder.forField(toAccount)
+                .withValidator(v -> selectedType[0] != Transaction.TransactionType.TRANSFER || v != null,
+                        getTranslation("accounts.name_required"))
+                .bind(t -> t.getType() == Transaction.TransactionType.TRANSFER ? t.getToAccount() : null, (t, v) -> { });
         binder.forField(pattern).asRequired()
                 .bind(ScheduledTransaction::getRecurrencePattern, ScheduledTransaction::setRecurrencePattern);
         binder.bind(recValue, ScheduledTransaction::getRecurrenceValue, ScheduledTransaction::setRecurrenceValue);
@@ -665,62 +669,83 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         binder.bind(paymentMethod,
                 stx -> stx.getPaymentMethod() != null ? stx.getPaymentMethod() : Transaction.PaymentMethod.NONE,
                 ScheduledTransaction::setPaymentMethod);
+        binder.bind(number, ScheduledTransaction::getNumber, ScheduledTransaction::setNumber);
         binder.bind(enabled, ScheduledTransaction::isEnabled, ScheduledTransaction::setEnabled);
         binder.bind(memo, ScheduledTransaction::getMemo, ScheduledTransaction::setMemo);
-        binder.bind(tags,
-                stx -> {
-                    if (stx.getTags() == null || stx.getTags().isBlank()) return Set.of();
-                    Set<String> names = Arrays.stream(stx.getTags().split(","))
-                            .map(String::trim).filter(v -> !v.isBlank()).collect(Collectors.toSet());
-                    return tagService.getAllTags().stream()
-                            .filter(tag -> names.contains(tag.getName())).collect(Collectors.toSet());
-                },
-                (stx, sel) -> stx.setTags(sel.stream().map(Tag::getName).collect(Collectors.joining(","))));
+        binder.bind(tags, ScheduledTransaction::getTags, ScheduledTransaction::setTags);
 
-        // Populate and bind
-        updateCategoryItems.run();
-        if (st.getId() != null) {
-            binder.setBean(st);
-            boolean isTransfer = st.getType() == Transaction.TransactionType.TRANSFER;
-            toAccount.setVisible(isTransfer);
-            paymentMethod.setVisible(!isTransfer);
-        } else {
+        if (st.getId() == null) {
             st.setType(Transaction.TransactionType.EXPENSE);
             st.setNextOccurrence(LocalDateTime.now());
             st.setPaymentMethod(Transaction.PaymentMethod.NONE);
+            st.setRecurrencePattern(ScheduledTransaction.RecurrencePattern.MONTHLY);
+            st.setRecurrenceValue(1);
             st.setEnabled(true);
-            binder.setBean(st);
-            toAccount.setVisible(false);
         }
-        applyTypeStyle[0].run();
+        applyType.run();
+        binder.readBean(st);
+        updatePreview.run();
 
-        // ── Assemble sections ─────────────────────────────────────────
+        // ── Assemble sections (same order as the transaction dialog) ──
         Div coreSection = createFormSection(null);
-        coreSection.add(dateRow, accountRow, payeeCatRow);
+        HorizontalLayout row1 = new HorizontalLayout(nextDate, account);
+        HorizontalLayout row2 = new HorizontalLayout(payee, category);
+        HorizontalLayout row3 = new HorizontalLayout(toAccount, paymentMethod);
+        for (HorizontalLayout row : List.of(row1, row2, row3)) {
+            // wraps to single column on mobile
+            row.setWidthFull(); row.setSpacing(false);
+            row.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
+            row.getChildren().forEach(c -> c.getElement().getStyle().set("flex", "1 1 200px").set("min-width", "0"));
+        }
+        coreSection.add(row1, row2, row3, tags, memo);
 
         Div recurrenceSection = createFormSection(getTranslation("scheduled.recurrence"));
-        recurrenceSection.add(recurrenceRow);
+        HorizontalLayout recurrenceRow = new HorizontalLayout(pattern, recValue);
+        recurrenceRow.setWidthFull(); recurrenceRow.setSpacing(false);
+        recurrenceRow.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
+        pattern.getStyle().set("flex", "2 1 200px").set("min-width", "0");
+        recValue.getStyle().set("flex", "1 1 120px").set("min-width", "0");
+        recurrenceSection.add(recurrenceRow, preview, enabled);
+        recurrenceSection.getStyle().set("border-top", "1px solid var(--vaadin-border-color-secondary)");
 
         Div extraSection = createFormSection(null);
-        extraSection.add(paymentMethod, tags, memo, typeTabs);
+        extraSection.add(number);
+        extraSection.setVisible(false);
 
-        Div body = new Div(accentBar, typeRow, heroSection, coreSection, recurrenceSection, extraSection);
+        Button moreBtn = new Button(getTranslation("dialog.more_details"), VaadinIcon.ANGLE_DOWN.create());
+        moreBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        moreBtn.getStyle().set("font-size", "var(--aura-font-size-xs)").set("color", "var(--vaadin-text-color-secondary)");
+        moreBtn.addClickListener(e -> {
+            boolean v = !extraSection.isVisible();
+            extraSection.setVisible(v);
+            moreBtn.setIcon(v ? VaadinIcon.ANGLE_UP.create() : VaadinIcon.ANGLE_DOWN.create());
+        });
+
+        Div body = new Div(accentBar, typeRow, heroSection, coreSection, recurrenceSection, moreBtn, extraSection);
         body.setWidthFull();
         body.getStyle()
                 .set("display", "flex").set("flex-direction", "column")
                 .set("overflow-x", "hidden").set("box-sizing", "border-box");
 
         // ── Footer ────────────────────────────────────────────────────
-        Button save = new Button(getTranslation("dialog.save"), e -> {
-            if (binder.validate().isOk()) {
-                st.setType(selectedType.get());
-                st.setUser(currentUser);
-                scheduledService.save(st);
-                refreshGrids();
-                dialog.close();
-                com.cuenti.app.views.components.UiNotifier.success(getTranslation("dialog.saved"));
+        Button save = new Button(st.getId() == null ? getTranslation("dialog.add") : getTranslation("dialog.save"),
+                VaadinIcon.CHECK.create(), e -> {
+            if (!binder.writeBeanIfValid(st)) {
+                return;
             }
+            st.setType(selectedType[0]);
+            Account[] sides = ScheduledTransactionService.accountsForType(selectedType[0],
+                    account.getValue(),
+                    selectedType[0] == Transaction.TransactionType.TRANSFER ? toAccount.getValue() : null);
+            st.setFromAccount(sides[0]);
+            st.setToAccount(sides[1]);
+            st.setUser(currentUser);
+            scheduledService.save(st);
+            refreshGrids();
+            dialog.close();
+            com.cuenti.app.views.components.UiNotifier.success(getTranslation("dialog.saved"));
         });
+        save.setId("st-save");
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         Button cancel = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
@@ -729,6 +754,7 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
         dialog.add(body);
         dialog.getFooter().add(cancel, save);
         dialog.open();
+        amount.focus();
     }
 
     /** Post one occurrence with a different amount or date (variable bills); the schedule keeps its amount. */
@@ -949,6 +975,17 @@ public class ScheduledTransactionsView extends VerticalLayout implements HasDyna
                 .forEach(tag -> layout.add(TagColorUtil.createTagBadge(tag)));
 
         return layout;
+    }
+
+    /** Account a schedule books on, taken from the side its type uses; transfers show both. */
+    private String accountLabel(ScheduledTransaction st) {
+        if (st.getType() == Transaction.TransactionType.TRANSFER) {
+            String from = st.getFromAccount() != null ? st.getFromAccount().getAccountName() : "—";
+            String to = st.getToAccount() != null ? st.getToAccount().getAccountName() : "—";
+            return from + " → " + to;
+        }
+        Account account = ScheduledTransactionService.primaryAccount(st);
+        return account != null ? account.getAccountName() : "—";
     }
 
     private String formatCurrency(BigDecimal amount) {

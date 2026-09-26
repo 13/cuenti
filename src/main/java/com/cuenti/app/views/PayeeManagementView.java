@@ -2,7 +2,6 @@ package com.cuenti.app.views;
 
 import com.cuenti.app.model.Category;
 import com.cuenti.app.model.Payee;
-import com.cuenti.app.model.Tag;
 import com.cuenti.app.model.Transaction;
 import com.cuenti.app.model.User;
 import com.cuenti.app.security.SecurityUtils;
@@ -11,12 +10,12 @@ import com.cuenti.app.service.PayeeService;
 import com.cuenti.app.service.TagService;
 import com.cuenti.app.service.UserService;
 import com.vaadin.flow.component.button.Button;
+import com.cuenti.app.views.components.TagField;
 import com.cuenti.app.views.components.DeleteConfirm;
 import com.cuenti.app.views.components.UiNotifier;
 
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
-import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
@@ -35,10 +34,6 @@ import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Route(value = "payees", layout = MainLayout.class)
 @PermitAll
@@ -219,52 +214,8 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         TextField defaultMemoField = new TextField(getTranslation("payees.default_memo"));
         defaultMemoField.setWidthFull();
 
-        MultiSelectComboBox<Tag> defaultTagsCombo = new MultiSelectComboBox<>(getTranslation("payees.default_tags"));
-        defaultTagsCombo.setItems(tagService.getAllTags());
-        defaultTagsCombo.setItemLabelGenerator(Tag::getName);
-        defaultTagsCombo.setWidthFull();
-        if (payee.getDefaultTags() != null && !payee.getDefaultTags().isEmpty()) {
-            Set<String> tagNames = new HashSet<>(Arrays.asList(payee.getDefaultTags().split(",")));
-            defaultTagsCombo.setValue(tagService.getAllTags().stream()
-                    .filter(t -> tagNames.contains(t.getName().trim()))
-                    .collect(Collectors.toSet()));
-        }
-
-        TextField newTagField = new TextField();
-        newTagField.setPlaceholder(getTranslation("payees.default_tags"));
-        newTagField.setWidth("100%");
-
-        Button addNewTagBtn = new Button(VaadinIcon.PLUS.create(), ev -> {
-            String newTagName = newTagField.getValue().trim();
-            if (!newTagName.isEmpty()) {
-                boolean tagExists = tagService.getAllTags().stream()
-                        .anyMatch(t -> t.getName().equalsIgnoreCase(newTagName));
-                if (!tagExists) {
-                    Tag newTag = Tag.builder().name(newTagName).build();
-                    tagService.saveTag(newTag);
-                }
-                Set<Tag> sel = new HashSet<>(defaultTagsCombo.getValue());
-                Tag newTag = tagService.getAllTags().stream()
-                        .filter(t -> t.getName().equalsIgnoreCase(newTagName))
-                        .findFirst().orElse(null);
-                if (newTag != null) {
-                    sel.add(newTag);
-                    defaultTagsCombo.setItems(tagService.getAllTags());
-                    defaultTagsCombo.setValue(sel);
-                }
-                newTagField.clear();
-            }
-        });
-        addNewTagBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-
-        HorizontalLayout tagsRow = new HorizontalLayout(defaultTagsCombo, newTagField, addNewTagBtn);
-        tagsRow.setWidthFull();
-        tagsRow.setSpacing(false);
-        tagsRow.setAlignItems(FlexComponent.Alignment.END);
-        tagsRow.getStyle().set("gap", "var(--vaadin-gap-s)");
-        defaultTagsCombo.getStyle().set("flex", "1 1 0");
-        newTagField.getStyle().set("flex", "1 1 0");
-        addNewTagBtn.getStyle().set("flex-shrink", "0");
+        TagField defaultTagsField = new TagField(tagService, getTranslation("payees.default_tags"));
+        defaultTagsField.setWidthFull();
 
         Binder<Payee> binder = new Binder<>(Payee.class);
         binder.forField(name).asRequired(getTranslation("accounts.name_required")).bind(Payee::getName, Payee::setName);
@@ -272,6 +223,7 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         binder.bind(defaultCategory, Payee::getDefaultCategory, Payee::setDefaultCategory);
         binder.bind(paymentMethodCombo, Payee::getDefaultPaymentMethod, Payee::setDefaultPaymentMethod);
         binder.bind(defaultMemoField, Payee::getDefaultMemo, Payee::setDefaultMemo);
+        binder.bind(defaultTagsField, Payee::getDefaultTags, Payee::setDefaultTags);
         binder.setBean(payee);
 
         HorizontalLayout catRow = new HorizontalLayout(defaultCategory, paymentMethodCombo);
@@ -283,13 +235,11 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         Div body = new Div();
         body.setWidthFull();
         body.addClassName("dialog-body");
-        body.add(name, notes, catRow, defaultMemoField, tagsRow);
+        body.add(name, notes, catRow, defaultMemoField, defaultTagsField);
         dialog.add(body);
 
         Button saveButton = new Button(getTranslation("dialog.save"), e -> {
             if (binder.validate().isOk()) {
-                String tags = defaultTagsCombo.getValue().stream().map(Tag::getName).collect(Collectors.joining(","));
-                payee.setDefaultTags(tags.isEmpty() ? null : tags);
                 payeeService.savePayee(payee); refreshGrid(); dialog.close();
                 com.cuenti.app.views.components.UiNotifier.success(getTranslation("payees.saved"));
             }

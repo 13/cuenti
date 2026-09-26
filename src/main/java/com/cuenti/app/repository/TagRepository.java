@@ -13,4 +13,5 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
     List<Tag> findByUserAndNameContainingIgnoreCase(User user, String name);
     List<Tag> findByUser(User user);
     Optional<Tag> findByUserAndName(User user, String name);
+    List<Tag> findByUserAndNameIgnoreCase(User user, String name);
 }

@@ -61,6 +61,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND t.tags IS NOT NULL AND t.tags <> ''")
     List<String> findDistinctTagStringsByUser(@Param("user") User user);
 
+    /** Tag strings of the user's transactions with this payee (one row per transaction, for counting). */
+    @Query("SELECT t.tags FROM Transaction t " +
+           "LEFT JOIN t.fromAccount fa " +
+           "LEFT JOIN t.toAccount ta " +
+           "WHERE (fa.user = :user OR ta.user = :user) " +
+           "AND LOWER(t.payee) = LOWER(:payee) " +
+           "AND t.tags IS NOT NULL AND t.tags <> ''")
+    List<String> findTagStringsByUserAndPayee(@Param("user") User user, @Param("payee") String payee);
+
     /** Expense totals per category in a period (budget tracking). */
     @Query("SELECT t.category.id, SUM(t.amount) FROM Transaction t " +
            "WHERE (t.fromAccount.user = :user OR t.toAccount.user = :user) " +

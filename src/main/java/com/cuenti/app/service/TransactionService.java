@@ -143,6 +143,7 @@ public class TransactionService {
             transaction.setToAccount(accountService.getAccountById(transaction.getToAccount().getId()));
         }
 
+        transaction.setTags(com.cuenti.app.util.TagNames.normalize(transaction.getTags()));
         applyBalanceEffect(transaction);
 
         transaction.setStatus(Transaction.TransactionStatus.COMPLETED);

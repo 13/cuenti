@@ -7,6 +7,7 @@ import com.cuenti.app.model.User;
 import com.cuenti.app.repository.ScheduledTransactionRepository;
 import com.cuenti.app.repository.TransactionRepository;
 import com.cuenti.app.security.SecurityUtils;
+import com.cuenti.app.util.TagNames;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -53,6 +54,11 @@ public class ScheduledTransactionService {
             }
         }
         boolean created = scheduledTransaction.getId() == null;
+        scheduledTransaction.setTags(TagNames.normalize(scheduledTransaction.getTags()));
+        Account[] accounts = accountsForType(scheduledTransaction.getType(),
+                scheduledTransaction.getFromAccount(), scheduledTransaction.getToAccount());
+        scheduledTransaction.setFromAccount(accounts[0]);
+        scheduledTransaction.setToAccount(accounts[1]);
         ScheduledTransaction saved = repository.save(scheduledTransaction);
         auditService.log(currentUser, created ? "CREATE" : "UPDATE", "ScheduledTransaction",
                 saved.getId(), saved.getPayee());
@@ -99,10 +105,13 @@ public class ScheduledTransactionService {
             throw new SecurityException("Cannot post scheduled transaction belonging to another user");
         }
 
-        Account from = scheduled.getFromAccount() != null ?
-                accountService.findById(scheduled.getFromAccount().getId()) : null;
-        Account to = scheduled.getToAccount() != null ?
-                accountService.findById(scheduled.getToAccount().getId()) : null;
+        // Older schedules (and API/import clients) may keep an income's account in "from";
+        // the ledger credits income to "to", so place it on the side the type expects.
+        Account[] accounts = accountsForType(scheduled.getType(),
+                scheduled.getFromAccount() != null ? accountService.findById(scheduled.getFromAccount().getId()) : null,
+                scheduled.getToAccount() != null ? accountService.findById(scheduled.getToAccount().getId()) : null);
+        Account from = accounts[0];
+        Account to = accounts[1];
 
         Transaction transaction = Transaction.builder()
                 .type(scheduled.getType())
@@ -112,7 +121,7 @@ public class ScheduledTransactionService {
                 .payee(scheduled.getPayee())
                 .category(scheduled.getCategory())
                 .memo(scheduled.getMemo())
-                .tags(scheduled.getTags())
+                .tags(TagNames.normalize(scheduled.getTags()))
                 .number(scheduled.getNumber())
                 .paymentMethod(scheduled.getPaymentMethod() != null ? scheduled.getPaymentMethod() : Transaction.PaymentMethod.NONE)
                 .asset(scheduled.getAsset())
@@ -127,6 +136,29 @@ public class ScheduledTransactionService {
         auditService.log(currentUser, "POST", "ScheduledTransaction",
                 scheduled.getId(), scheduled.getPayee());
         com.cuenti.app.util.ScheduledChangeBroadcaster.broadcast(currentUser.getId());
+    }
+
+    /**
+     * {@code [from, to]} as the ledger expects them for {@code type}: an expense
+     * books from its account, an income into it, a transfer uses both. A single
+     * account given on the wrong side is moved over.
+     */
+    public static Account[] accountsForType(Transaction.TransactionType type, Account from, Account to) {
+        if (type == Transaction.TransactionType.INCOME) {
+            return new Account[]{null, to != null ? to : from};
+        }
+        if (type == Transaction.TransactionType.EXPENSE) {
+            return new Account[]{from != null ? from : to, null};
+        }
+        return new Account[]{from, to};
+    }
+
+    /** The account a non-transfer schedule books on (for transfers: the source). */
+    public static Account primaryAccount(ScheduledTransaction st) {
+        if (st.getType() == Transaction.TransactionType.INCOME) {
+            return st.getToAccount() != null ? st.getToAccount() : st.getFromAccount();
+        }
+        return st.getFromAccount() != null ? st.getFromAccount() : st.getToAccount();
     }
 
     /** Post every enabled schedule that is currently due, catching up missed occurrences. */

@@ -4,11 +4,11 @@ import com.cuenti.app.model.*;
 import com.cuenti.app.security.SecurityUtils;
 import com.cuenti.app.service.*;
 import com.cuenti.app.views.components.TagColorUtil;
+import com.cuenti.app.views.components.TagField;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
-import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -501,32 +501,23 @@ public class TransactionHistoryView extends VerticalLayout
         dialog.setHeaderTitle(getTranslation("bulk.add_tag"));
         dialog.setWidth("min(380px, 96vw)");
 
-        ComboBox<String> combo = new ComboBox<>(getTranslation("dialog.tags"));
-        combo.setItems(tagService.getAllTags().stream().map(t -> t.getName()).sorted().toList());
-        combo.setAllowCustomValue(true);
-        combo.addCustomValueSetListener(e -> combo.setValue(e.getDetail()));
-        combo.setWidthFull();
+        TagField tagsField = new TagField(tagService, getTranslation("dialog.tags"));
+        tagsField.setWidthFull();
 
-        Div body = new Div(combo);
+        Div body = new Div(tagsField);
         body.addClassName("dialog-body");
         dialog.add(body);
 
         Button save = new Button(getTranslation("dialog.save"), e -> {
-            String tag = combo.getValue();
-            if (tag == null || tag.isBlank()) {
-                combo.setInvalid(true);
+            List<String> added = com.cuenti.app.util.TagNames.parse(tagsField.getValue());
+            if (added.isEmpty()) {
+                tagsField.setInvalid(true);
                 return;
             }
-            String trimmed = tag.trim();
             selection.forEach(t -> {
-                Set<String> tags = new java.util.LinkedHashSet<>();
-                if (t.getTags() != null && !t.getTags().isBlank()) {
-                    for (String existing : t.getTags().split(",")) {
-                        tags.add(existing.trim());
-                    }
-                }
-                tags.add(trimmed);
-                t.setTags(String.join(",", tags));
+                List<String> tags = new ArrayList<>(com.cuenti.app.util.TagNames.parse(t.getTags()));
+                tags.addAll(added);
+                t.setTags(com.cuenti.app.util.TagNames.join(tags));
                 transactionService.saveTransaction(t);
             });
             grid.deselectAll();
@@ -540,7 +531,7 @@ public class TransactionHistoryView extends VerticalLayout
         cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         dialog.getFooter().add(cancel, save);
         dialog.open();
-        combo.focus();
+        tagsField.getComboBox().focus();
     }
 
     // ── Saved filter views ──────────────────────────────────────────────────
@@ -880,8 +871,8 @@ public class TransactionHistoryView extends VerticalLayout
             hl.setSpacing(false);
             hl.getStyle().set("gap", "4px").set("flex-wrap", "wrap");
             if (t.getTags() != null && !t.getTags().isBlank()) {
-                for (String tagName : t.getTags().split(",")) {
-                    hl.add(TagColorUtil.createTagBadge(tagName.trim()));
+                for (String tagName : com.cuenti.app.util.TagNames.parse(t.getTags())) {
+                    hl.add(TagColorUtil.createTagBadge(tagName));
                 }
             }
             return hl;
@@ -1485,55 +1476,11 @@ public class TransactionHistoryView extends VerticalLayout
         numberField.setWidthFull();
 
         // ── Tags + Memo ───────────────────────────────────────────────
-        MultiSelectComboBox<Tag> tagsCombo = new MultiSelectComboBox<>(getTranslation("dialog.tags"));
-        tagsCombo.setItems(tagService.getAllTags());
-        tagsCombo.setItemLabelGenerator(Tag::getName);
-        tagsCombo.setWidthFull();
-        if (currentFormTransaction[0].getTags() != null && !currentFormTransaction[0].getTags().isEmpty()) {
-            Set<String> tagNames = new HashSet<>(Arrays.asList(currentFormTransaction[0].getTags().split(",")));
-            tagsCombo.setValue(tagService.getAllTags().stream()
-                    .filter(t -> tagNames.contains(t.getName())).collect(Collectors.toSet()));
-        }
-
-        // Add a text field + button for creating new tags (separate from multi-select)
-        TextField newTagField = new TextField();
-        newTagField.setPlaceholder(getTranslation("dialog.tags"));
-        newTagField.setWidth("100%");
-
-        Button addNewTagBtn = new Button(VaadinIcon.PLUS.create(), ev -> {
-            String newTagName = newTagField.getValue().trim();
-            if (!newTagName.isEmpty()) {
-                // Check if tag already exists
-                boolean tagExists = tagService.getAllTags().stream()
-                        .anyMatch(t -> t.getName().equalsIgnoreCase(newTagName));
-                if (!tagExists) {
-                    Tag newTag = Tag.builder().name(newTagName).build();
-                    tagService.saveTag(newTag);
-                }
-                // Refresh combo items and add the tag to current selection
-                Set<Tag> sel = new HashSet<>(tagsCombo.getValue());
-                Tag newTag = tagService.getAllTags().stream()
-                        .filter(t -> t.getName().equalsIgnoreCase(newTagName))
-                        .findFirst()
-                        .orElse(null);
-                if (newTag != null) {
-                    sel.add(newTag);
-                    tagsCombo.setItems(tagService.getAllTags());
-                    tagsCombo.setValue(sel);
-                }
-                newTagField.clear();
-            }
-        });
-        addNewTagBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-
-        HorizontalLayout tagsRow = new HorizontalLayout(tagsCombo, newTagField, addNewTagBtn);
-        tagsRow.setWidthFull();
-        tagsRow.setSpacing(false);
-        tagsRow.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.END);
-        tagsRow.getStyle().set("gap", "var(--vaadin-gap-s)");
-        tagsCombo.getStyle().set("flex", "1 1 0");
-        newTagField.getStyle().set("flex", "1 1 0");
-        addNewTagBtn.getStyle().set("flex-shrink", "0");
+        TagField tagsField = new TagField(tagService, getTranslation("dialog.tags"));
+        tagsField.setId("tx-tags");
+        tagsField.setValue(currentFormTransaction[0].getTags());
+        tagsField.setSuggestionsFor(currentFormTransaction[0].getPayee());
+        payeeCombo.addValueChangeListener(e -> tagsField.setSuggestionsFor(e.getValue()));
 
         TextArea memoField = new TextArea(getTranslation("dialog.memo"));
         memoField.setId("tx-memo");
@@ -1689,12 +1636,8 @@ public class TransactionHistoryView extends VerticalLayout
                         if (payee.getDefaultMemo() != null && !payee.getDefaultMemo().isEmpty()) {
                             memoField.setValue(payee.getDefaultMemo());
                         }
-                        if (payee.getDefaultTags() != null && !payee.getDefaultTags().isEmpty()) {
-                            Set<String> tagNames = new HashSet<>(Arrays.asList(payee.getDefaultTags().split(",")));
-                            tagsCombo.setValue(tagService.getAllTags().stream()
-                                    .filter(t -> tagNames.contains(t.getName().trim()))
-                                    .collect(Collectors.toSet()));
-                        }
+                        // defaults are added to what the user already picked, never replace it
+                        tagsField.addTags(com.cuenti.app.util.TagNames.parse(payee.getDefaultTags()));
                     });
         });
 
@@ -1860,7 +1803,7 @@ public class TransactionHistoryView extends VerticalLayout
         row3.setWidthFull(); row3.setSpacing(false);
         row3.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
          row3.getChildren().forEach(c -> c.getElement().getStyle().set("flex", "1 1 200px").set("min-width", "0"));
-         coreSection.add(row1, row2, fuelSection, row3, tagsRow, memoField, splitSection, assetSection, hiddenTabs);
+         coreSection.add(row1, row2, fuelSection, row3, tagsField, memoField, splitSection, assetSection, hiddenTabs);
 
         // Secondary: payment details (number)
         Div extraSection = createFormSection(null);
@@ -1903,7 +1846,7 @@ public class TransactionHistoryView extends VerticalLayout
                             && fuelOdometerField.getValue() == null && fuelLitersField.getValue() == null) {
                         Notification.show(getTranslation("vehicles.warn_no_fuel_data"), 4000, Notification.Position.MIDDLE);
                     }
-                    saveFromTabs(saveTx, hiddenTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsCombo);
+                    saveFromTabs(saveTx, hiddenTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsField);
                     refreshGrid(); dialog.close();
                     com.cuenti.app.views.components.UiNotifier.success(getTranslation("transactions.saved"));
                 });
@@ -1926,7 +1869,7 @@ public class TransactionHistoryView extends VerticalLayout
                     && fuelOdometerField.getValue() == null && fuelLitersField.getValue() == null) {
                 Notification.show(getTranslation("vehicles.warn_no_fuel_data"), 4000, Notification.Position.MIDDLE);
             }
-            saveFromTabs(keepTx, hiddenTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsCombo);
+            saveFromTabs(keepTx, hiddenTabs, expenseTab, incomeTab, transferTab, datePicker, amountField, accountCombo, toAccountCombo, paymentCombo, numberField, payeeCombo, categoryCombo, assetCombo, unitsField, memoField, tagsField);
             refreshGrid();
             com.cuenti.app.views.components.UiNotifier.success(getTranslation("transactions.saved"));
             currentFormTransaction[0] = new Transaction();
@@ -1985,7 +1928,7 @@ public class TransactionHistoryView extends VerticalLayout
         }
     }
 
-    private void saveFromTabs(Transaction transaction, Tabs tabs, Tab exp, Tab inc, Tab transferTab, DatePicker datePicker, BigDecimalField amountField, ComboBox<Account> accountCombo, ComboBox<Account> toAccountCombo, ComboBox<Transaction.PaymentMethod> paymentCombo, TextField numberField, ComboBox<String> payeeCombo, ComboBox<Category> categoryCombo, ComboBox<Asset> assetCombo, BigDecimalField unitsField, TextArea memoField, MultiSelectComboBox<Tag> tagsCombo) {
+    private void saveFromTabs(Transaction transaction, Tabs tabs, Tab exp, Tab inc, Tab transferTab, DatePicker datePicker, BigDecimalField amountField, ComboBox<Account> accountCombo, ComboBox<Account> toAccountCombo, ComboBox<Transaction.PaymentMethod> paymentCombo, TextField numberField, ComboBox<String> payeeCombo, ComboBox<Category> categoryCombo, ComboBox<Asset> assetCombo, BigDecimalField unitsField, TextArea memoField, TagField tagsField) {
         Transaction.TransactionType type = Transaction.TransactionType.EXPENSE;
         if (tabs.getSelectedTab() == inc) type = Transaction.TransactionType.INCOME;
         else if (tabs.getSelectedTab() == transferTab) type = Transaction.TransactionType.TRANSFER;
@@ -2022,8 +1965,7 @@ public class TransactionHistoryView extends VerticalLayout
         transaction.setUnits(unitsField.getValue());
         transaction.setMemo(memoField.getValue());
         
-        String tags = tagsCombo.getValue().stream().map(Tag::getName).collect(Collectors.joining(","));
-        transaction.setTags(tags);
+        transaction.setTags(tagsField.getValue());
 
         if (transaction.getId() == null) {
             // Get all transactions for the same date to calculate proper sortOrder
@@ -2230,8 +2172,8 @@ public class TransactionHistoryView extends VerticalLayout
             HorizontalLayout tags = new HorizontalLayout();
             tags.setSpacing(false);
             tags.getStyle().set("gap", "4px").set("flex-wrap", "wrap");
-            for (String tagName : t.getTags().split(",")) {
-                tags.add(TagColorUtil.createTagBadge(tagName.trim()));
+            for (String tagName : com.cuenti.app.util.TagNames.parse(t.getTags())) {
+                tags.add(TagColorUtil.createTagBadge(tagName));
             }
             content.add(new com.cuenti.app.views.components.FieldRow(VaadinIcon.TAGS,
                     getTranslation("dialog.tags"), tags));

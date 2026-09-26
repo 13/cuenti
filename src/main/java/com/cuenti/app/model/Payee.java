@@ -40,5 +40,6 @@ public class Payee {
     private Transaction.PaymentMethod defaultPaymentMethod = Transaction.PaymentMethod.NONE;
 
     private String defaultMemo;
+    @Column(length = 2000)
     private String defaultTags;
 }

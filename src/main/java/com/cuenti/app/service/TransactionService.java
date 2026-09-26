@@ -37,6 +37,8 @@ public class TransactionService {
         User currentUser = userService.findByUsername(username);
 
         validateAmountNotNegative(transaction);
+        com.cuenti.app.util.AccountSides.normalize(transaction);
+        validateHasAccount(transaction);
         checkAccountOwnership(transaction, currentUser);
 
         // If updating, verify user owns the existing transaction
@@ -104,6 +106,8 @@ public class TransactionService {
 
         // Re-validate against the NEW state the mutator produced.
         validateAmountNotNegative(existing);
+        com.cuenti.app.util.AccountSides.normalize(existing);
+        validateHasAccount(existing);
         checkAccountOwnership(existing, currentUser);
 
         existing.touch();
@@ -113,6 +117,17 @@ public class TransactionService {
     private void validateAmountNotNegative(Transaction transaction) {
         if (transaction.getAmount().compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Amount cannot be negative");
+        }
+    }
+
+    /**
+     * A transaction with no account at all belongs to nobody, never reaches a balance
+     * and cannot be listed, so refuse it (API, imports and forms alike). A transfer
+     * missing one side is still accepted, as imports of partial data rely on that.
+     */
+    private void validateHasAccount(Transaction transaction) {
+        if (transaction.getFromAccount() == null && transaction.getToAccount() == null) {
+            throw new IllegalArgumentException("Transaction needs an account");
         }
     }
 

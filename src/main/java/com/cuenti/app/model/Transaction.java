@@ -63,6 +63,7 @@ public class Transaction {
     private Category category;
     
     private String memo;
+    @Column(length = 2000)
     private String tags;
     private String number;
 

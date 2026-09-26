@@ -61,6 +61,26 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND t.tags IS NOT NULL AND t.tags <> ''")
     List<String> findDistinctTagStringsByUser(@Param("user") User user);
 
+    /** Sum of amounts booked out of the account (expenses and complete transfers). */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.fromAccount = :account " +
+           "AND (t.type = com.cuenti.app.model.Transaction.TransactionType.EXPENSE " +
+           "OR (t.type = com.cuenti.app.model.Transaction.TransactionType.TRANSFER AND t.toAccount IS NOT NULL))")
+    java.math.BigDecimal sumOutflow(@Param("account") com.cuenti.app.model.Account account);
+
+    /** Sum of amounts booked into the account (income and complete transfers). */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.toAccount = :account " +
+           "AND (t.type = com.cuenti.app.model.Transaction.TransactionType.INCOME " +
+           "OR (t.type = com.cuenti.app.model.Transaction.TransactionType.TRANSFER AND t.fromAccount IS NOT NULL))")
+    java.math.BigDecimal sumInflow(@Param("account") com.cuenti.app.model.Account account);
+
+    /** The user's transactions whose tag string mentions {@code name} (candidates; callers match exactly). */
+    @Query("SELECT t FROM Transaction t " +
+           "LEFT JOIN t.fromAccount fa " +
+           "LEFT JOIN t.toAccount ta " +
+           "WHERE (fa.user = :user OR ta.user = :user) " +
+           "AND LOWER(t.tags) LIKE LOWER(CONCAT('%', :name, '%'))")
+    List<Transaction> findByUserAndTagsContaining(@Param("user") User user, @Param("name") String name);
+
     /** Tag strings of the user's transactions with this payee (one row per transaction, for counting). */
     @Query("SELECT t.tags FROM Transaction t " +
            "LEFT JOIN t.fromAccount fa " +

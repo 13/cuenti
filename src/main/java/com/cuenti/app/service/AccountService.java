@@ -23,6 +23,7 @@ public class AccountService {
     private final UserService userService;
     private final SecurityUtils securityUtils;
     private final AuditService auditService;
+    private final com.cuenti.app.repository.TransactionRepository transactionRepository;
     private final Random random = new Random();
 
     @Transactional
@@ -181,6 +182,57 @@ public class AccountService {
         account.setBalance(account.getBalance().add(delta));
     }
 
+
+    /** Stored balance next to the one the bookings add up to (start balance + inflow - outflow). */
+    public record BalanceCheck(BigDecimal stored, BigDecimal computed) {
+        public BigDecimal difference() {
+            return stored.subtract(computed);
+        }
+
+        public boolean consistent() {
+            return difference().signum() == 0;
+        }
+    }
+
+    /**
+     * Recomputes the balance from the start balance and every booking, the same way
+     * saving a transaction applies it. Balances are stored, so a bug or an interrupted
+     * import can make them drift; this makes drift visible.
+     */
+    @Transactional(readOnly = true)
+    public BalanceCheck checkBalance(Account account) {
+        Account persisted = ownedAccount(account);
+        BigDecimal start = persisted.getStartBalance() != null ? persisted.getStartBalance() : BigDecimal.ZERO;
+        BigDecimal computed = start
+                .add(transactionRepository.sumInflow(persisted))
+                .subtract(transactionRepository.sumOutflow(persisted));
+        BigDecimal stored = persisted.getBalance() != null ? persisted.getBalance() : BigDecimal.ZERO;
+        return new BalanceCheck(stored, computed);
+    }
+
+    /** Sets the stored balance to the computed one (see {@link #checkBalance}). */
+    @Transactional
+    public Account recalculateBalance(Account account) {
+        Account persisted = ownedAccount(account);
+        BalanceCheck check = checkBalance(persisted);
+        persisted.setBalance(check.computed());
+        Account saved = accountRepository.save(persisted);
+        auditService.log(persisted.getUser(), "RECALCULATE", "Account", saved.getId(),
+                saved.getAccountName() + " " + check.stored() + " -> " + check.computed());
+        return saved;
+    }
+
+    private Account ownedAccount(Account account) {
+        String username = securityUtils.getAuthenticatedUsername()
+                .orElseThrow(() -> new SecurityException("User not authenticated"));
+        User currentUser = userService.findByUsername(username);
+        Account persisted = accountRepository.findById(account.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + account.getId()));
+        if (!persisted.getUser().getId().equals(currentUser.getId())) {
+            throw new SecurityException("Cannot access account belonging to another user");
+        }
+        return persisted;
+    }
 
     private String generateAccountNumber() {
         String accountNumber;

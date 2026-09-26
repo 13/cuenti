@@ -36,6 +36,29 @@ public final class TagNames {
         return join(parse(tags));
     }
 
+    /**
+     * Stored form of {@code tags} with every occurrence of {@code oldName} replaced by
+     * {@code newName}, or removed when {@code newName} is {@code null}.
+     */
+    public static String replace(String tags, String oldName, String newName) {
+        List<String> out = new ArrayList<>();
+        for (String name : parse(tags)) {
+            if (same(name, oldName)) {
+                if (newName != null) {
+                    out.add(newName);
+                }
+            } else {
+                out.add(name);
+            }
+        }
+        return join(out);
+    }
+
+    /** True when the stored string contains {@code name}. */
+    public static boolean contains(String tags, String name) {
+        return parse(tags).stream().anyMatch(n -> same(n, name));
+    }
+
     /** True when both names denote the same tag. */
     public static boolean same(String a, String b) {
         return a != null && b != null && a.trim().equalsIgnoreCase(b.trim());

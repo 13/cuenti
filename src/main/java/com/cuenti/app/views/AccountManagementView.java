@@ -205,7 +205,11 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
             deleteButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
             deleteButton.setTooltipText(getTranslation("transactions.delete"));
             
-            deleteButton.getElement().setAttribute("aria-label", getTranslation("transactions.delete"));return new HorizontalLayout(editButton, deleteButton);
+            deleteButton.getElement().setAttribute("aria-label", getTranslation("transactions.delete"));Button checkButton = new Button(new Icon(VaadinIcon.SCALE), e -> openBalanceCheck(account));
+            checkButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            checkButton.setTooltipText(getTranslation("accounts.balance_check"));
+            checkButton.getElement().setAttribute("aria-label", getTranslation("accounts.balance_check"));
+            return new HorizontalLayout(editButton, checkButton, deleteButton);
         }).setHeader(getTranslation("transactions.actions")).setFrozenToEnd(true).setAutoWidth(true);
 
         // Drag and Drop for sorting (only enabled when not filtering)
@@ -239,6 +243,62 @@ public class AccountManagementView extends VerticalLayout implements HasDynamicT
         });
 
         grid.setSizeFull();
+    }
+
+    /** Stored vs. computed balance, with a one-click repair when they differ. */
+    void openBalanceCheck(Account account) { // package-visible for tests
+        AccountService.BalanceCheck check = accountService.checkBalance(account);
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("accounts.balance_check") + ": " + account.getAccountName());
+        dialog.setWidth("min(420px, 96vw)");
+
+        java.util.function.Function<java.math.BigDecimal, String> fmt = amount ->
+                com.cuenti.app.util.CurrencyFormat.format(amount,
+                        account.getCurrency() != null ? account.getCurrency() : currentUser.getDefaultCurrency(),
+                        java.util.Locale.forLanguageTag(currentUser.getLocale()));
+
+        Div body = new Div();
+        body.addClassName("dialog-body");
+        body.add(balanceRow(getTranslation("accounts.balance_stored"), fmt.apply(check.stored())),
+                balanceRow(getTranslation("accounts.balance_computed"), fmt.apply(check.computed())));
+        Span verdict = new Span(check.consistent()
+                ? getTranslation("accounts.balance_ok")
+                : getTranslation("accounts.balance_diff", fmt.apply(check.difference())));
+        verdict.setId("balance-verdict");
+        verdict.getElement().getThemeList().add(check.consistent() ? "badge success" : "badge error");
+        verdict.getStyle().set("margin-top", "var(--vaadin-gap-s)").set("display", "inline-block");
+        Span hint = new Span(getTranslation("accounts.balance_hint"));
+        hint.getStyle().set("display", "block").set("margin-top", "var(--vaadin-gap-s)")
+                .set("font-size", "var(--aura-font-size-xs)").set("color", "var(--vaadin-text-color-secondary)");
+        body.add(verdict, hint);
+        dialog.add(body);
+
+        Button close = new Button(getTranslation("dialog.close"), e -> dialog.close());
+        close.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        dialog.getFooter().add(close);
+        if (!check.consistent()) {
+            Button fix = new Button(getTranslation("accounts.balance_recalculate"), VaadinIcon.REFRESH.create(), e -> {
+                accountService.recalculateBalance(account);
+                updateList();
+                dialog.close();
+                UiNotifier.success(getTranslation("accounts.balance_recalculated"));
+            });
+            fix.setId("balance-recalculate");
+            fix.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+            dialog.getFooter().add(fix);
+        }
+        dialog.open();
+    }
+
+    private Div balanceRow(String label, String value) {
+        Span l = new Span(label);
+        l.getStyle().set("color", "var(--vaadin-text-color-secondary)");
+        Span v = new Span(value);
+        v.getStyle().set("font-weight", "700").set("font-variant-numeric", "tabular-nums");
+        Div row = new Div(l, v);
+        row.getStyle().set("display", "flex").set("justify-content", "space-between")
+                .set("gap", "var(--vaadin-gap-m)").set("padding", "var(--vaadin-gap-xs) 0");
+        return row;
     }
 
     private void updateList() {

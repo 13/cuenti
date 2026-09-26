@@ -7,6 +7,7 @@ import com.cuenti.app.model.User;
 import com.cuenti.app.repository.ScheduledTransactionRepository;
 import com.cuenti.app.repository.TransactionRepository;
 import com.cuenti.app.security.SecurityUtils;
+import com.cuenti.app.util.AccountSides;
 import com.cuenti.app.util.TagNames;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -138,19 +139,9 @@ public class ScheduledTransactionService {
         com.cuenti.app.util.ScheduledChangeBroadcaster.broadcast(currentUser.getId());
     }
 
-    /**
-     * {@code [from, to]} as the ledger expects them for {@code type}: an expense
-     * books from its account, an income into it, a transfer uses both. A single
-     * account given on the wrong side is moved over.
-     */
+    /** See {@link AccountSides#forType}. */
     public static Account[] accountsForType(Transaction.TransactionType type, Account from, Account to) {
-        if (type == Transaction.TransactionType.INCOME) {
-            return new Account[]{null, to != null ? to : from};
-        }
-        if (type == Transaction.TransactionType.EXPENSE) {
-            return new Account[]{from != null ? from : to, null};
-        }
-        return new Account[]{from, to};
+        return AccountSides.forType(type, from, to);
     }
 
     /** The account a non-transfer schedule books on (for transfers: the source). */

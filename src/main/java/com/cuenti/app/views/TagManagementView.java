@@ -21,7 +21,6 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
@@ -108,23 +107,28 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
             editBtn.setTooltipText(getTranslation("transactions.edit"));
             editBtn.getElement().setAttribute("aria-label", getTranslation("transactions.edit"));
 
-            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e ->
+            Button deleteBtn = new Button(VaadinIcon.TRASH.create(), e -> {
+                TagService.TagUsage usage = tagService.usage(tag.getName());
+                String message = getTranslation("dialog.confirm_delete_message") + " \"" + tag.getName() + "\"?"
+                        + (usage.total() > 0
+                            ? " " + getTranslation("tags.delete_usage", usage.transactions(), usage.schedules(), usage.payees())
+                            : "");
                 DeleteConfirm.show(
                     getTranslation("dialog.confirm_delete"),
-                    getTranslation("dialog.confirm_delete_message") + " \"" + tag.getName() + "\"?",
+                    message,
                     getTranslation("dialog.delete"),
                     getTranslation("dialog.cancel"),
                     getTranslation("error.delete_failed"),
                     () -> {
-                        tagService.deleteTag(tag);
+                        TagService.TagRemoval removal = tagService.deleteEverywhere(tag);
                         refreshGrid();
                         UiNotifier.successWithAction(getTranslation("tags.deleted"),
                                 getTranslation("action.undo"), () -> {
-                                    tag.setId(null);
-                                    tagService.saveTag(tag);
+                                    tagService.restore(removal);
                                     refreshGrid();
                                 });
-                    }));
+                    });
+            });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
             deleteBtn.setTooltipText(getTranslation("transactions.delete"));
             deleteBtn.getElement().setAttribute("aria-label", getTranslation("transactions.delete"));
@@ -158,15 +162,11 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
         nameField.setPrefixComponent(VaadinIcon.TAG.create());
         nameField.setWidthFull();
 
-        Binder<Tag> binder = new Binder<>(Tag.class);
-        binder.forField(nameField).asRequired(getTranslation("accounts.name_required"))
-                .withConverter(String::trim, v -> v == null ? "" : v)
-                .withValidator(n -> tagService.getAllTags().stream()
-                                .noneMatch(t -> !java.util.Objects.equals(t.getId(), tag.getId())
-                                        && com.cuenti.app.util.TagNames.same(t.getName(), n)),
-                        getTranslation("tags.name_exists"))
-                .bind(Tag::getName, Tag::setName);
-        binder.setBean(tag);
+        nameField.setValue(tag.getName() != null ? tag.getName() : "");
+        if (tag.getId() != null) {
+            TagService.TagUsage usage = tagService.usage(tag.getName());
+            nameField.setHelperText(getTranslation("tags.usage_helper", usage.transactions(), usage.schedules(), usage.payees()));
+        }
 
         Div body = new Div(nameField);
         body.setWidthFull();
@@ -174,9 +174,46 @@ public class TagManagementView extends VerticalLayout implements HasDynamicTitle
         dialog.add(body);
 
         Button saveButton = new Button(getTranslation("dialog.save"), e -> {
-            if (binder.validate().isOk()) {
-                tagService.saveTag(tag); refreshGrid(); dialog.close();
-                com.cuenti.app.views.components.UiNotifier.success(getTranslation("tags.saved"));
+            String name = nameField.getValue() == null ? "" : nameField.getValue().trim();
+            if (name.isEmpty()) {
+                nameField.setErrorMessage(getTranslation("accounts.name_required"));
+                nameField.setInvalid(true);
+                return;
+            }
+            Tag other = tagService.getAllTags().stream()
+                    .filter(t -> !java.util.Objects.equals(t.getId(), tag.getId())
+                            && com.cuenti.app.util.TagNames.same(t.getName(), name))
+                    .findFirst().orElse(null);
+            if (tag.getId() == null) {
+                if (other != null) {
+                    nameField.setErrorMessage(getTranslation("tags.name_exists"));
+                    nameField.setInvalid(true);
+                    return;
+                }
+                tag.setName(name);
+                tagService.saveTag(tag);
+                refreshGrid(); dialog.close();
+                UiNotifier.success(getTranslation("tags.saved"));
+            } else if (other != null) {
+                // Renaming onto an existing name merges the two tags.
+                com.vaadin.flow.component.confirmdialog.ConfirmDialog merge =
+                        new com.vaadin.flow.component.confirmdialog.ConfirmDialog();
+                merge.setHeader(getTranslation("tags.merge_title"));
+                merge.setText(getTranslation("tags.merge_text", tag.getName(), other.getName()));
+                merge.setCancelable(true);
+                merge.setCancelText(getTranslation("dialog.cancel"));
+                merge.setConfirmText(getTranslation("tags.merge_confirm"));
+                merge.addConfirmListener(ev -> {
+                    tagService.rename(tag, other.getName());
+                    refreshGrid(); dialog.close();
+                    UiNotifier.success(getTranslation("tags.merged", other.getName()));
+                });
+                add(merge);
+                merge.open();
+            } else {
+                tagService.rename(tag, name);
+                refreshGrid(); dialog.close();
+                UiNotifier.success(getTranslation("tags.saved"));
             }
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);

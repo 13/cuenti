@@ -112,8 +112,18 @@ public class TransactionHistoryView extends VerticalLayout
     private com.vaadin.flow.component.grid.FooterRow footerRow;
     private Runnable reapplyColumns = () -> {};
     private final Map<String, com.vaadin.flow.component.contextmenu.MenuItem> columnMenuItems = new HashMap<>();
-    /** Transaction ids per day in manual sort order (top first), for the reorder buttons. */
+    /** Visible transaction ids per day in display order (top first), for the reorder buttons. */
     private final Map<LocalDate, List<Long>> sameDayOrder = new HashMap<>();
+    /**
+     * Display order, top first: day, then manual sort order, then id. Time of day is
+     * ignored so the reorder buttons always win within a day; matches the repository
+     * ORDER BY and the running-balance window.
+     */
+    static final Comparator<Transaction> DISPLAY_ORDER = Comparator
+            .comparing((Transaction t) -> t.getTransactionDate().toLocalDate())
+            .thenComparing(Transaction::getSortOrder, Comparator.nullsFirst(Comparator.naturalOrder()))
+            .thenComparing(Transaction::getId, Comparator.nullsFirst(Comparator.naturalOrder()))
+            .reversed();
     /** Tag names for the tag filter; reloaded when data changes, not on every filter change. */
     private List<String> tagNames = List.of();
     /** While true, filter control changes don't reload or re-filter the grid. */
@@ -929,7 +939,7 @@ public class TransactionHistoryView extends VerticalLayout
 
             Account selected = accountSelector.getValue();
             boolean allSelected = (selected == null) || (selected.getId() != null && selected.getId().equals(-1L));
-            if (!allSelected) {
+            if (!allSelected && dayGroupingActive) {
                 List<Long> sameDay = sameDayOrder.getOrDefault(t.getTransactionDate().toLocalDate(), List.of());
 
                 if (sameDay.size() > 1) {
@@ -1077,58 +1087,51 @@ public class TransactionHistoryView extends VerticalLayout
         confirmDialog.open();
     }
 
-    private void moveTransaction(Transaction t, int visualDirection) {
+    /**
+     * Moves {@code t} one visible row up ({@code -1}) or down ({@code 1}) within its day.
+     * Swaps positions with the visible neighbour, so rows hidden by the type tab or
+     * column filters stay where they are; the day's sort orders are renumbered so
+     * ties can't mask the move.
+     */
+    void moveTransaction(Transaction t, int visualDirection) {
         Account selected = accountSelector.getValue();
-        if (selected == null || (selected.getId() != null && selected.getId().equals(-1L))) return;
+        if (isAllAccountsSelected(selected)) return;
 
         LocalDate date = t.getTransactionDate().toLocalDate();
+        List<Long> visibleDay = sameDayOrder.getOrDefault(date, List.of());
+        int visibleIndex = visibleDay.indexOf(t.getId());
+        int neighbourIndex = visibleIndex + visualDirection;
+        if (visibleIndex < 0 || neighbourIndex < 0 || neighbourIndex >= visibleDay.size()) return;
+        Long neighbourId = visibleDay.get(neighbourIndex);
 
-        // Fetch fresh transactions from database for this account and date
-        List<Transaction> sameDayTransactions = transactionService.getTransactionsByAccount(selected).stream()
+        // Fresh copies of every same-day transaction of the account, in display order
+        List<Transaction> day = transactionService.getTransactionsByAccount(selected).stream()
                 .filter(tr -> tr.getTransactionDate().toLocalDate().equals(date))
-                .collect(Collectors.toList());
+                .sorted(DISPLAY_ORDER)
+                .collect(Collectors.toCollection(ArrayList::new));
+        int from = indexOfId(day, t.getId());
+        int to = indexOfId(day, neighbourId);
+        if (from < 0 || to < 0) return;
+        Collections.swap(day, from, to);
 
-        if (sameDayTransactions.size() < 2) return;
-
-        // First, normalize sortOrder values to ensure they are unique and sequential
-        // Sort by current sortOrder (descending - highest first, which appears at top)
-        sameDayTransactions.sort(Comparator.comparing(Transaction::getSortOrder).reversed()
-                .thenComparing(Transaction::getId)); // Secondary sort by ID for consistency
-
-        // Assign unique sequential sortOrder values (highest = top of list)
-        for (int i = 0; i < sameDayTransactions.size(); i++) {
-            sameDayTransactions.get(i).setSortOrder((sameDayTransactions.size() - i) * 10);
-        }
-
-        // Find current transaction by ID
-        int currentIndex = -1;
-        for (int i = 0; i < sameDayTransactions.size(); i++) {
-            if (sameDayTransactions.get(i).getId().equals(t.getId())) {
-                currentIndex = i;
-                break;
+        // Highest sort order = top of the day
+        for (int i = 0; i < day.size(); i++) {
+            Transaction tr = day.get(i);
+            int order = (day.size() - i) * 10;
+            if (!Integer.valueOf(order).equals(tr.getSortOrder())) {
+                tr.setSortOrder(order);
+                transactionService.saveTransaction(tr);
             }
         }
 
-        if (currentIndex == -1) return;
-
-        int targetIndex = currentIndex + visualDirection;
-        if (targetIndex < 0 || targetIndex >= sameDayTransactions.size()) return;
-
-        // Swap the sortOrder values between current and target
-        Transaction current = sameDayTransactions.get(currentIndex);
-        Transaction target = sameDayTransactions.get(targetIndex);
-
-        int tempOrder = current.getSortOrder();
-        current.setSortOrder(target.getSortOrder());
-        target.setSortOrder(tempOrder);
-
-        // Save all transactions to persist the new order
-        for (Transaction tr : sameDayTransactions) {
-            transactionService.saveTransaction(tr);
-        }
-
-        // Refresh to show new order and recalculate balances
         refreshGrid();
+    }
+
+    private static int indexOfId(List<Transaction> list, Long id) {
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).getId().equals(id)) return i;
+        }
+        return -1;
     }
 
     /** Reloads after data changed (save, delete, import): also refreshes the tag filter choices. */
@@ -1181,17 +1184,7 @@ public class TransactionHistoryView extends VerticalLayout
 
         updateTabCounts(window);
         allAccountTransactions = new ArrayList<>(window);
-        allAccountTransactions.sort(Comparator.comparing(Transaction::getTransactionDate)
-                .thenComparing(Transaction::getSortOrder)
-                .reversed());
-        sameDayOrder.clear();
-        allAccountTransactions.stream()
-                .collect(Collectors.groupingBy(t -> t.getTransactionDate().toLocalDate()))
-                .forEach((day, sameDay) -> sameDayOrder.put(day, sameDay.stream()
-                        .sorted(Comparator.comparing(Transaction::getSortOrder).reversed()
-                                .thenComparing(Transaction::getId))
-                        .map(Transaction::getId)
-                        .toList()));
+        allAccountTransactions.sort(DISPLAY_ORDER);
 
         grid.deselectAll();
         grid.setItems(allAccountTransactions);
@@ -1315,6 +1308,13 @@ public class TransactionHistoryView extends VerticalLayout
         count.getStyle().set("color", "var(--vaadin-text-color-secondary)")
                 .set("font-size", "var(--aura-font-size-xs)");
         footerRow.getCell(payeeCol).setComponent(count);
+
+        // Reorder buttons move relative to visible neighbours only
+        sameDayOrder.clear();
+        for (Transaction t : visible) {
+            sameDayOrder.computeIfAbsent(t.getTransactionDate().toLocalDate(), d -> new ArrayList<>())
+                    .add(t.getId());
+        }
 
         // First visible row of each day (display order)
         firstOfDayIds.clear();

@@ -31,7 +31,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "LEFT JOIN FETCH c.parent " +
            "LEFT JOIN FETCH t.asset " +
            "WHERE t.fromAccount = :account OR t.toAccount = :account " +
-           "ORDER BY t.transactionDate DESC, t.sortOrder DESC")
+           "ORDER BY CAST(t.transactionDate AS LocalDate) DESC, t.sortOrder DESC, t.id DESC")
     List<Transaction> findByAccount(@Param("account") Account account);
 
     /** Highest sort order among the account's transactions in [from, to). */
@@ -52,7 +52,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "LEFT JOIN FETCH c.parent " +
            "LEFT JOIN FETCH t.asset " +
            "WHERE (t.fromAccount.user = :user OR t.toAccount.user = :user) " +
-           "ORDER BY t.transactionDate DESC, t.sortOrder DESC")
+           "ORDER BY CAST(t.transactionDate AS LocalDate) DESC, t.sortOrder DESC, t.id DESC")
     List<Transaction> findByUser(@Param("user") User user);
 
     /**
@@ -122,7 +122,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:account IS NULL OR t.fromAccount = :account OR t.toAccount = :account) " +
            "AND (:type IS NULL OR t.type = :type) " +
            "AND t.transactionDate >= :from AND t.transactionDate <= :to " +
-           "ORDER BY t.transactionDate DESC, t.sortOrder DESC")
+           "ORDER BY CAST(t.transactionDate AS LocalDate) DESC, t.sortOrder DESC, t.id DESC")
     List<Transaction> findFiltered(@Param("user") User user,
                                    @Param("account") Account account,
                                    @Param("type") Transaction.TransactionType type,
@@ -137,7 +137,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query(value = "SELECT w.id, w.bal FROM (" +
             "  SELECT t.id AS id, t.transaction_date AS td, t.type AS ttype, " +
             "         SUM(CASE t.type WHEN 'INCOME' THEN t.amount WHEN 'EXPENSE' THEN -t.amount ELSE 0 END) " +
-            "           OVER (ORDER BY t.transaction_date, t.sort_order, t.id) AS bal " +
+            "           OVER (ORDER BY CAST(t.transaction_date AS DATE), t.sort_order, t.id) AS bal " +
             "  FROM transactions t " +
             "  LEFT JOIN accounts fa ON fa.id = t.from_account_id " +
             "  LEFT JOIN accounts ta ON ta.id = t.to_account_id " +
@@ -163,7 +163,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             "                    (CASE WHEN t.to_account_id   = :accountId THEN t.amount ELSE 0 END) " +
             "                  + (CASE WHEN t.from_account_id = :accountId THEN -t.amount ELSE 0 END) " +
             "               ELSE 0 END) " +
-            "           OVER (ORDER BY t.transaction_date, t.sort_order, t.id) AS bal " +
+            "           OVER (ORDER BY CAST(t.transaction_date AS DATE), t.sort_order, t.id) AS bal " +
             "  FROM transactions t " +
             "  WHERE t.from_account_id = :accountId OR t.to_account_id = :accountId" +
             ") w " +

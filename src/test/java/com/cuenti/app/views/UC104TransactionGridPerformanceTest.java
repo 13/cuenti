@@ -98,7 +98,7 @@ class UC104TransactionGridPerformanceTest extends SpringBrowserlessTest {
         // applying a saved view reloads the window once, not once per control
         // (statistics are global, so count the grid query itself, not all queries)
         long windowLoads = java.util.Arrays.stream(statistics.getQueries())
-                .filter(q -> q.startsWith("SELECT DISTINCT t FROM Transaction t") && q.contains(":from"))
+                .filter(q -> q.startsWith("SELECT t FROM Transaction t") && q.contains(":from"))
                 .mapToLong(q -> statistics.getQueryStatistics(q).getExecutionCount())
                 .sum();
         assertThat(windowLoads).isEqualTo(1);

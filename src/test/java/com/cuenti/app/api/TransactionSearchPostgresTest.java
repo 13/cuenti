@@ -1,5 +1,11 @@
 package com.cuenti.app.api;
 
+import com.cuenti.app.model.Account;
+import com.cuenti.app.model.Transaction;
+import com.cuenti.app.model.User;
+import com.cuenti.app.repository.AccountRepository;
+import com.cuenti.app.repository.TransactionRepository;
+import com.cuenti.app.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -15,6 +21,10 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -61,8 +71,12 @@ class TransactionSearchPostgresTest {
             new PostgreSQLContainer<>("postgres:16");
 
     @Autowired MockMvc mockMvc;
+    @Autowired TransactionRepository transactionRepository;
+    @Autowired UserRepository userRepository;
+    @Autowired AccountRepository accountRepository;
 
     private String username;
+    private long accountId;
 
     @BeforeEach
     void seed() throws Exception {
@@ -88,7 +102,7 @@ class TransactionSearchPostgresTest {
                              "startBalance":1000,"excludeFromSummary":false,"excludeFromReports":false}"""))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        long accountId = Long.parseLong(
+        accountId = Long.parseLong(
                 accountJson.replaceAll(".*\"id\":(\\d+).*", "$1"));
 
         for (int i = 1; i <= 3; i++) {
@@ -137,5 +151,27 @@ class TransactionSearchPostgresTest {
                         .param("page", "0").param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(2));
+    }
+
+    @Test
+    void transactionGridQueriesRunOnPostgres() {
+        // The grid orders by CAST(date AS LocalDate); combined with SELECT DISTINCT
+        // Postgres rejects that ("ORDER BY expressions must appear in select list").
+        User owner = userRepository.findByUsername(username).orElseThrow();
+        Account account = accountRepository.findById(accountId).orElseThrow();
+        LocalDateTime from = LocalDateTime.of(1970, 1, 1, 0, 0);
+        LocalDateTime to = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
+        List<String> newestFirst = List.of("Rewe 3", "Rewe 2", "Rewe 1");
+
+        assertThat(transactionRepository.findByAccount(account))
+                .extracting(Transaction::getPayee).containsExactlyElementsOf(newestFirst);
+        assertThat(transactionRepository.findByUser(owner))
+                .extracting(Transaction::getPayee).containsExactlyElementsOf(newestFirst);
+        assertThat(transactionRepository.findFiltered(owner, null, null, from, to))
+                .extracting(Transaction::getPayee).containsExactlyElementsOf(newestFirst);
+        assertThat(transactionRepository.findFiltered(owner, account, Transaction.TransactionType.EXPENSE, from, to))
+                .extracting(Transaction::getPayee).containsExactlyElementsOf(newestFirst);
+        assertThat(transactionRepository.runningBalancesForUser(owner.getId(), from, to, null)).hasSize(3);
+        assertThat(transactionRepository.runningBalancesForAccount(accountId, from, to, "EXPENSE")).hasSize(3);
     }
 }

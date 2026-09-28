@@ -24,7 +24,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * Find all transactions for a specific account (both incoming and outgoing).
      * Uses JOIN FETCH to avoid LazyInitializationException in the UI.
      */
-    @Query("SELECT DISTINCT t FROM Transaction t " +
+    @Query("SELECT t FROM Transaction t " +
            "LEFT JOIN FETCH t.fromAccount " +
            "LEFT JOIN FETCH t.toAccount " +
            "LEFT JOIN FETCH t.category c " +
@@ -45,7 +45,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * Find all transactions for a specific user.
      * Uses JOIN FETCH to avoid LazyInitializationException in the UI.
      */
-    @Query("SELECT DISTINCT t FROM Transaction t " +
+    @Query("SELECT t FROM Transaction t " +
            "LEFT JOIN FETCH t.fromAccount " +
            "LEFT JOIN FETCH t.toAccount " +
            "LEFT JOIN FETCH t.category c " +
@@ -112,7 +112,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * Filtered window for the transaction grid: account/type/date pushed to
      * the database so the UI no longer loads the full history.
      */
-    @Query("SELECT DISTINCT t FROM Transaction t " +
+    @Query("SELECT t FROM Transaction t " +
            "LEFT JOIN FETCH t.fromAccount " +
            "LEFT JOIN FETCH t.toAccount " +
            "LEFT JOIN FETCH t.category c " +

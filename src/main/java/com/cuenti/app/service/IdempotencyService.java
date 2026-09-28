@@ -51,4 +51,24 @@ public class IdempotencyService {
                 .build());
         return saved;
     }
+
+    /**
+     * {@link TransactionService#updateTransaction(Long, String, java.util.function.Consumer)}
+     * at most once per key, for the same reason as {@link #createOnce}: an update
+     * whose answer was lost is resent, and a second application would be refused
+     * as stale -- the first one moved the version on -- and reported as a conflict
+     * with an edit that was in fact applied.
+     */
+    @Transactional
+    public Transaction updateOnce(Long userId, String key, Long id, String ifMatch,
+                                  java.util.function.Consumer<Transaction> mutator) {
+        Transaction saved = transactionService.updateTransaction(id, ifMatch, mutator);
+        records.saveAndFlush(IdempotencyRecord.builder()
+                .userId(userId)
+                .idemKey(key)
+                .transactionId(saved.getId())
+                .createdAt(LocalDateTime.now())
+                .build());
+        return saved;
+    }
 }

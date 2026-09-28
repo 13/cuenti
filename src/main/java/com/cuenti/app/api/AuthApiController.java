@@ -54,6 +54,16 @@ public class AuthApiController {
         }
     }
 
+    /**
+     * What the sign-in screen needs to know before anyone has signed in: whether
+     * to offer registration. Public, like the rest of /api/auth.
+     */
+    @GetMapping("/settings")
+    public ResponseEntity<?> settings() {
+        return ResponseEntity.ok(java.util.Map.of(
+                "registrationEnabled", globalSettingService.isRegistrationEnabled()));
+    }
+
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         try {

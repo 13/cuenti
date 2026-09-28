@@ -294,6 +294,20 @@ public class TransactionService {
     }
 
     /**
+     * The transaction with this id if it belongs to {@code user}, else empty --
+     * absent and someone else's look the same, so an id reveals nothing. One
+     * row, where the API used to load every transaction the user has and
+     * search the list.
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<Transaction> findOwned(Long id, User user) {
+        return transactionRepository.findById(id).filter(t -> {
+            if (t.getFromAccount() == null && t.getToAccount() == null) return false;
+            return getTransactionUser(t).getId().equals(user.getId());
+        });
+    }
+
+    /**
      * Get all transactions for a specific user.
      */
     @Transactional(readOnly = true)

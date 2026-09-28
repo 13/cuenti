@@ -116,12 +116,137 @@ public class TransactionApiController {
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
         if (username == null) return ResponseEntity.status(401).build();
+        return create(username, dto, idempotencyKey);
+    }
 
-        String key = idempotencyKey == null ? null : idempotencyKey.trim();
-        if (key != null && (key.isEmpty() || key.length() > IdempotencyService.MAX_KEY_LENGTH)) {
+    /**
+     * Updates a transaction. {@code If-Match} refuses the write with 409 when the
+     * row has changed since the client's copy. An {@code Idempotency-Key} makes a
+     * resend of an update that was already applied answer with the row as it
+     * stands, rather than with a 409 against the change it made itself.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateTransaction(
+            @PathVariable Long id,
+            @RequestBody TransactionDTO dto,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
+        if (username == null) return ResponseEntity.status(401).build();
+        return update(username, id, dto, ifMatch, idempotencyKey);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteTransaction(
+            @PathVariable Long id,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
+        if (username == null) return ResponseEntity.status(401).build();
+        return delete(username, id, ifMatch);
+    }
+
+    /** Most operations one {@link #batch} request may carry. */
+    static final int MAX_BATCH = 100;
+
+    /** One write in a {@link #batch}: what the single-item endpoint's path, headers and body would carry. */
+    public record BatchOperation(String clientId, String op, Long id, String version,
+                                 String idempotencyKey, TransactionDTO transaction) {}
+
+    public record BatchRequest(List<BatchOperation> operations) {}
+
+    /**
+     * What the single-item endpoint would have answered: its status, and the
+     * transaction or the error message it would have sent.
+     */
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    public record BatchResult(String clientId, int status, TransactionDTO transaction,
+                              String error, Boolean replayed) {}
+
+    /**
+     * Applies several writes in one round trip -- what an offline client
+     * sends when it reconnects with a queue.
+     *
+     * <p>Each operation is exactly the single-item request it stands for, with
+     * the same idempotency and {@code If-Match} rules, and in its own database
+     * transaction: one refused operation neither rolls back nor stops the others.
+     * They run in order, so an update queued after the create it depends on
+     * sees it. The answer is always 200 with one result per operation, in
+     * request order; each result's {@code status} is what the single-item
+     * endpoint would have answered.
+     */
+    @PostMapping("/batch")
+    public ResponseEntity<?> batch(@RequestBody BatchRequest request) {
+        String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
+        if (username == null) return ResponseEntity.status(401).build();
+        List<BatchOperation> operations = request == null || request.operations() == null
+                ? List.of() : request.operations();
+        if (operations.size() > MAX_BATCH) {
             return ResponseEntity.badRequest().body(Map.of("error",
-                    "Idempotency-Key must be 1-" + IdempotencyService.MAX_KEY_LENGTH + " characters"));
+                    "A batch may carry at most " + MAX_BATCH + " operations"));
         }
+        List<BatchResult> results = new ArrayList<>(operations.size());
+        for (BatchOperation op : operations) {
+            results.add(apply(username, op));
+        }
+        return ResponseEntity.ok(Map.of("results", results));
+    }
+
+    private BatchResult apply(String username, BatchOperation op) {
+        String clientId = op == null ? null : op.clientId();
+        try {
+            if (op == null || op.op() == null) {
+                return new BatchResult(clientId, 400, null, "op is required", null);
+            }
+            ResponseEntity<?> answer = switch (op.op().toUpperCase(java.util.Locale.ROOT)) {
+                case "CREATE" -> op.transaction() == null
+                        ? badRequest("transaction is required")
+                        : create(username, op.transaction(), op.idempotencyKey());
+                case "UPDATE" -> op.id() == null || op.transaction() == null
+                        ? badRequest("id and transaction are required")
+                        : update(username, op.id(), op.transaction(), op.version(), op.idempotencyKey());
+                case "DELETE" -> op.id() == null
+                        ? badRequest("id is required")
+                        : delete(username, op.id(), op.version());
+                default -> badRequest("op must be CREATE, UPDATE or DELETE");
+            };
+            return toResult(clientId, answer);
+        } catch (IllegalArgumentException e) {
+            // What the single-item endpoints answer through the controller advice.
+            return new BatchResult(clientId, 400, null, String.valueOf(e.getMessage()), null);
+        } catch (SecurityException e) {
+            return new BatchResult(clientId, 404, null, null, null);
+        } catch (RuntimeException e) {
+            // Contained to this operation, like a 500 on its own request would be.
+            return new BatchResult(clientId, 500, null, "Internal error", null);
+        }
+    }
+
+    private static ResponseEntity<?> badRequest(String message) {
+        return ResponseEntity.badRequest().body(Map.of("error", message));
+    }
+
+    private static BatchResult toResult(String clientId, ResponseEntity<?> answer) {
+        int status = answer.getStatusCode().value();
+        Object body = answer.getBody();
+        TransactionDTO transaction = body instanceof TransactionDTO dto ? dto : null;
+        String error = body instanceof Map<?, ?> map && map.get("error") != null
+                ? String.valueOf(map.get("error")) : null;
+        Boolean replayed = "true".equals(answer.getHeaders().getFirst("Idempotent-Replayed")) ? true : null;
+        return new BatchResult(clientId, status, transaction, error, replayed);
+    }
+
+    /** Validates an Idempotency-Key, answering 400 for a bad one; null when it is fine. */
+    private static ResponseEntity<?> invalidKey(String key) {
+        if (key != null && (key.isEmpty() || key.length() > IdempotencyService.MAX_KEY_LENGTH)) {
+            return badRequest("Idempotency-Key must be 1-" + IdempotencyService.MAX_KEY_LENGTH + " characters");
+        }
+        return null;
+    }
+
+    private ResponseEntity<?> create(String username, TransactionDTO dto, String idempotencyKey) {
+        String key = idempotencyKey == null ? null : idempotencyKey.trim();
+        ResponseEntity<?> keyError = invalidKey(key);
+        if (keyError != null) return keyError;
         Long userId = key == null ? null : userService.findByUsername(username).getId();
         if (key != null) {
             ResponseEntity<?> replayed = replay(userId, key);
@@ -129,9 +254,7 @@ public class TransactionApiController {
         }
 
         String splitError = validateSplits(dto);
-        if (splitError != null) {
-            return ResponseEntity.badRequest().body(Map.of("error", splitError));
-        }
+        if (splitError != null) return badRequest(splitError);
         Transaction transaction = mapFromDTO(dto);
         applySplitsMutation(transaction, dto);
         if (key == null) {
@@ -148,6 +271,52 @@ public class TransactionApiController {
             if (raced != null) return raced;
             throw e;
         }
+    }
+
+    private ResponseEntity<?> update(String username, Long id, TransactionDTO dto,
+                                     String ifMatch, String idempotencyKey) {
+        String key = idempotencyKey == null ? null : idempotencyKey.trim();
+        ResponseEntity<?> keyError = invalidKey(key);
+        if (keyError != null) return keyError;
+        User user = userService.findByUsername(username);
+        if (key != null) {
+            ResponseEntity<?> replayed = replayUpdate(user.getId(), key);
+            if (replayed != null) return replayed;
+        }
+
+        // Read-only existence/ownership check plus validation of the incoming DTO.
+        // Nothing below reads or writes any scalar/association field for the purpose
+        // of persisting it - the actual mutation happens inside
+        // TransactionService.updateTransaction, on a fresh entity loaded within that
+        // single write transaction, so balance reversal always sees the true old
+        // amount/type/accounts (see the Javadoc on that method for why this matters).
+        Transaction existing = transactionService.findOwned(id, user).orElse(null);
+        if (existing == null) return ResponseEntity.notFound().build();
+
+        String splitError = validateSplits(dto);
+        if (splitError != null) return badRequest(splitError);
+        String sumError = validateSplitSumInvariant(existing, dto);
+        if (sumError != null) return badRequest(sumError);
+
+        java.util.function.Consumer<Transaction> mutator = fresh -> {
+            applySplitsMutation(fresh, dto);
+            applyDtoFields(fresh, dto);
+        };
+        Transaction saved;
+        try {
+            saved = key == null
+                    ? transactionService.updateTransaction(id, ifMatch, mutator)
+                    : idempotencyService.updateOnce(user.getId(), key, id, ifMatch, mutator);
+        } catch (StaleTransactionException e) {
+            return staleConflict();
+        } catch (DataIntegrityViolationException e) {
+            if (key == null) throw e;
+            // The same update, sent twice at once; the other one was applied.
+            ResponseEntity<?> raced = replayUpdate(user.getId(), key);
+            if (raced != null) return raced;
+            throw e;
+        }
+        return ResponseEntity.ok(DtoMapper.toTransactionDTO(saved));
     }
 
     /** What an earlier request with this key already got, or null if there was none. */
@@ -168,62 +337,21 @@ public class TransactionApiController {
                 "This transaction was changed after this edit was made. Reload it and apply the change again."));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateTransaction(
-            @PathVariable Long id,
-            @RequestBody TransactionDTO dto,
-            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
-        String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
-        if (username == null) return ResponseEntity.status(401).build();
-
-        // Read-only existence/ownership check plus validation of the incoming DTO.
-        // Nothing below reads or writes any scalar/association field for the purpose
-        // of persisting it - the actual mutation happens inside
-        // TransactionService.updateTransaction, on a fresh entity loaded within that
-        // single write transaction, so balance reversal always sees the true old
-        // amount/type/accounts (see the Javadoc on that method for why this matters).
-        Transaction existing = transactionService.getTransactionsByUser(
-                        userService.findByUsername(username)).stream()
-                .filter(t -> t.getId().equals(id))
-                .findFirst()
+    /** The row an update with this key already produced, as it stands now; null if there was none. */
+    private ResponseEntity<?> replayUpdate(Long userId, String key) {
+        return idempotencyService.find(userId, key)
+                .<ResponseEntity<?>>map(found -> found.transaction()
+                        .<ResponseEntity<?>>map(t -> ResponseEntity.ok()
+                                .header("Idempotent-Replayed", "true")
+                                .body(DtoMapper.toTransactionDTO(t)))
+                        .orElseGet(() -> ResponseEntity.notFound().build()))
                 .orElse(null);
-        if (existing == null) return ResponseEntity.notFound().build();
-
-        String splitError = validateSplits(dto);
-        if (splitError != null) {
-            return ResponseEntity.badRequest().body(Map.of("error", splitError));
-        }
-        String sumError = validateSplitSumInvariant(existing, dto);
-        if (sumError != null) {
-            return ResponseEntity.badRequest().body(Map.of("error", sumError));
-        }
-
-        Transaction saved;
-        try {
-            saved = transactionService.updateTransaction(id, ifMatch, fresh -> {
-                applySplitsMutation(fresh, dto);
-                applyDtoFields(fresh, dto);
-            });
-        } catch (StaleTransactionException e) {
-            return staleConflict();
-        }
-        return ResponseEntity.ok(DtoMapper.toTransactionDTO(saved));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteTransaction(
-            @PathVariable Long id,
-            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
-        String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
-        if (username == null) return ResponseEntity.status(401).build();
-
-        Transaction transaction = Transaction.builder().id(id).build();
-        // Need to load the full transaction for balance reversal
-        List<Transaction> userTransactions = transactionService.getTransactionsByUser(
-                userService.findByUsername(username));
-        Transaction existing = userTransactions.stream()
-                .filter(t -> t.getId().equals(id))
-                .findFirst()
+    private ResponseEntity<?> delete(String username, Long id, String ifMatch) {
+        // The full row is needed for the balance reversal.
+        Transaction existing = transactionService
+                .findOwned(id, userService.findByUsername(username))
                 .orElse(null);
         if (existing == null) return ResponseEntity.notFound().build();
 

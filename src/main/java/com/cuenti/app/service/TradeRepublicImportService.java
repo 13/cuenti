@@ -6,17 +6,17 @@ import com.cuenti.app.repository.PayeeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.*;
@@ -38,16 +38,44 @@ public class TradeRepublicImportService {
             .appendPattern("dd MMM yyyy")
             .toFormatter(Locale.ITALIAN);
 
-    @Transactional
-    public void importCsv(InputStream inputStream, Account cashAccount, Account assetAccount) throws Exception {
+    /** Trade Republic books interest, saveback and tax rows itself; they carry no counterparty. */
+    private static final String TRADE_REPUBLIC_PAYEE = "Trade Republic";
+
+    /**
+     * The export's {@code date} column is Trade Republic's local (German) date, and
+     * {@code datetime} is UTC. Converting in this zone keeps both consistent no matter
+     * which zone the server runs in.
+     */
+    private static final ZoneId TRADE_REPUBLIC_ZONE = ZoneId.of("Europe/Berlin");
+
+    private static final Set<String> BANK_BOOKED_TYPES = Set.of(
+            "INTEREST_PAYMENT", "BENEFITS_SAVEBACK", "TAX_OPTIMIZATION");
+
+    /** Outcome of one import: transactions written, rows skipped as duplicates/empty, rows that failed. */
+    public record ImportResult(int imported, int skipped, int failed) {
+    }
+
+    /**
+     * Imports a Trade Republic CSV. Deliberately not one database transaction: every
+     * row is saved on its own, so a single bad row is counted as failed instead of
+     * rolling back (or silently truncating) the whole import.
+     */
+    public ImportResult importCsv(InputStream inputStream, Account cashAccount, Account assetAccount, User user) throws Exception {
+        if (cashAccount != null && assetAccount != null && Objects.equals(cashAccount.getId(), assetAccount.getId())) {
+            throw new IllegalArgumentException("Cash and asset account must differ");
+        }
+        int imported = 0;
+        int skipped = 0;
+        int failed = 0;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             String header = reader.readLine();
             if (header == null || header.trim().isEmpty()) {
-                return;
+                return new ImportResult(0, 0, 0);
             }
 
             boolean isTransactionExport = header.contains("\"datetime\"") || header.contains("datetime");
             Map<String, Integer> headerMap = isTransactionExport ? buildHeaderMap(parseCsvLine(header)) : Collections.emptyMap();
+            List<Asset> assets = new ArrayList<>(assetService.getAllAssets());
 
             String line;
             int rowNumber = 0;
@@ -57,28 +85,37 @@ public class TradeRepublicImportService {
                 }
 
                 try {
+                    int saved;
                     if (isTransactionExport) {
                         List<String> columns = parseCsvLine(line);
-                        parseAndProcessTransactionExportRow(columns, headerMap, cashAccount, assetAccount, rowNumber++);
+                        saved = parseAndProcessTransactionExportRow(columns, headerMap, cashAccount, assetAccount, user, assets, rowNumber++);
                     } else {
                         String[] columns = line.split(";");
                         if (columns.length < 5) {
                             continue;
                         }
-                        parseAndProcessLegacyRow(columns, cashAccount, assetAccount, rowNumber++);
+                        saved = parseAndProcessLegacyRow(columns, cashAccount, assetAccount, user, assets, rowNumber++);
+                    }
+                    if (saved > 0) {
+                        imported += saved;
+                    } else {
+                        skipped++;
                     }
                 } catch (Exception e) {
-                    log.error("Error parsing row: " + line, e);
+                    failed++;
+                    log.error("Error importing Trade Republic row: " + line, e);
                 }
             }
         }
+        return new ImportResult(imported, skipped, failed);
     }
 
-    private void parseAndProcessLegacyRow(String[] columns, Account cashAccount, Account assetAccount, int rowNumber) {
+    private int parseAndProcessLegacyRow(String[] columns, Account cashAccount, Account assetAccount, User user,
+                                         List<Asset> assets, int rowNumber) {
         String dateStr = columns[0].trim();
         String typeStr = columns[1].trim();
         String originalDescription = columns[2].trim();
-        String cleanedPayeeName = originalDescription.replace("null", "").trim();
+        String cleanedPayeeName = cleanPayeeName(originalDescription);
         String incomingStr = columns[3].trim();
         String outgoingStr = columns[4].trim();
 
@@ -95,7 +132,7 @@ public class TradeRepublicImportService {
             amount = parseAmount(outgoingStr);
             csvType = Transaction.TransactionType.EXPENSE;
         } else {
-            return;
+            return 0;
         }
 
         boolean isAssetTrade = typeStr.equalsIgnoreCase("Commercio") ||
@@ -104,14 +141,9 @@ public class TradeRepublicImportService {
 
         // Deduplication: Skip if transaction already exists to prevent double balance impact
         Account contextAccount = isAssetTrade ? assetAccount : cashAccount;
-        List<Transaction> existing = transactionRepository.findByAccount(contextAccount).stream()
-                .filter(t -> t.getTransactionDate().toLocalDate().equals(date))
-                .filter(t -> t.getAmount().compareTo(amount) == 0)
-                .toList();
-
-        if (!existing.isEmpty()) {
+        if (existsOnDate(contextAccount, date, amount)) {
             log.debug("Skipping duplicate transaction: {} on {} for €{}", originalDescription, date, amount);
-            return;  // Skip duplicate - don't process again!
+            return 0;
         }
 
         // Create new transaction
@@ -132,8 +164,8 @@ public class TradeRepublicImportService {
             transaction.setType(Transaction.TransactionType.TRANSFER);
             transaction.setFromAccount(cashAccount);
             transaction.setToAccount(assetAccount);
-            processAssetInfo(transaction, originalDescription);
-            
+            processAssetInfo(transaction, originalDescription, assets);
+
             // Set payee to Asset name if found
             if (transaction.getAsset() != null) {
                 transaction.setPayee(transaction.getAsset().getName());
@@ -151,120 +183,153 @@ public class TradeRepublicImportService {
                 transaction.setToAccount(null);
             }
         }
-        
-        ensurePayeeExists(transaction.getPayee());
+
+        ensurePayeeExists(user, transaction.getPayee());
         transactionService.saveTransaction(transaction);
+        return 1;
     }
 
-    private void parseAndProcessTransactionExportRow(List<String> columns,
-                                                     Map<String, Integer> headerMap,
-                                                     Account cashAccount,
-                                                     Account assetAccount,
-                                                     int rowNumber) {
-        String type = getColumn(columns, headerMap, "type");
+    /** @return number of transactions written for this row (0 when skipped) */
+    private int parseAndProcessTransactionExportRow(List<String> columns,
+                                                    Map<String, Integer> headerMap,
+                                                    Account cashAccount,
+                                                    Account assetAccount,
+                                                    User user,
+                                                    List<Asset> assets,
+                                                    int rowNumber) {
+        String type = getColumn(columns, headerMap, "type").toUpperCase(Locale.ROOT);
         String description = getColumn(columns, headerMap, "description");
         String name = getColumn(columns, headerMap, "name");
         String symbol = getColumn(columns, headerMap, "symbol");
         String shares = getColumn(columns, headerMap, "shares");
+        String assetClass = getColumn(columns, headerMap, "asset_class");
+        String currency = getColumn(columns, headerMap, "currency");
         String counterparty = getColumn(columns, headerMap, "counterparty_name");
         String transactionId = getColumn(columns, headerMap, "transaction_id");
 
         BigDecimal amount = parsePlainAmount(getColumn(columns, headerMap, "amount"));
-        BigDecimal fee = parsePlainAmount(getColumn(columns, headerMap, "fee"));
-        BigDecimal tax = parsePlainAmount(getColumn(columns, headerMap, "tax"));
-        BigDecimal netAmount = amount.add(fee).add(tax);
-        if (netAmount.compareTo(BigDecimal.ZERO) == 0) {
-            return;
-        }
+        BigDecimal charges = parsePlainAmount(getColumn(columns, headerMap, "fee"))
+                .add(parsePlainAmount(getColumn(columns, headerMap, "tax")));
 
         LocalDateTime transactionDateTime = parseTransactionDateTime(
                 getColumn(columns, headerMap, "datetime"),
                 getColumn(columns, headerMap, "date")
         );
+        Transaction.PaymentMethod paymentMethod = mapPaymentMethod(type);
 
-        boolean isAssetTrade = "BUY".equalsIgnoreCase(type)
+        boolean isAssetTrade = "BUY".equals(type) || "SELL".equals(type)
                 || description.startsWith("Buy trade")
                 || description.startsWith("Savings plan execution");
 
-        // Deduplication: prefer transaction_id if present, fall back to date+amount
-        BigDecimal absoluteAmount = netAmount.abs();
-        if (!transactionId.isEmpty()) {
-            if (transactionRepository.findByNumber(transactionId).isPresent()) {
-                log.debug("Skipping duplicate transaction_id: {}", transactionId);
-                return;
+        if (isAssetTrade) {
+            // Fees and taxes are part of what the trade costs (or yields): book the net amount.
+            BigDecimal netAmount = amount.add(charges);
+            if (netAmount.signum() == 0 || isDuplicate(transactionId, assetAccount, transactionDateTime, netAmount.abs(), user)) {
+                return 0;
             }
-        } else {
-            Account contextAccount = isAssetTrade ? assetAccount : cashAccount;
-            List<Transaction> existing = transactionRepository.findByAccount(contextAccount).stream()
-                    .filter(t -> t.getTransactionDate().toLocalDate().equals(transactionDateTime.toLocalDate()))
-                    .filter(t -> t.getAmount().compareTo(absoluteAmount) == 0)
-                    .toList();
-            if (!existing.isEmpty()) {
-                log.debug("Skipping duplicate transaction: {} on {} for €{}", description, transactionDateTime, absoluteAmount);
-                return;
-            }
+            Transaction transaction = newTransaction(transactionId, description, paymentMethod, transactionDateTime, rowNumber);
+            transaction.setType(Transaction.TransactionType.TRANSFER);
+            transaction.setAmount(netAmount.abs());
+            boolean isSale = netAmount.signum() > 0;
+            transaction.setFromAccount(isSale ? assetAccount : cashAccount);
+            transaction.setToAccount(isSale ? cashAccount : assetAccount);
+            processAssetInfo(transaction, description, symbol, shares, name, assetClass, currency, assets);
+            transaction.setPayee(resolvePayee(type, counterparty, name, description, transaction));
+            ensurePayeeExists(user, transaction.getPayee());
+            transactionService.saveTransaction(transaction);
+            return 1;
         }
 
+        // Cash rows: the gross amount and its fees/taxes are separate bookings, so e.g.
+        // interest shows the full income and the withheld tax as its own expense.
+        int saved = 0;
+        if (amount.signum() != 0 && !isDuplicate(transactionId, cashAccount, transactionDateTime, amount.abs(), user)) {
+            Transaction transaction = newTransaction(transactionId, description, paymentMethod, transactionDateTime, rowNumber);
+            bookOnCash(transaction, amount, cashAccount);
+            transaction.setPayee(resolvePayee(type, counterparty, name, description, transaction));
+            ensurePayeeExists(user, transaction.getPayee());
+            transactionService.saveTransaction(transaction);
+            saved++;
+        }
+        String chargesId = transactionId.isEmpty() ? "" : transactionId + "-tax";
+        if (charges.signum() != 0 && !isDuplicate(chargesId, cashAccount, transactionDateTime, charges.abs(), user)) {
+            Transaction transaction = newTransaction(chargesId, description, paymentMethod, transactionDateTime, rowNumber);
+            bookOnCash(transaction, charges, cashAccount);
+            transaction.setPayee(TRADE_REPUBLIC_PAYEE);
+            ensurePayeeExists(user, transaction.getPayee());
+            transactionService.saveTransaction(transaction);
+            saved++;
+        }
+        return saved;
+    }
+
+    private Transaction newTransaction(String number, String description, Transaction.PaymentMethod paymentMethod,
+                                       LocalDateTime date, int rowNumber) {
         Transaction transaction = new Transaction();
         transaction.setMemo(description);
         transaction.setStatus(Transaction.TransactionStatus.COMPLETED);
         transaction.setSortOrder(rowNumber);
-        transaction.setPaymentMethod(mapPaymentMethod(type));
-        transaction.setTransactionDate(transactionDateTime);
-        if (!transactionId.isEmpty()) {
-            transaction.setNumber(transactionId);
+        transaction.setPaymentMethod(paymentMethod);
+        transaction.setTransactionDate(date);
+        if (!number.isEmpty()) {
+            transaction.setNumber(number);
         }
-
-        if (isAssetTrade) {
-            transaction.setType(Transaction.TransactionType.TRANSFER);
-            transaction.setAmount(absoluteAmount);
-            transaction.setFromAccount(cashAccount);
-            transaction.setToAccount(assetAccount);
-            processAssetInfo(transaction, description, symbol, shares, name);
-            transaction.setPayee(resolvePayee(counterparty, name, description, transaction));
-        } else {
-            boolean isIncome = netAmount.compareTo(BigDecimal.ZERO) > 0;
-            transaction.setType(isIncome ? Transaction.TransactionType.INCOME : Transaction.TransactionType.EXPENSE);
-            transaction.setAmount(absoluteAmount);
-            transaction.setPayee(resolvePayee(counterparty, name, description, transaction));
-            if (isIncome) {
-                transaction.setToAccount(cashAccount);
-                transaction.setFromAccount(null);
-            } else {
-                transaction.setFromAccount(cashAccount);
-                transaction.setToAccount(null);
-            }
-        }
-
-        ensurePayeeExists(transaction.getPayee());
-        transactionService.saveTransaction(transaction);
+        return transaction;
     }
 
-    private void ensurePayeeExists(String name) {
-        if (name == null || name.isEmpty()) return;
-        // Note: This method should be updated to accept a User parameter
-        // For now, we'll skip the duplicate check as it requires user context
-        // This is a limitation of the current implementation
-        // TODO: Refactor to pass User to this method
+    /** Positive amounts are income into the cash account, negative ones expenses from it. */
+    private void bookOnCash(Transaction transaction, BigDecimal signedAmount, Account cashAccount) {
+        boolean isIncome = signedAmount.signum() > 0;
+        transaction.setType(isIncome ? Transaction.TransactionType.INCOME : Transaction.TransactionType.EXPENSE);
+        transaction.setAmount(signedAmount.abs());
+        transaction.setFromAccount(isIncome ? null : cashAccount);
+        transaction.setToAccount(isIncome ? cashAccount : null);
     }
 
-    private void processAssetInfo(Transaction t, String description) {
+    /** Prefers the transaction id when the export has one, else falls back to account + date + amount. */
+    private boolean isDuplicate(String transactionId, Account account, LocalDateTime date, BigDecimal absoluteAmount, User user) {
+        boolean duplicate = transactionId.isEmpty()
+                ? existsOnDate(account, date.toLocalDate(), absoluteAmount)
+                : transactionRepository.existsByNumberForUser(transactionId, user);
+        if (duplicate) {
+            log.debug("Skipping duplicate Trade Republic transaction {} on {} for {}", transactionId, date, absoluteAmount);
+        }
+        return duplicate;
+    }
+
+    private boolean existsOnDate(Account account, LocalDate date, BigDecimal absoluteAmount) {
+        return transactionRepository.findByAccount(account).stream()
+                .anyMatch(t -> t.getTransactionDate().toLocalDate().equals(date)
+                        && t.getAmount().compareTo(absoluteAmount) == 0);
+    }
+
+    /** Makes imported payees show up in payee management (and its autocomplete). */
+    private void ensurePayeeExists(User user, String name) {
+        if (user == null || name == null || name.isBlank()) return;
+        if (!payeeRepository.existsByUserAndNameIgnoreCase(user, name)) {
+            payeeRepository.save(Payee.builder().user(user).name(name).build());
+        }
+    }
+
+    private Optional<Asset> findAsset(List<Asset> assets, String symbol) {
+        return assets.stream()
+                .filter(a -> a.getSymbol().equalsIgnoreCase(symbol)
+                        || (symbol.equals("IE00BK5BQT80") && a.getSymbol().equals("VWCE.DE")))
+                .findFirst();
+    }
+
+    private void processAssetInfo(Transaction t, String description, List<Asset> assets) {
         Pattern isinPattern = Pattern.compile("([A-Z]{2}[A-Z0-9]{9}[0-9])");
         Pattern qtyPattern = Pattern.compile("quantity: ([0-9.]+)");
-        
+
         Matcher isinMatcher = isinPattern.matcher(description);
         Matcher qtyMatcher = qtyPattern.matcher(description);
-        
-        if (isinMatcher.find()) {
-            String isin = isinMatcher.group(1);
-            assetService.getAllAssets().stream()
-                    .filter(a -> a.getSymbol().equalsIgnoreCase(isin) || 
-                                 (isin.equals("IE00BK5BQT80") && a.getSymbol().equals("VWCE.DE")))
-                    .findFirst()
-                    .ifPresent(t::setAsset);
+
+        if (t.getAsset() == null && isinMatcher.find()) {
+            findAsset(assets, isinMatcher.group(1)).ifPresent(t::setAsset);
         }
-        
-        if (qtyMatcher.find()) {
+
+        if (t.getUnits() == null && qtyMatcher.find()) {
             try {
                 t.setUnits(new BigDecimal(qtyMatcher.group(1)));
             } catch (Exception e) {
@@ -273,37 +338,45 @@ public class TradeRepublicImportService {
         }
     }
 
-    private void processAssetInfo(Transaction t, String description, String symbol, String shares, String name) {
+    private void processAssetInfo(Transaction t, String description, String symbol, String shares, String name,
+                                  String assetClass, String currency, List<Asset> assets) {
         String trimmedSymbol = symbol == null ? "" : symbol.trim();
         if (!trimmedSymbol.isEmpty()) {
-            assetService.getAllAssets().stream()
-                    .filter(a -> a.getSymbol().equalsIgnoreCase(trimmedSymbol)
-                            || (trimmedSymbol.equals("IE00BK5BQT80") && a.getSymbol().equals("VWCE.DE")))
-                    .findFirst()
-                    .ifPresent(t::setAsset);
-        }
-
-        if (t.getAsset() == null) {
-            processAssetInfo(t, description);
-        }
-
-        if (t.getAsset() == null && name != null && !name.isBlank()) {
-            t.setPayee(name.trim());
+            findAsset(assets, trimmedSymbol).ifPresent(t::setAsset);
         }
 
         String sharesValue = shares == null ? "" : shares.trim();
         if (!sharesValue.isEmpty()) {
             try {
                 t.setUnits(new BigDecimal(sharesValue));
-                return;
             } catch (Exception ignored) {
                 // Fallback to description parsing below
             }
         }
 
-        if (t.getUnits() == null) {
-            processAssetInfo(t, description);
+        processAssetInfo(t, description, assets);
+
+        if (t.getAsset() == null && !trimmedSymbol.isEmpty()) {
+            t.setAsset(createAsset(trimmedSymbol, name, assetClass, currency, assets));
         }
+    }
+
+    /** Trades of a security the user does not track yet create it, so holdings are linked to an asset. */
+    private Asset createAsset(String symbol, String name, String assetClass, String currency, List<Asset> assets) {
+        Asset asset = new Asset();
+        asset.setSymbol(symbol);
+        asset.setName(name == null || name.isBlank() ? symbol : name.trim());
+        asset.setType(switch (assetClass.toUpperCase(Locale.ROOT)) {
+            case "FUND", "ETF" -> Asset.AssetType.ETF;
+            case "CRYPTO" -> Asset.AssetType.CRYPTO;
+            default -> Asset.AssetType.STOCK;
+        });
+        asset.setCurrency(currency.isBlank() ? "EUR" : currency);
+        Asset saved = assetService.saveAsset(asset);
+        if (saved != null) {
+            assets.add(saved);
+        }
+        return saved;
     }
 
     private BigDecimal parseAmount(String amountStr) {
@@ -360,27 +433,26 @@ public class TradeRepublicImportService {
     }
 
     private LocalDateTime parseTransactionDateTime(String dateTimeStr, String dateStr) {
+        LocalDateTime dateTime = null;
         if (dateTimeStr != null && !dateTimeStr.isBlank()) {
             try {
-                return Instant.parse(dateTimeStr.trim()).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+                dateTime = OffsetDateTime.parse(dateTimeStr.trim()).atZoneSameInstant(TRADE_REPUBLIC_ZONE).toLocalDateTime();
             } catch (Exception ignored) {
-                try {
-                    return OffsetDateTime.parse(dateTimeStr.trim()).toLocalDateTime();
-                } catch (Exception ignoredAgain) {
-                    // Fallback to date-only parsing
-                }
+                // Fallback to date-only parsing
             }
         }
 
         if (dateStr != null && !dateStr.isBlank()) {
             try {
-                return LocalDate.parse(dateStr.trim()).atStartOfDay();
+                // The date column is authoritative for the booking day.
+                LocalDate date = LocalDate.parse(dateStr.trim());
+                return date.atTime(dateTime != null ? dateTime.toLocalTime() : LocalTime.MIDNIGHT);
             } catch (Exception ignored) {
                 // Fallback below
             }
         }
 
-        return LocalDateTime.now();
+        return dateTime != null ? dateTime : LocalDateTime.now();
     }
 
     private Transaction.PaymentMethod mapPaymentMethod(String tradeRepublicType) {
@@ -389,9 +461,10 @@ public class TradeRepublicImportService {
         }
 
         return switch (tradeRepublicType.trim().toUpperCase(Locale.ROOT)) {
-            case "CARD_TRANSACTION" -> Transaction.PaymentMethod.CARD_TRANSACTION;
-            case "TRANSFER_INSTANT_INBOUND", "TRANSFER_INSTANT_OUTBOUND" -> Transaction.PaymentMethod.TRANSFER;
-            case "BUY" -> Transaction.PaymentMethod.TRADE;
+            case "CARD_TRANSACTION", "CARD_TRANSACTION_INTERNATIONAL" -> Transaction.PaymentMethod.CARD_TRANSACTION;
+            case "TRANSFER_INSTANT_INBOUND", "TRANSFER_INSTANT_OUTBOUND",
+                 "TRANSFER_INBOUND", "TRANSFER_OUTBOUND" -> Transaction.PaymentMethod.TRANSFER;
+            case "BUY", "SELL" -> Transaction.PaymentMethod.TRADE;
             case "INTEREST_PAYMENT" -> Transaction.PaymentMethod.INTEREST;
             case "BENEFITS_SAVEBACK" -> Transaction.PaymentMethod.REWARD;
             case "TAX_OPTIMIZATION" -> Transaction.PaymentMethod.FI_FEE;
@@ -399,7 +472,10 @@ public class TradeRepublicImportService {
         };
     }
 
-    private String resolvePayee(String counterparty, String name, String description, Transaction transaction) {
+    private String resolvePayee(String type, String counterparty, String name, String description, Transaction transaction) {
+        if (BANK_BOOKED_TYPES.contains(type)) {
+            return TRADE_REPUBLIC_PAYEE;
+        }
         if (transaction.getAsset() != null && transaction.getAsset().getName() != null) {
             return cleanPayeeName(transaction.getAsset().getName());
         }
@@ -416,6 +492,7 @@ public class TradeRepublicImportService {
         if (value == null) {
             return "";
         }
-        return value.replace("null", "").trim();
+        // The export glues a literal "null" to some descriptions ("SHOP NAMEnull").
+        return value.trim().replaceAll("null$", "").trim();
     }
 }

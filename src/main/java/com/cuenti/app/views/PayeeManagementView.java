@@ -114,7 +114,7 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
         grid.addColumn(Payee::getName).setHeader(getTranslation("payees.name")).setSortable(true).setAutoWidth(true);
         grid.addColumn(Payee::getNotes).setHeader(getTranslation("payees.notes")).setAutoWidth(true).setSortable(true);
         grid.addColumn(p -> p.getDefaultCategory() != null ? p.getDefaultCategory().getFullName() : "").setHeader(getTranslation("payees.default_category")).setAutoWidth(true).setSortable(true);
-        grid.addColumn(p -> p.getDefaultPaymentMethod() != null ? p.getDefaultPaymentMethod().getLabel() : "").setHeader(getTranslation("payees.default_payment")).setAutoWidth(true).setSortable(true);
+        grid.addColumn(p -> p.getDefaultPaymentMethod() != null && p.getDefaultPaymentMethod() != Transaction.PaymentMethod.NONE ? getTranslation("payment_method." + p.getDefaultPaymentMethod().name()) : "").setHeader(getTranslation("payees.default_payment")).setAutoWidth(true).setSortable(true);
         grid.addColumn(p -> p.getDefaultMemo() != null ? p.getDefaultMemo() : "").setHeader(getTranslation("payees.default_memo")).setAutoWidth(true).setSortable(true);
         grid.addColumn(p -> p.getDefaultTags() != null ? p.getDefaultTags() : "").setHeader(getTranslation("payees.default_tags")).setAutoWidth(true).setSortable(true);
 
@@ -208,7 +208,7 @@ public class PayeeManagementView extends VerticalLayout implements HasDynamicTit
 
         ComboBox<Transaction.PaymentMethod> paymentMethodCombo = new ComboBox<>(getTranslation("payees.default_payment"));
         paymentMethodCombo.setItems(Transaction.PaymentMethod.values());
-        paymentMethodCombo.setItemLabelGenerator(Transaction.PaymentMethod::getLabel);
+        paymentMethodCombo.setItemLabelGenerator(pm -> pm == Transaction.PaymentMethod.NONE ? getTranslation("dialog.none") : getTranslation("payment_method." + pm.name()));
         paymentMethodCombo.setWidthFull();
 
         TextField defaultMemoField = new TextField(getTranslation("payees.default_memo"));

@@ -180,7 +180,7 @@ public class TransactionDialog extends Dialog {
         // ── Payment + Number (secondary) ─────────────────────────────
         ComboBox<Transaction.PaymentMethod> paymentCombo = new ComboBox<>(getTranslation("dialog.payment_method"));
         paymentCombo.setItems(Transaction.PaymentMethod.values());
-        paymentCombo.setItemLabelGenerator(pm -> pm == Transaction.PaymentMethod.NONE ? getTranslation("dialog.none") : pm.getLabel());
+        paymentCombo.setItemLabelGenerator(pm -> pm == Transaction.PaymentMethod.NONE ? getTranslation("dialog.none") : getTranslation("payment_method." + pm.name()));
         paymentCombo.setValue(currentFormTransaction[0].getPaymentMethod() != null
                 ? currentFormTransaction[0].getPaymentMethod() : Transaction.PaymentMethod.NONE);
         paymentCombo.setWidthFull();

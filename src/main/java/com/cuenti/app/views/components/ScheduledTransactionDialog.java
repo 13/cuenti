@@ -137,7 +137,7 @@ public class ScheduledTransactionDialog extends Dialog {
 
         ComboBox<Transaction.PaymentMethod> paymentMethod = new ComboBox<>(getTranslation("dialog.payment_method"));
         paymentMethod.setItems(Transaction.PaymentMethod.values());
-        paymentMethod.setItemLabelGenerator(pm -> pm == Transaction.PaymentMethod.NONE ? getTranslation("dialog.none") : pm.getLabel());
+        paymentMethod.setItemLabelGenerator(pm -> pm == Transaction.PaymentMethod.NONE ? getTranslation("dialog.none") : getTranslation("payment_method." + pm.name()));
         paymentMethod.setWidthFull();
 
         TextField number = new TextField(getTranslation("dialog.number"));

@@ -1438,7 +1438,7 @@ public class TransactionHistoryView extends VerticalLayout
         if (t.getPaymentMethod() != null && t.getPaymentMethod() != Transaction.PaymentMethod.NONE) {
             content.add(new com.cuenti.app.views.components.FieldRow(VaadinIcon.CREDIT_CARD,
                     getTranslation("dialog.payment_method"),
-                    t.getPaymentMethod().getLabel()));
+                    getTranslation("payment_method." + t.getPaymentMethod().name())));
         }
 
         if (t.getTags() != null && !t.getTags().isBlank()) {

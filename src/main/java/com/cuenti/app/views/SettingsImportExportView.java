@@ -14,6 +14,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.upload.Upload;
+import com.vaadin.flow.component.upload.UploadI18N;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.streams.DownloadHandler;
@@ -81,6 +82,7 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
 
         AtomicReference<byte[]> jsonData = new AtomicReference<>();
         Upload jsonUpload = new Upload(new InMemoryUploadHandler((meta, bytes) -> jsonData.set(bytes)));
+        localize(jsonUpload);
         jsonUpload.setAcceptedFileTypes("application/json", ".json");
         jsonUpload.setUploadButton(new Button(getTranslation("settings.import_json"), VaadinIcon.UPLOAD.create()));
         jsonUpload.setMaxFiles(1);
@@ -128,18 +130,41 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
 
         AtomicReference<byte[]> trData = new AtomicReference<>();
         Upload trUpload = new Upload(new InMemoryUploadHandler((meta, bytes) -> trData.set(bytes)));
+        localize(trUpload);
         trUpload.setAcceptedFileTypes(".csv");
         trUpload.setUploadButton(new Button(getTranslation("settings.tr_import_btn"), VaadinIcon.FILE_TEXT.create()));
+        // Uploading only makes sense once both (different) target accounts are chosen;
+        // otherwise the file would be received and then thrown away.
+        Runnable updateTrUpload = () -> {
+            Account cash = cashAccountCombo.getValue();
+            Account asset = assetAccountCombo.getValue();
+            boolean same = cash != null && asset != null && java.util.Objects.equals(cash.getId(), asset.getId());
+            assetAccountCombo.setInvalid(same);
+            assetAccountCombo.setErrorMessage(same ? getTranslation("settings.tr_same_account") : null);
+            boolean ready = cash != null && asset != null && !same;
+            trUpload.setEnabled(ready);
+            trUpload.getUploadButton().getElement().setEnabled(ready);
+        };
+        cashAccountCombo.addValueChangeListener(e -> updateTrUpload.run());
+        assetAccountCombo.addValueChangeListener(e -> updateTrUpload.run());
+        updateTrUpload.run();
         trUpload.addAllFinishedListener(e -> {
             byte[] bytes = trData.getAndSet(null);
+            trUpload.clearFileList();
             if (bytes == null) return;
             if (cashAccountCombo.isEmpty() || assetAccountCombo.isEmpty()) {
                 com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.tr_select_accounts"));
                 return;
             }
             try {
-                tradeRepublicImportService.importCsv(new ByteArrayInputStream(bytes), cashAccountCombo.getValue(), assetAccountCombo.getValue());
-                com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.tr_success"));
+                TradeRepublicImportService.ImportResult result = tradeRepublicImportService.importCsv(
+                        new ByteArrayInputStream(bytes), cashAccountCombo.getValue(), assetAccountCombo.getValue(), currentUser);
+                String message = getTranslation("settings.tr_result", result.imported(), result.skipped(), result.failed());
+                if (result.failed() > 0) {
+                    com.cuenti.app.views.components.UiNotifier.warning(message);
+                } else {
+                    com.cuenti.app.views.components.UiNotifier.success(message);
+                }
             } catch (Exception ex) {
                 com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.import_failed", ex.getMessage()));
             }
@@ -155,6 +180,7 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
 
         AtomicReference<byte[]> xhbData = new AtomicReference<>();
         Upload upload = new Upload(new InMemoryUploadHandler((meta, bytes) -> xhbData.set(bytes)));
+        localize(upload);
         upload.setAcceptedFileTypes(".xhb");
         upload.setUploadButton(new Button(getTranslation("settings.import"), VaadinIcon.UPLOAD.create()));
         upload.addAllFinishedListener(e -> {
@@ -186,5 +212,33 @@ public class SettingsImportExportView extends BaseSettingsView implements HasDyn
         xhbActions.getStyle().set("gap", "var(--vaadin-gap-m)").set("flex-wrap", "wrap");
         card.add(xhbActions);
         container.add(card);
+    }
+
+    /** The upload widget ships English-only texts ("Drop files here", …). */
+    private void localize(Upload upload) {
+        UploadI18N i18n = new UploadI18N();
+        i18n.setDropFiles(new UploadI18N.DropFiles()
+                .setOne(getTranslation("upload.drop_file"))
+                .setMany(getTranslation("upload.drop_files")));
+        i18n.setError(new UploadI18N.Error()
+                .setTooManyFiles(getTranslation("upload.too_many_files"))
+                .setFileIsTooBig(getTranslation("upload.file_too_big"))
+                .setIncorrectFileType(getTranslation("upload.incorrect_file_type")));
+        i18n.setFile(new UploadI18N.File()
+                .setRetry(getTranslation("upload.retry"))
+                .setStart(getTranslation("upload.start"))
+                .setRemove(getTranslation("upload.remove")));
+        i18n.setUploading(new UploadI18N.Uploading()
+                .setStatus(new UploadI18N.Uploading.Status()
+                        .setConnecting(getTranslation("upload.connecting"))
+                        .setStalled(getTranslation("upload.stalled"))
+                        .setProcessing(getTranslation("upload.processing"))
+                        .setHeld(getTranslation("upload.held")))
+                .setError(new UploadI18N.Uploading.Error()
+                        .setServerUnavailable(getTranslation("upload.server_unavailable"))
+                        .setUnexpectedServerError(getTranslation("upload.server_error"))
+                        .setForbidden(getTranslation("upload.forbidden"))
+                        .setFileTooLarge(getTranslation("upload.file_too_big"))));
+        upload.setI18n(i18n);
     }
 }

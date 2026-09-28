@@ -12,7 +12,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Repository for Transaction entity.
@@ -180,7 +179,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     
     List<Transaction> findByToAccountOrderByTransactionDateDesc(Account toAccount);
 
-    Optional<Transaction> findByNumber(String number);
+    /** Whether {@code user} already has a transaction with this number (import deduplication). */
+    @Query("SELECT COUNT(t) > 0 FROM Transaction t LEFT JOIN t.fromAccount f LEFT JOIN t.toAccount a " +
+           "WHERE t.number = :number AND (f.user = :user OR a.user = :user)")
+    boolean existsByNumberForUser(@Param("number") String number, @Param("user") com.cuenti.app.model.User user);
 
     /**
      * Count transactions that reference a specific asset.

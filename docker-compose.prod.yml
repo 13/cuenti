@@ -42,6 +42,8 @@ services:
       - VAADIN_PRODUCTION_MODE=true
       - LOG_LEVEL=INFO
       - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
+      - IDLE_TIMEOUT=${IDLE_TIMEOUT:-15m}
     ports:
       - "8080:8080"
     depends_on:

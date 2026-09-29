@@ -61,7 +61,8 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
                       com.cuenti.app.service.PayeeService payeeService,
                       com.cuenti.app.service.CategoryService categoryService,
                       com.cuenti.app.service.TagService tagService,
-                      com.cuenti.app.service.ScheduledTransactionService scheduledService) {
+                      com.cuenti.app.service.ScheduledTransactionService scheduledService,
+                      com.cuenti.app.security.IdleTimeoutSettings idleTimeoutSettings) {
         this.scheduledService = scheduledService;
         this.securityUtils = securityUtils;
         this.userService = userService;
@@ -92,6 +93,9 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
         setPrimarySection(Section.DRAWER);
         createHeader();
         createDrawer();
+        if (currentUser != null) {
+            addToNavbar(new com.cuenti.app.views.components.IdleLogoutGuard(idleTimeoutSettings));
+        }
     }
 
     // ── Theme ──────────────────────────────────────────────────────────────────

@@ -59,7 +59,9 @@ Then start app + PostgreSQL:
 ```
 
 Uses `docker-compose.prod.yml`, profile `production`, Flyway migrations, no demo users.
-Optional `.env` overrides: `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`.
+Optional `.env` overrides: `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`,
+`IDLE_TIMEOUT` (web UI sign-out after inactivity, default `15m`, `0` disables) and
+`JWT_EXPIRATION` (REST API token lifetime in ms, default `86400000` = 24h).
 
 ## Development
 

@@ -39,6 +39,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
 
   private final Div primaryStage = new Div();
   private final Div formStage = new Div();
+  private final Span idleNotice = new Span();
 
   public LoginView(GlobalSettingService globalSettingService, UserRepository userRepository) {
     this.globalSettingService = globalSettingService;
@@ -104,7 +105,12 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
       formStage.addClassName("stage-hidden");
     }
 
-    Div card = new Div(brand, primaryStage, formStage);
+    idleNotice.setText(getTranslation("login.idle_timeout"));
+    idleNotice.addClassName("auth-notice");
+    idleNotice.getElement().setAttribute("role", "status");
+    idleNotice.setVisible(false);
+
+    Div card = new Div(brand, idleNotice, primaryStage, formStage);
     card.addClassName("auth-card");
     add(card);
   }
@@ -189,6 +195,9 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver, Ha
     if (error) {
       showForm(true);
     }
+
+    // Signed out by the idle guard (?timeout)
+    idleNotice.setVisible(event.getLocation().getQueryParameters().getParameters().containsKey("timeout"));
 
     // Feature toggle: registration enabled
     registerLink.setVisible(globalSettingService.isRegistrationEnabled());

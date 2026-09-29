@@ -136,19 +136,35 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
 
         Button changePass = new Button(getTranslation("settings.change_password"), VaadinIcon.LOCK.create(), e -> {
             if (userService.checkPassword(currentUser, oldPass.getValue())) {
-                if (newPass.getValue().equals(confirmPass.getValue()) && newPass.getValue().length() >= 6) {
-                    userService.updatePassword(currentUser, newPass.getValue());
-                    com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.saved"));
-                    oldPass.clear(); newPass.clear(); confirmPass.clear();
-                } else {
+                if (!newPass.getValue().equals(confirmPass.getValue())) {
                     com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.passwords_not_match"));
+                } else {
+                    try {
+                        userService.updatePassword(currentUser, newPass.getValue());
+                        com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.saved"));
+                        oldPass.clear(); newPass.clear(); confirmPass.clear();
+                    } catch (IllegalArgumentException ex) {
+                        com.cuenti.app.views.components.UiNotifier.error(getTranslation("register.validation.password_length"));
+                    }
                 }
             } else {
                 com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.incorrect_old_password"));
             }
         });
         changePass.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        passCard.add(oldPass, newPassRow, changePass);
+
+        // Revokes every API token (mobile app, scripts); the web session stays signed in
+        Button logoutApps = new Button(getTranslation("settings.logout_all_apps"), VaadinIcon.SIGN_OUT.create(), e -> {
+            userService.revokeTokens(currentUser, "LOGOUT_ALL");
+            com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.logout_all_apps_done"));
+        });
+        logoutApps.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        logoutApps.setTooltipText(getTranslation("settings.logout_all_apps_hint"));
+
+        HorizontalLayout passActions = new HorizontalLayout(changePass, logoutApps);
+        passActions.setSpacing(false);
+        passActions.getStyle().set("gap", "var(--vaadin-gap-s)").set("flex-wrap", "wrap");
+        passCard.add(oldPass, newPassRow, passActions);
 
         // ── Danger zone card ───────────────────────────────────────────
         Div dangerCard = createCard();

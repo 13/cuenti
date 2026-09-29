@@ -33,6 +33,10 @@ public class UserService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final CurrencyRepository currencyRepository;
     private final AssetRepository assetRepository;
+    private final AuditService auditService;
+
+    public static final int PASSWORD_MIN_LENGTH = 8;
+    public static final int PASSWORD_MAX_LENGTH = 128;
 
     /**
      * Load user by username for Spring Security authentication.
@@ -60,6 +64,7 @@ public class UserService implements UserDetailsService {
     @Transactional
     public User registerUser(String username, String email, String password, 
                             String firstName, String lastName) {
+        validatePassword(password);
         if (userRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Username already exists");
         }
@@ -257,10 +262,29 @@ public class UserService implements UserDetailsService {
     /**
      * Save/Update user.
      */
-    @Transactional
-    public User saveUser(User user) {
+    /**
+     * Applies a change to the stored row and mirrors it onto the caller's copy.
+     * Callers hold users cached in the Vaadin session or loaded when a view
+     * opened; saving such a copy would write back stale values of every other
+     * column (password, enabled, token version, roles) and silently undo
+     * changes made elsewhere since, e.g. an admin disabling the account.
+     */
+    private User update(User user, java.util.function.Consumer<User> change) {
         evictSessionUser();
-        return userRepository.save(user);
+        User stored = userRepository.findById(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + user.getUsername()));
+        change.accept(stored);
+        change.accept(user);
+        return userRepository.save(stored);
+    }
+
+    /** Grant or revoke the admin role (Admin action). */
+    @Transactional
+    public void setAdmin(User user, boolean admin) {
+        update(user, u -> {
+            if (admin) u.getRoles().add("ROLE_ADMIN");
+            else u.getRoles().remove("ROLE_ADMIN");
+        });
     }
 
     /**
@@ -268,11 +292,11 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updateUserInfo(User user, String firstName, String lastName, String email) {
-        evictSessionUser();
-        user.setFirstName(firstName);
-        user.setLastName(lastName);
-        user.setEmail(email);
-        userRepository.save(user);
+        update(user, u -> {
+            u.setFirstName(firstName);
+            u.setLastName(lastName);
+            u.setEmail(email);
+        });
     }
 
     /**
@@ -287,9 +311,31 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updatePassword(User user, String newPassword) {
-        evictSessionUser();
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
+        validatePassword(newPassword);
+        String hash = passwordEncoder.encode(newPassword);
+        update(user, u -> u.setPassword(hash));
+        // a changed password must lock out whoever holds an old API token
+        revokeTokens(user, "PASSWORD_CHANGE");
+    }
+
+    /** Rejects passwords outside the policy with an {@link IllegalArgumentException}. */
+    public static void validatePassword(String password) {
+        if (password == null || password.length() < PASSWORD_MIN_LENGTH || password.length() > PASSWORD_MAX_LENGTH) {
+            throw new IllegalArgumentException("Password must be between " + PASSWORD_MIN_LENGTH
+                    + " and " + PASSWORD_MAX_LENGTH + " characters");
+        }
+    }
+
+    /**
+     * Invalidates every API token issued to the user so far (sign out all
+     * devices). Tokens carry the version they were issued with.
+     */
+    @Transactional
+    public void revokeTokens(User user, String reason) {
+        User stored = update(user, u -> { });
+        stored.setTokenVersion(stored.getTokenVersion() + 1);
+        user.setTokenVersion(stored.getTokenVersion());
+        auditService.log(stored, reason, "User", stored.getId(), null);
     }
 
     /**
@@ -297,9 +343,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updateDefaultCurrency(User user, String currencyCode) {
-        evictSessionUser();
-        user.setDefaultCurrency(currencyCode);
-        userRepository.save(user);
+        update(user, u -> u.setDefaultCurrency(currencyCode));
     }
 
     /**
@@ -307,9 +351,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updateDarkMode(User user, boolean darkMode) {
-        evictSessionUser();
-        user.setDarkMode(darkMode);
-        userRepository.save(user);
+        update(user, u -> u.setDarkMode(darkMode));
     }
 
     /**
@@ -317,16 +359,15 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updateScheduledPreferences(User user, Integer badgeDays, Integer horizonDays) {
-        evictSessionUser();
-        user.setScheduledBadgeDays(badgeDays);
-        user.setScheduledHorizonDays(horizonDays);
-        userRepository.save(user);
+        update(user, u -> {
+            u.setScheduledBadgeDays(badgeDays);
+            u.setScheduledHorizonDays(horizonDays);
+        });
     }
 
+    @Transactional
     public void updateLocale(User user, String locale) {
-        evictSessionUser();
-        user.setLocale(locale);
-        userRepository.save(user);
+        update(user, u -> u.setLocale(locale));
     }
 
     /**
@@ -334,9 +375,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updateApiEnabled(User user, boolean enabled) {
-        evictSessionUser();
-        user.setApiEnabled(enabled);
-        userRepository.save(user);
+        update(user, u -> u.setApiEnabled(enabled));
     }
 
     /**
@@ -344,9 +383,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void updateDefaultVehicleCategory(User user, Long categoryId) {
-        evictSessionUser();
-        user.setDefaultVehicleCategoryId(categoryId);
-        userRepository.save(user);
+        update(user, u -> u.setDefaultVehicleCategoryId(categoryId));
     }
 
     /**
@@ -354,8 +391,10 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public void setUserEnabled(User user, boolean enabled) {
-        user.setEnabled(enabled);
-        userRepository.save(user);
+        update(user, u -> u.setEnabled(enabled));
+        if (!enabled) {
+            revokeTokens(user, "DISABLE");
+        }
     }
 
     public boolean existsByUsername(String username) {

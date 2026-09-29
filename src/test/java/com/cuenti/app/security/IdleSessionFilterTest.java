@@ -13,10 +13,14 @@ import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 class IdleSessionFilterTest {
 
-    private final IdleSessionFilter filter = new IdleSessionFilter(new IdleTimeoutSettings(Duration.ofMinutes(15)));
+    private final SecurityAuditListener audit = mock(SecurityAuditListener.class);
+
+    private final IdleSessionFilter filter = new IdleSessionFilter(new IdleTimeoutSettings(Duration.ofMinutes(15)), audit);
 
     private static MockHttpSession authenticatedSession(long lastActivity) {
         MockHttpSession session = new MockHttpSession();
@@ -68,6 +72,7 @@ class IdleSessionFilterTest {
         run(request(session, "heartbeat"));
 
         assertThat(session.isInvalid()).isTrue();
+        verify(audit).idleLogout("demo", "server");
     }
 
     @Test
@@ -91,7 +96,7 @@ class IdleSessionFilterTest {
 
     @Test
     void disabledTimeoutSkipsFilter() throws Exception {
-        IdleSessionFilter disabled = new IdleSessionFilter(new IdleTimeoutSettings(Duration.ZERO));
+        IdleSessionFilter disabled = new IdleSessionFilter(new IdleTimeoutSettings(Duration.ZERO), audit);
         MockHttpSession session = authenticatedSession(0L);
 
         disabled.doFilter(request(session, null), new MockHttpServletResponse(), new MockFilterChain());

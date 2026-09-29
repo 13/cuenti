@@ -3,6 +3,7 @@ package com.cuenti.app.api;
 import com.cuenti.app.api.dto.DtoMapper;
 import com.cuenti.app.api.dto.UserProfileDTO;
 import com.cuenti.app.model.User;
+import com.cuenti.app.security.JwtTokenProvider;
 import com.cuenti.app.service.GlobalSettingService;
 import com.cuenti.app.service.SecurityUtil;
 import com.cuenti.app.service.UserService;
@@ -23,6 +24,7 @@ public class UserApiController {
 
     private final UserService userService;
     private final GlobalSettingService globalSettingService;
+    private final JwtTokenProvider tokenProvider;
 
     @GetMapping("/profile")
     public ResponseEntity<UserProfileDTO> getProfile() {
@@ -54,7 +56,19 @@ public class UserApiController {
         }
 
         userService.updatePassword(user, request.getNewPassword());
-        return ResponseEntity.ok().build();
+        // the change revoked every token including the caller's: hand out a fresh one
+        return ResponseEntity.ok(Map.of(
+                "token", tokenProvider.generateToken(user.getUsername(), user.getTokenVersion())));
+    }
+
+    /** Signs out every device: all API tokens issued so far stop working, including this one. */
+    @PostMapping("/logout-all")
+    public ResponseEntity<?> logoutAll() {
+        String username = SecurityUtil.getAuthenticatedUsername().orElse(null);
+        if (username == null) return ResponseEntity.status(401).build();
+
+        userService.revokeTokens(userService.findByUsername(username), "LOGOUT_ALL");
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/preferences")

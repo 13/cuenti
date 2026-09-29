@@ -7,11 +7,13 @@ import com.cuenti.app.model.User;
 import com.cuenti.app.security.JwtTokenProvider;
 import com.cuenti.app.service.GlobalSettingService;
 import com.cuenti.app.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,17 +27,19 @@ public class AuthApiController {
     private final GlobalSettingService globalSettingService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
+            UsernamePasswordAuthenticationToken credentials =
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword());
+            credentials.setDetails(new WebAuthenticationDetailsSource().buildDetails(httpRequest));
+            Authentication authentication = authenticationManager.authenticate(credentials);
 
-            String token = tokenProvider.generateToken(authentication);
-            User user = userService.findByUsername(request.getUsername());
+            User user = userService.findByUsername(authentication.getName());
 
             if (!user.isApiEnabled() && !globalSettingService.isApiEnabled()) {
                 return ResponseEntity.status(403).body("API access is not enabled for this user");
             }
+            String token = tokenProvider.generateToken(user.getUsername(), user.getTokenVersion());
 
             return ResponseEntity.ok(AuthResponse.builder()
                     .token(token)
@@ -78,7 +82,7 @@ public class AuthApiController {
                     request.getFirstName(),
                     request.getLastName());
 
-            String token = tokenProvider.generateToken(user.getUsername());
+            String token = tokenProvider.generateToken(user.getUsername(), user.getTokenVersion());
 
             return ResponseEntity.ok(AuthResponse.builder()
                     .token(token)

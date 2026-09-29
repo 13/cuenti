@@ -34,6 +34,10 @@ payments, investments and reports in one place.
 
 **Admin & platform**
 - JWT-authenticated REST API under `/api/*` covering every domain area
+  (Bearer tokens only; a token stops working when the account is disabled, API access is
+  withdrawn, the password changes or the user signs out all apps via `POST /api/user/logout-all`;
+  `PUT /api/user/password` returns a fresh token)
+- Web UI signs out after inactivity; sign-ins, failed sign-ins and sign-outs go to the activity log
 - User registration, roles (`ROLE_ADMIN`), admin user management and profile cleanup
 - Login rate limiting (10 attempts per IP per window)
 - Audit log of security- and money-relevant actions (admin only)

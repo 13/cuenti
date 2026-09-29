@@ -5,8 +5,6 @@ import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -37,38 +35,34 @@ public class JwtTokenProvider {
         this.jwtExpiration = jwtExpiration;
     }
 
-    public String generateToken(Authentication authentication) {
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        return generateToken(userDetails.getUsername());
-    }
+    static final String VERSION_CLAIM = "ver";
 
-    public String generateToken(String username) {
+    /** Issues a token bound to the user's current {@code tokenVersion}; bumping it revokes the token. */
+    public String generateToken(String username, int tokenVersion) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
 
         return Jwts.builder()
                 .subject(username)
+                .claim(VERSION_CLAIM, tokenVersion)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(key)
                 .compact();
     }
 
-    public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        return claims.getSubject();
+    /** Signature and expiry checked; null if the token is invalid. */
+    public Claims parse(String token) {
+        try {
+            return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
     }
 
-    public boolean validateToken(String token) {
-        try {
-            Jwts.parser().verifyWith(key).build().parseSignedClaims(token);
-            return true;
-        } catch (JwtException | IllegalArgumentException e) {
-            return false;
-        }
+    /** Version the token was issued for; tokens from before versioning count as 0. */
+    public static int versionOf(Claims claims) {
+        Integer version = claims.get(VERSION_CLAIM, Integer.class);
+        return version != null ? version : 0;
     }
 }

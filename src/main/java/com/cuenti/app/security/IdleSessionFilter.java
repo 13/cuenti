@@ -35,6 +35,7 @@ public class IdleSessionFilter extends OncePerRequestFilter {
     static final String LAST_ACTIVITY = IdleSessionFilter.class.getName() + ".lastActivity";
 
     private final IdleTimeoutSettings settings;
+    private final SecurityAuditListener auditListener;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -49,9 +50,10 @@ public class IdleSessionFilter extends OncePerRequestFilter {
         if (session != null) {
             long now = System.currentTimeMillis();
             Long last = (Long) session.getAttribute(LAST_ACTIVITY);
-            if (last != null && isAuthenticated(session)
-                    && now - last > settings.getServerTimeout().toMillis()) {
+            Authentication auth = authentication(session);
+            if (last != null && auth != null && now - last > settings.getServerTimeout().toMillis()) {
                 log.info("Invalidating idle session after {} s", (now - last) / 1000);
+                auditListener.idleLogout(auth.getName(), "server");
                 session.invalidate();
                 SecurityContextHolder.clearContext();
             } else if (isUserActivity(request)) {
@@ -67,12 +69,13 @@ public class IdleSessionFilter extends OncePerRequestFilter {
         return !"heartbeat".equals(type) && !"push".equals(type);
     }
 
-    private static boolean isAuthenticated(HttpSession session) {
+    /** The signed-in user stored in the session, or null. */
+    private static Authentication authentication(HttpSession session) {
         Object context = session.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
         if (context instanceof SecurityContext sc) {
             Authentication auth = sc.getAuthentication();
-            return auth != null && auth.isAuthenticated();
+            return auth != null && auth.isAuthenticated() ? auth : null;
         }
-        return false;
+        return null;
     }
 }

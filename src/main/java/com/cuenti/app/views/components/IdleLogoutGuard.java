@@ -1,6 +1,7 @@
 package com.cuenti.app.views.components;
 
 import com.cuenti.app.security.IdleTimeoutSettings;
+import com.cuenti.app.security.SecurityAuditListener;
 import com.cuenti.app.views.ThemePreference;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.ClientCallable;
@@ -91,10 +92,12 @@ public class IdleLogoutGuard extends Component {
             """;
 
     private final IdleTimeoutSettings settings;
+    private final SecurityAuditListener auditListener;
     private Dialog warning;
 
-    public IdleLogoutGuard(IdleTimeoutSettings settings) {
+    public IdleLogoutGuard(IdleTimeoutSettings settings, SecurityAuditListener auditListener) {
         this.settings = settings;
+        this.auditListener = auditListener;
         getStyle().set("display", "none");
     }
 
@@ -144,6 +147,10 @@ public class IdleLogoutGuard extends Component {
 
     @ClientCallable
     void logout() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            auditListener.idleLogout(auth.getName(), "web");
+        }
         getUI().ifPresent(ui -> ui.getPage().setLocation(LOGIN_TIMEOUT_URL));
         SecurityContextHolder.clearContext();
         VaadinSession session = VaadinSession.getCurrent();

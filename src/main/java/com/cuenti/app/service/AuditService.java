@@ -35,6 +35,25 @@ public class AuditService {
         }
     }
 
+    /**
+     * Security event (sign-in, sign-out, failed sign-in) for a user who may not
+     * exist, so it is recorded by name only.
+     */
+    @Transactional
+    public void logSecurity(String username, String action, String details) {
+        try {
+            String name = username == null || username.isBlank() ? "anonymous" : username;
+            repository.save(AuditLog.builder()
+                    .username(name.length() > 100 ? name.substring(0, 100) : name)
+                    .action(action)
+                    .entityType("Session")
+                    .details(details != null && details.length() > 500 ? details.substring(0, 500) : details)
+                    .build());
+        } catch (Exception e) {
+            // Auditing must never break the business operation
+        }
+    }
+
     @Transactional(readOnly = true)
     public Page<AuditLog> latest(String filter, int page, int size) {
         PageRequest pr = PageRequest.of(page, size);

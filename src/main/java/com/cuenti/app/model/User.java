@@ -87,4 +87,9 @@ public class User {
 
     /** Remembered horizon of the pending list on the scheduled view; null = 7, -1 = unlimited. */
     private Integer scheduledHorizonDays;
+
+    /** Bumped to revoke all API tokens; a token is valid only with the version it was issued for. */
+    @Column(name = "token_version", nullable = false)
+    @Builder.Default
+    private int tokenVersion = 0;
 }

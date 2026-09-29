@@ -113,9 +113,7 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
             isAdmin.setValue(u.getRoles().contains("ROLE_ADMIN"));
             isAdmin.setEnabled(!u.getUsername().equals("demo"));
             isAdmin.addValueChangeListener(e -> {
-                if (e.getValue()) u.getRoles().add("ROLE_ADMIN");
-                else u.getRoles().remove("ROLE_ADMIN");
-                userService.saveUser(u);
+                userService.setAdmin(u, e.getValue());
             });
             return isAdmin;
         }).setHeader(getTranslation("settings.admin")).setAutoWidth(true);
@@ -203,8 +201,9 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
                     com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.passwords_not_match"));
                     return;
                 }
-                if (password.getValue().length() < 8) {
-                    com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.passwords_not_match"));
+                if (password.getValue().length() < UserService.PASSWORD_MIN_LENGTH
+                        || password.getValue().length() > UserService.PASSWORD_MAX_LENGTH) {
+                    com.cuenti.app.views.components.UiNotifier.error(getTranslation("register.validation.password_length"));
                     return;
                 }
                 userService.registerUser(username.getValue(), email.getValue(), password.getValue(), firstName.getValue(), lastName.getValue());
@@ -313,9 +312,13 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
         d.add(body);
         Button save = new Button(getTranslation("settings.reset"), VaadinIcon.CHECK.create(), e -> {
             if (p1.getValue().equals(p2.getValue()) && !p1.getValue().isBlank()) {
-                userService.updatePassword(user, p1.getValue());
-                d.close();
-                com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.saved"));
+                try {
+                    userService.updatePassword(user, p1.getValue());
+                    d.close();
+                    com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.saved"));
+                } catch (IllegalArgumentException ex) {
+                    com.cuenti.app.views.components.UiNotifier.error(getTranslation("register.validation.password_length"));
+                }
             } else {
                 com.cuenti.app.views.components.UiNotifier.error(getTranslation("settings.passwords_not_match"));
             }

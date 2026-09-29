@@ -21,7 +21,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@ToString(exclude = {"accounts"})
+@ToString(exclude = {"accounts", "password", "totpSecret", "totpRecoveryCodes"})
 public class User {
 
     @Id
@@ -92,4 +92,20 @@ public class User {
     @Column(name = "token_version", nullable = false)
     @Builder.Default
     private int tokenVersion = 0;
+
+    /** Two-factor sign-in with an authenticator app (TOTP). */
+    @Column(name = "totp_enabled", nullable = false)
+    @Builder.Default
+    private boolean totpEnabled = false;
+
+    @Column(name = "totp_secret", length = 64)
+    private String totpSecret;
+
+    /** Last accepted time step; a code for this step or earlier is not accepted again. */
+    @Column(name = "totp_last_step")
+    private Long totpLastStep;
+
+    /** SHA-256 digests of the unused recovery codes, comma separated. */
+    @Column(name = "totp_recovery_codes", length = 1000)
+    private String totpRecoveryCodes;
 }

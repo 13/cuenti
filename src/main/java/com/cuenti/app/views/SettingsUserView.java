@@ -202,7 +202,120 @@ public class SettingsUserView extends BaseSettingsView implements HasDynamicTitl
         cleanupButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
         dangerCard.add(cleanupButton);
 
-        container.add(card, localizationCard, scheduledCard(), passCard, dangerCard);
+        container.add(card, localizationCard, scheduledCard(), passCard, twoFactorCard(), dangerCard);
+    }
+
+    // ── Two-factor sign-in ─────────────────────────────────────────────
+
+    private Div twoFactorCard() {
+        Div twoFactorCard = createCard();
+        twoFactorCard.add(cardHeader(VaadinIcon.KEY, getTranslation("settings.twofactor_title"),
+                getTranslation("settings.twofactor_desc"), "var(--aura-green)"));
+        fillTwoFactorCard(twoFactorCard);
+        return twoFactorCard;
+    }
+
+    private void fillTwoFactorCard(Div twoFactorCard) {
+        twoFactorCard.getChildren().skip(1).toList().forEach(twoFactorCard::remove);
+        if (currentUser.isTotpEnabled()) {
+            Span status = new Span(getTranslation("settings.twofactor_on",
+                    userService.remainingRecoveryCodes(currentUser)));
+            Button off = new Button(getTranslation("settings.twofactor_disable"), VaadinIcon.CLOSE_SMALL.create(),
+                    e -> openDisableTwoFactor(twoFactorCard));
+            off.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+            twoFactorCard.add(status, off);
+        } else {
+            Span status = new Span(getTranslation("settings.twofactor_off"));
+            Button on = new Button(getTranslation("settings.twofactor_enable"), VaadinIcon.KEY.create(),
+                    e -> openEnableTwoFactor(twoFactorCard));
+            on.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+            twoFactorCard.add(status, on);
+        }
+    }
+
+    private void openEnableTwoFactor(Div twoFactorCard) {
+        UserService.TotpSetup setup = userService.startTotpSetup(currentUser);
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("settings.twofactor_enable"));
+        dialog.setWidth("min(460px, 96vw)");
+
+        Span step1 = new Span(getTranslation("settings.twofactor_scan"));
+        com.vaadin.flow.component.html.Image qr = com.cuenti.app.views.components.QrCode.image(
+                setup.otpauthUri(), getTranslation("settings.twofactor_qr_alt"));
+        Span secret = new Span(setup.secret().replaceAll("(.{4})", "$1 ").trim());
+        secret.getStyle().set("font-family", "monospace").set("user-select", "all").set("word-break", "break-all");
+        Span manual = new Span(getTranslation("settings.twofactor_manual"));
+        manual.getStyle().set("font-size", "var(--aura-font-size-xs)").set("color", "var(--vaadin-text-color-secondary)");
+        TextField code = new TextField(getTranslation("twofactor.code"));
+        code.setWidthFull();
+        code.getElement().setAttribute("autocomplete", "one-time-code");
+
+        com.vaadin.flow.component.orderedlayout.VerticalLayout body =
+                new com.vaadin.flow.component.orderedlayout.VerticalLayout(step1, qr, manual, secret, code);
+        body.setPadding(false);
+        body.setAlignItems(com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.CENTER);
+        dialog.add(body);
+
+        Button cancel = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
+        cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        Button activate = new Button(getTranslation("settings.twofactor_activate"), e -> {
+            try {
+                java.util.List<String> codes = userService.enableTotp(currentUser, setup.secret(), code.getValue());
+                // this session just proved the second factor
+                com.cuenti.app.security.TwoFactorSession.markVerified(currentUser.getUsername());
+                fillTwoFactorCard(twoFactorCard);
+                showRecoveryCodes(dialog, codes);
+            } catch (IllegalArgumentException ex) {
+                code.setInvalid(true);
+                code.setErrorMessage(getTranslation("twofactor.invalid"));
+            }
+        });
+        activate.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        dialog.getFooter().add(cancel, activate);
+        dialog.open();
+    }
+
+    private void showRecoveryCodes(Dialog dialog, java.util.List<String> codes) {
+        dialog.removeAll();
+        dialog.getFooter().removeAll();
+        dialog.setHeaderTitle(getTranslation("settings.twofactor_recovery_title"));
+        Span intro = new Span(getTranslation("settings.twofactor_recovery_intro"));
+        Div list = new Div();
+        list.getStyle().set("font-family", "monospace").set("display", "grid")
+                .set("grid-template-columns", "1fr 1fr").set("gap", "var(--vaadin-gap-xs) var(--vaadin-gap-m)")
+                .set("user-select", "all").set("margin-top", "var(--vaadin-gap-m)");
+        codes.forEach(c -> list.add(new Span(c)));
+        dialog.add(intro, list);
+        dialog.setCloseOnOutsideClick(false);
+        Button done = new Button(getTranslation("settings.twofactor_recovery_saved"), e -> dialog.close());
+        done.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        dialog.getFooter().add(done);
+    }
+
+    private void openDisableTwoFactor(Div twoFactorCard) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("settings.twofactor_disable"));
+        dialog.setWidth("min(420px, 96vw)");
+        TextField code = new TextField(getTranslation("twofactor.code"));
+        code.setWidthFull();
+        code.getElement().setAttribute("autocomplete", "one-time-code");
+        dialog.add(new Span(getTranslation("settings.twofactor_disable_hint")), code);
+        Button cancel = new Button(getTranslation("dialog.cancel"), e -> dialog.close());
+        cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        Button confirm = new Button(getTranslation("settings.twofactor_disable"), e -> {
+            try {
+                userService.disableTotp(currentUser, code.getValue());
+                fillTwoFactorCard(twoFactorCard);
+                dialog.close();
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.saved"));
+            } catch (IllegalArgumentException ex) {
+                code.setInvalid(true);
+                code.setErrorMessage(getTranslation("twofactor.invalid"));
+            }
+        });
+        confirm.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        dialog.getFooter().add(cancel, confirm);
+        dialog.open();
     }
 
     /** What the Geplant nav badge counts: due/overdue only, or a look-ahead window. */

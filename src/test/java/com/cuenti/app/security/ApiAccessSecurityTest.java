@@ -38,6 +38,7 @@ class ApiAccessSecurityTest {
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
     @Autowired UserService userService;
+    @Autowired LoginRateLimitFilter loginRateLimitFilter;
     @Autowired UserRepository userRepository;
     @Autowired AuditLogRepository auditLogRepository;
     @Autowired JwtTokenProvider tokenProvider;
@@ -46,6 +47,7 @@ class ApiAccessSecurityTest {
 
     @BeforeEach
     void setUp() {
+        loginRateLimitFilter.reset();
         String name = "api" + System.nanoTime();
         user = userService.registerUser(name, name + "@x.com", PASSWORD, "Api", "User");
         userService.updateApiEnabled(user, true);

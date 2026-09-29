@@ -31,6 +31,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final LoginRateLimitFilter loginRateLimitFilter;
     private final IdleSessionFilter idleSessionFilter;
+    private final SessionValidityFilter sessionValidityFilter;
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
@@ -82,6 +83,7 @@ public class SecurityConfig {
                 .requestMatchers("/images/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll());
         http.addFilterBefore(idleSessionFilter, SecurityContextHolderFilter.class);
+        http.addFilterBefore(sessionValidityFilter, SecurityContextHolderFilter.class);
         http.addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         http.with(VaadinSecurityConfigurer.vaadin(), c -> c.loginView(LoginView.class));

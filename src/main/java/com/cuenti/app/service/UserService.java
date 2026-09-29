@@ -34,6 +34,7 @@ public class UserService implements UserDetailsService {
     private final CurrencyRepository currencyRepository;
     private final AssetRepository assetRepository;
     private final AuditService auditService;
+    private final com.cuenti.app.security.RefreshTokenService refreshTokenService;
 
     public static final int PASSWORD_MIN_LENGTH = 8;
     public static final int PASSWORD_MAX_LENGTH = 128;
@@ -314,8 +315,23 @@ public class UserService implements UserDetailsService {
         validatePassword(newPassword);
         String hash = passwordEncoder.encode(newPassword);
         update(user, u -> u.setPassword(hash));
+        keepOwnWebSession(user, hash);
         // a changed password must lock out whoever holds an old API token
         revokeTokens(user, "PASSWORD_CHANGE");
+    }
+
+    /**
+     * Other web sessions of the user end on their next request
+     * ({@link com.cuenti.app.security.SessionValidityFilter}); the one making the
+     * change, if it is the user's own, stays signed in.
+     */
+    private void keepOwnWebSession(User user, String newHash) {
+        com.vaadin.flow.server.VaadinSession session = com.vaadin.flow.server.VaadinSession.getCurrent();
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (session != null && session.getSession() != null && auth != null
+                && user.getUsername().equals(auth.getName())) {
+            com.cuenti.app.security.SessionValidityFilter.rememberCredentials(session.getSession(), newHash);
+        }
     }
 
     /** Rejects passwords outside the policy with an {@link IllegalArgumentException}. */
@@ -335,7 +351,132 @@ public class UserService implements UserDetailsService {
         User stored = update(user, u -> { });
         stored.setTokenVersion(stored.getTokenVersion() + 1);
         user.setTokenVersion(stored.getTokenVersion());
+        refreshTokenService.revokeAll(stored);
         auditService.log(stored, reason, "User", stored.getId(), null);
+    }
+
+    // ── Two-factor sign-in (TOTP) ─────────────────────────────────────────────
+
+    public record TotpSetup(String secret, String otpauthUri) {}
+
+    private static final int RECOVERY_CODES = 10;
+
+    /** A new secret to show as QR code; nothing is stored until {@link #enableTotp} confirms it. */
+    public TotpSetup startTotpSetup(User user) {
+        String secret = com.cuenti.app.security.Totp.newSecret();
+        return new TotpSetup(secret, com.cuenti.app.security.Totp.otpauthUri("Cuenti", user.getUsername(), secret));
+    }
+
+    /**
+     * Turns two-factor sign-in on once the user proved their app produces
+     * codes for the secret. Returns the recovery codes, shown exactly once.
+     */
+    @Transactional
+    public List<String> enableTotp(User user, String secret, String code) {
+        long step = com.cuenti.app.security.Totp.matchingStep(secret, code, com.cuenti.app.security.Totp.currentStep());
+        if (step < 0) {
+            throw new IllegalArgumentException("Invalid code");
+        }
+        List<String> codes = newRecoveryCodes();
+        String digests = codes.stream().map(UserService::recoveryDigest).collect(Collectors.joining(","));
+        update(user, u -> {
+            u.setTotpSecret(secret);
+            u.setTotpEnabled(true);
+            u.setTotpLastStep(step);
+            u.setTotpRecoveryCodes(digests);
+        });
+        auditService.log(user, "TOTP_ENABLED", "User", user.getId(), null);
+        return codes;
+    }
+
+    /** The user turns two-factor sign-in off, confirmed with a current code. */
+    @Transactional
+    public void disableTotp(User user, String code) {
+        if (!verifySecondFactor(user, code)) {
+            throw new IllegalArgumentException("Invalid code");
+        }
+        clearTotp(user);
+        auditService.log(user, "TOTP_DISABLED", "User", user.getId(), null);
+    }
+
+    /** Admin action for a user who lost their authenticator and recovery codes. */
+    @Transactional
+    public void resetTotp(User user) {
+        clearTotp(user);
+        auditService.log(user, "TOTP_RESET", "User", user.getId(), "by admin");
+    }
+
+    private void clearTotp(User user) {
+        update(user, u -> {
+            u.setTotpEnabled(false);
+            u.setTotpSecret(null);
+            u.setTotpLastStep(null);
+            u.setTotpRecoveryCodes(null);
+        });
+    }
+
+    /**
+     * Checks the second factor at sign-in: a current authenticator code, or one
+     * of the recovery codes. Either is consumed, so it cannot be replayed.
+     */
+    @Transactional
+    public boolean verifySecondFactor(User user, String code) {
+        User stored = userRepository.lockById(user.getId()).orElse(null);
+        if (stored == null || !stored.isTotpEnabled() || code == null || code.isBlank()) {
+            return false;
+        }
+        long step = com.cuenti.app.security.Totp.matchingStep(stored.getTotpSecret(), code.trim(),
+                com.cuenti.app.security.Totp.currentStep());
+        if (step >= 0 && (stored.getTotpLastStep() == null || step > stored.getTotpLastStep())) {
+            stored.setTotpLastStep(step);
+            user.setTotpLastStep(step);
+            return true;
+        }
+        String digest = recoveryDigest(code);
+        List<String> remaining = new java.util.ArrayList<>(recoveryDigests(stored));
+        if (remaining.remove(digest)) {
+            String joined = String.join(",", remaining);
+            stored.setTotpRecoveryCodes(joined);
+            user.setTotpRecoveryCodes(joined);
+            auditService.log(stored, "RECOVERY_CODE_USED", "User", stored.getId(), remaining.size() + " left");
+            return true;
+        }
+        return false;
+    }
+
+    public int remainingRecoveryCodes(User user) {
+        return recoveryDigests(user).size();
+    }
+
+    private static List<String> recoveryDigests(User user) {
+        String codes = user.getTotpRecoveryCodes();
+        return codes == null || codes.isBlank() ? List.of() : List.of(codes.split(","));
+    }
+
+    private static List<String> newRecoveryCodes() {
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        String alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I
+        List<String> codes = new java.util.ArrayList<>();
+        for (int i = 0; i < RECOVERY_CODES; i++) {
+            StringBuilder code = new StringBuilder();
+            for (int c = 0; c < 10; c++) {
+                if (c == 5) code.append('-');
+                code.append(alphabet.charAt(random.nextInt(alphabet.length())));
+            }
+            codes.add(code.toString());
+        }
+        return codes;
+    }
+
+    /** Digest of a recovery code, ignoring case, spaces and dashes. */
+    static String recoveryDigest(String code) {
+        String normalized = code.toUpperCase().replaceAll("[^A-Z0-9]", "");
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(normalized.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /**
@@ -415,6 +556,7 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
 
         log.info("Deleting user: {} (ID: {})", user.getUsername(), userId);
+        refreshTokenService.revokeAll(user);
         userRepository.delete(user);
         log.info("User deleted successfully: {}", user.getUsername());
     }
@@ -426,6 +568,7 @@ public class UserService implements UserDetailsService {
     @Transactional
     public void deleteUser(User user) {
         log.info("Deleting user: {} (ID: {})", user.getUsername(), user.getId());
+        refreshTokenService.revokeAll(user);
         userRepository.delete(user);
         log.info("User deleted successfully: {}", user.getUsername());
     }

@@ -289,6 +289,15 @@ public class SettingsAdminView extends BaseSettingsView implements HasDynamicTit
         deleteUser.setEnabled(!user.getUsername().equals(currentUser.getUsername())
                 && !user.getUsername().equals("demo"));
 
+        if (user.isTotpEnabled()) {
+            // for a user who lost both the authenticator and the recovery codes
+            Button resetTwoFactor = new Button(getTranslation("settings.twofactor_reset"), e -> {
+                userService.resetTotp(user);
+                userPanel.closePanel();
+                com.cuenti.app.views.components.UiNotifier.success(getTranslation("settings.twofactor_reset_done"));
+            });
+            footer.add(resetTwoFactor);
+        }
         footer.add(resetPw, deleteUser);
         userPanel.openPanel();
     }

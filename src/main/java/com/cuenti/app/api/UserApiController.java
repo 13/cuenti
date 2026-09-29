@@ -4,6 +4,7 @@ import com.cuenti.app.api.dto.DtoMapper;
 import com.cuenti.app.api.dto.UserProfileDTO;
 import com.cuenti.app.model.User;
 import com.cuenti.app.security.JwtTokenProvider;
+import com.cuenti.app.security.RefreshTokenService;
 import com.cuenti.app.service.GlobalSettingService;
 import com.cuenti.app.service.SecurityUtil;
 import com.cuenti.app.service.UserService;
@@ -25,6 +26,7 @@ public class UserApiController {
     private final UserService userService;
     private final GlobalSettingService globalSettingService;
     private final JwtTokenProvider tokenProvider;
+    private final RefreshTokenService refreshTokenService;
 
     @GetMapping("/profile")
     public ResponseEntity<UserProfileDTO> getProfile() {
@@ -56,9 +58,16 @@ public class UserApiController {
         }
 
         userService.updatePassword(user, request.getNewPassword());
-        // the change revoked every token including the caller's: hand out a fresh one
+        // the change revoked every token including the caller's: hand out fresh ones
+        if (request.isRefresh()) {
+            return ResponseEntity.ok(Map.of(
+                    "token", tokenProvider.generateAccessToken(user.getUsername(), user.getTokenVersion()),
+                    "refreshToken", refreshTokenService.issue(user),
+                    "expiresIn", tokenProvider.getAccessExpirationSeconds()));
+        }
         return ResponseEntity.ok(Map.of(
-                "token", tokenProvider.generateToken(user.getUsername(), user.getTokenVersion())));
+                "token", tokenProvider.generateToken(user.getUsername(), user.getTokenVersion()),
+                "expiresIn", tokenProvider.getExpirationSeconds()));
     }
 
     /** Signs out every device: all API tokens issued so far stop working, including this one. */
@@ -155,5 +164,12 @@ public class UserApiController {
     public static class PasswordChangeRequest {
         private String oldPassword;
         private String newPassword;
+        /** The client renews tokens with a refresh token: answer with a new pair. */
+        private Boolean refresh;
+
+        /** Absent in requests from older clients; primitive would fail to deserialize then. */
+        public boolean isRefresh() {
+            return Boolean.TRUE.equals(refresh);
+        }
     }
 }

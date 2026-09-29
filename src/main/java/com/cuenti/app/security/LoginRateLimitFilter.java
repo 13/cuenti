@@ -32,6 +32,11 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
 
     private final Map<String, Window> attempts = new ConcurrentHashMap<>();
 
+    /** Tests share one client address; they start each case with a clean slate. */
+    void reset() {
+        attempts.clear();
+    }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !("POST".equalsIgnoreCase(request.getMethod())
@@ -66,10 +71,14 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * The client address as resolved by the container. Reading X-Forwarded-For
+     * here trusted whatever the client sent, so rotating a fake header value
+     * bypassed the limit; behind a reverse proxy the container resolves the
+     * header itself, but only from trusted proxies
+     * ({@code server.forward-headers-strategy=native}).
+     */
     private String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        return forwarded != null && !forwarded.isBlank()
-                ? forwarded.split(",")[0].trim()
-                : request.getRemoteAddr();
+        return request.getRemoteAddr();
     }
 }

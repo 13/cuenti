@@ -10,6 +10,10 @@ import java.util.Set;
 @Builder
 public class AuthResponse {
     private String token;
+    /** Only for clients that asked for one ({@code "refresh": true}). */
+    private String refreshToken;
+    /** Lifetime of {@link #token} in seconds. */
+    private long expiresIn;
     private String username;
     private String email;
     private String firstName;

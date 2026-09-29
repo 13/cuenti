@@ -44,4 +44,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * @return true if the email exists, false otherwise
      */
     boolean existsByEmail(String email);
+
+    /** Locked read, so two sign-ins cannot both accept the same one-time code. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select u from User u where u.id = :id")
+    Optional<User> lockById(Long id);
 }

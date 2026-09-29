@@ -36,8 +36,13 @@ payments, investments and reports in one place.
 - JWT-authenticated REST API under `/api/*` covering every domain area
   (Bearer tokens only; a token stops working when the account is disabled, API access is
   withdrawn, the password changes or the user signs out all apps via `POST /api/user/logout-all`;
-  `PUT /api/user/password` returns a fresh token)
-- Web UI signs out after inactivity; sign-ins, failed sign-ins and sign-outs go to the activity log
+  `PUT /api/user/password` returns a fresh token). Clients that log in with `"refresh": true`
+  get a 15-minute access token plus a rotating refresh token (`POST /api/auth/refresh`);
+  a reused refresh token revokes its whole chain
+- Optional two-factor sign-in (authenticator app, recovery codes) for web and API
+  (`"code"` in `POST /api/auth/login`; a 401 `{"error":"two_factor_required"}` asks for it)
+- Web UI signs out after inactivity; web sessions end when the account is disabled or the
+  password changes elsewhere; sign-ins, failed sign-ins and sign-outs go to the activity log
 - User registration, roles (`ROLE_ADMIN`), admin user management and profile cleanup
 - Login rate limiting (10 attempts per IP per window)
 - Audit log of security- and money-relevant actions (admin only)
@@ -65,7 +70,10 @@ Then start app + PostgreSQL:
 Uses `docker-compose.prod.yml`, profile `production`, Flyway migrations, no demo users.
 Optional `.env` overrides: `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`,
 `IDLE_TIMEOUT` (web UI sign-out after inactivity, default `15m`, `0` disables) and
-`JWT_EXPIRATION` (REST API token lifetime in ms, default `86400000` = 24h).
+`JWT_EXPIRATION` (REST API token lifetime in ms for clients without refresh tokens, default
+`86400000` = 24h), `JWT_ACCESS_EXPIRATION` / `JWT_REFRESH_EXPIRATION` (default 15 min / 30 days).
+Behind a reverse proxy on a non-private address, set `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES`
+so client addresses (rate limit, activity log) are taken from `X-Forwarded-For`.
 
 ## Development
 

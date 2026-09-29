@@ -6,6 +6,11 @@ on:
       - 'v*'
   workflow_dispatch:
 
+# Tag builds run one at a time; the latest-tag check below decides who moves `latest`
+concurrency:
+  group: docker-publish
+  cancel-in-progress: false
+
 env:
   # ghcr.io on GitHub, the Gitea container registry when run on Gitea
   REGISTRY: ${{ github.server_url == 'https://github.com' && 'ghcr.io' || 'gitea.muh' }}
@@ -21,6 +26,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # Only the highest v* tag may move `latest` and the major.minor tag, so a
+      # slower or re-run build of an older tag can't overwrite them
+      - name: Check if this is the latest version
+        id: check
+        run: |
+          highest=$(git tag --list 'v*' --sort=-v:refname | head -n1)
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" = "${highest}" ]; then
+            echo "is_latest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_latest=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "ref=${GITHUB_REF_NAME} highest=${highest}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -39,9 +59,12 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
           tags: |
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ steps.check.outputs.is_latest }}
+            type=raw,value=latest,enable=${{ steps.check.outputs.is_latest }}
             type=raw,value=ci-${{ github.sha }},enable=${{ !startsWith(github.ref, 'refs/tags/') }}
 
       - name: Build and push
